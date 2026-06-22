@@ -3,7 +3,7 @@
 ## Vision
 
 Turn the single-tenant [nyt-crossword-to-kindle](https://github.com/RonanOD/nyt-crossword-to-kindle)
-tool into **[dailykindle.com](https://dailykindle.com)** — a SaaS where Kindle Scribe and
+tool into **[dailyscribe.ca](https://dailyscribe.ca)** — a SaaS where Kindle Scribe and
 other e-reader users sign up, pick from a catalog of daily "services," and receive a
 customized PDF (or bundle of PDFs) emailed to their device on a schedule they control.
 
@@ -24,6 +24,28 @@ is **single-tenant**: one user, one `.env`, one set of cookies, run via Docker o
 
 The core value (source → PDF → email) is proven. The SaaS work is wrapping it in
 multi-tenancy, accounts, a config UI, scheduling, and billing.
+
+## Current implementation (chosen stack)
+
+This repo is now a **pnpm + Turborepo monorepo**. The first milestone — NYT crossword
+emailed to the owner's Kindle, on multi-tenant-ready foundations — is built and verified
+(install, unit tests, typecheck, production build).
+
+- **Frontend + backend:** **Next.js (App Router)** in `apps/web` — React UI + TypeScript API
+  routes in one Vercel deployable. Deployed to the **existing dailyscribe.ca Vercel project**
+  (Root Directory = `apps/web`), replacing the old static `index.html` placeholder.
+- **Database:** **MongoDB Atlas** — a dedicated DailyScribe project / free M0 cluster, fully
+  isolated. Accessed only via `MONGODB_URI`; db name `dailyscribe`.
+- **Auth:** **Auth.js (NextAuth v5)** with the MongoDB adapter + GitHub OAuth.
+- **Scheduling:** **Vercel Cron** → `GET /api/cron/dispatch` (guarded by `CRON_SECRET`),
+  timezone-aware, idempotent per day. (Note: Vercel Hobby limits cron frequency; hourly needs Pro.)
+- **Shared code:** `packages/core` (framework-free TS) — Mongo client, AES-256-GCM secret
+  crypto, the `ServicePlugin` interface + registry, the NYT plugin, and the Gmail `Deliverer`.
+- **Renderers:** **NYT needs no rendering** (NYT serves a ready-made PDF to subscribers), so it
+  runs in pure TS. Render-heavy services (CBC, HA) will arrive as **Python renderer workers**
+  in `workers/`, invoked behind the identical `ServicePlugin.run()` contract.
+
+See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end verification.
 
 ## Target architecture (SaaS)
 
@@ -60,14 +82,18 @@ multi-tenancy, accounts, a config UI, scheduling, and billing.
 
 ## Roadmap
 
-- [ ] **Phase 0 — Foundations.** Pull the reference repo's renderers into this repo behind a
-      clean plugin interface. Keep it runnable single-tenant to validate parity.
-- [ ] **Phase 1 — Multi-tenancy.** User accounts + auth, config DB, encrypted per-user
-      secrets. Replace `.env`/cookies with per-user records.
-- [ ] **Phase 2 — Web app.** Signup/login, service catalog picker, delivery email + schedule
-      settings, send-test-now.
-- [ ] **Phase 3 — Scheduling at scale.** Per-user, timezone-aware job queue replacing the
-      single Docker cron. Retries + failure notifications.
+- [~] **Phase 0 — Foundations.** Plugin interface (`ServicePlugin`) + registry and a pure-TS
+      NYT crossword plugin (no rendering needed) are **written but not yet trusted** — the code
+      sits uncommitted in the working tree and still needs review, real test verification, and a
+      commit before it counts as done. Python renderer workers deferred to the services that
+      actually need them (CBC, HA).
+- [x] **Phase 1 — Multi-tenancy.** Auth.js accounts, MongoDB config (`subscriptions`), and
+      encrypted per-user secrets (`userSecrets`, AES-256-GCM) replace `.env`/cookies.
+- [~] **Phase 2 — Web app.** Login + dashboard (service config, secrets, send-test-now) shipped.
+      Still to do: public signup/marketing polish, full service-catalog picker (>1 service).
+- [~] **Phase 3 — Scheduling at scale.** Vercel Cron + timezone-aware, idempotent dispatch
+      shipped for the solo case. Still to do: retries, failure notifications, sub-daily cron
+      coverage across many timezones (Vercel Pro).
 - [ ] **Phase 4 — Billing.** Subscription tiers (e.g. free single-service vs. paid bundles).
 - [ ] **Phase 5 — Handwriting return path.** Ingest handwritten responses emailed back from
       the Scribe (e.g. habit tracking, crossword answers).

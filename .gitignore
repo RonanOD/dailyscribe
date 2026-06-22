@@ -1,0 +1,15 @@
+node_modules/
+.next/
+dist/
+.turbo/
+*.tsbuildinfo
+coverage/
+downloads/
+
+# env
+.env
+.env.*
+!.env.example
+
+# os
+.DS_Store

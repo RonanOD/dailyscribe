@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 800" fill="none"
+     stroke="#e7e9ee" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Generic tablet body (portrait), not a specific product -->
+  <rect x="150" y="70" width="300" height="470" rx="26" />
+  <!-- Screen inset -->
+  <rect x="174" y="100" width="252" height="392" rx="10" stroke-width="4" />
+  <!-- Camera dot / sensor -->
+  <circle cx="300" cy="520" r="6" stroke-width="4" />
+  <!-- A few ruled lines to read as a writing surface -->
+  <line x1="200" y1="170" x2="400" y2="170" stroke-width="3" />
+  <line x1="200" y1="210" x2="400" y2="210" stroke-width="3" />
+  <line x1="200" y1="250" x2="360" y2="250" stroke-width="3" />
+  <!-- Stylus lying diagonally across the lower-right -->
+  <g transform="rotate(34 430 600)">
+    <rect x="330" y="586" width="240" height="28" rx="14" />
+    <!-- Nib -->
+    <path d="M570 586 l34 14 l-34 14 z" />
+    <!-- Grip band -->
+    <line x1="372" y1="586" x2="372" y2="614" stroke-width="4" />
+  </g>
+</svg>
