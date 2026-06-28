@@ -98,6 +98,7 @@ function parseConfig(config: unknown): NytConfig {
  */
 export const nytCrosswordPlugin: ServicePlugin = {
   id: "nyt-crossword",
+  label: "NYT Crossword",
   async run(ctx: RunContext): Promise<Asset[]> {
     const { version } = parseConfig(ctx.config);
     const cookie = ctx.secrets.nyt;

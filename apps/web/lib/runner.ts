@@ -7,9 +7,11 @@ import {
   registerPlugin,
   type Subscription,
 } from "@dailyscribe/core";
+import { cbcNewsPlugin } from "@/lib/plugins/cbc";
 
 // Register the available service plugins once per runtime.
 registerPlugin(nytCrosswordPlugin);
+registerPlugin(cbcNewsPlugin);
 
 export interface RunResult {
   subscriptionId: string;
@@ -90,8 +92,8 @@ export async function runSubscription(
 
     await createGmailDeliverer(gmail).deliver({
       to: sub.config.kindleEmail,
-      subject: `NYT Crossword — ${isoDate}`,
-      text: "Your daily crossword, delivered by DailyScribe.",
+      subject: `${plugin.label} — ${isoDate}`,
+      text: `Your daily ${plugin.label}, delivered by Daily Scribe.`,
       assets,
     });
 

@@ -1,0 +1,197 @@
+import { formatIsoDate, type Asset, type RunContext, type ServicePlugin } from "@dailyscribe/core";
+import {
+  Document,
+  Page,
+  StyleSheet,
+  Text,
+  View,
+  renderToBuffer,
+} from "@react-pdf/renderer";
+import { XMLParser } from "fast-xml-parser";
+import { CBC_FEEDS, type CbcFeed } from "@/lib/cbc-feeds";
+
+const FEEDS_BY_KEY = new Map(CBC_FEEDS.map((f) => [f.key, f]));
+const DEFAULT_MAX_PER_FEED = 9;
+const SUMMARY_MAX_CHARS = 320;
+
+export interface CbcConfig {
+  feeds: CbcFeed[];
+  maxPerFeed: number;
+}
+
+/** Validate untyped subscription config into a concrete CBC config. */
+export function parseCbcConfig(config: unknown): CbcConfig {
+  const raw = (config ?? {}) as { feeds?: unknown; maxPerFeed?: unknown };
+  const requested = Array.isArray(raw.feeds) ? raw.feeds.filter((k): k is string => typeof k === "string") : [];
+  const feeds = requested.map((k) => FEEDS_BY_KEY.get(k)).filter((f): f is CbcFeed => Boolean(f));
+  const maxRaw = typeof raw.maxPerFeed === "number" ? Math.floor(raw.maxPerFeed) : DEFAULT_MAX_PER_FEED;
+  return {
+    feeds: feeds.length > 0 ? feeds : CBC_FEEDS,
+    maxPerFeed: Math.min(Math.max(maxRaw, 1), 15),
+  };
+}
+
+const ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&apos;": "'",
+  "&nbsp;": " ",
+};
+
+/** Strip HTML tags + decode common entities from a feed summary, collapsing whitespace. */
+export function toPlainText(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&[a-z]+;/gi, (m) => ENTITIES[m.toLowerCase()] ?? " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export interface NewsItem {
+  title: string;
+  summary: string;
+}
+
+export interface NewsSection {
+  label: string;
+  items: NewsItem[];
+}
+
+// CBC's edge drops User-Agents containing a URL, so keep this plain (no "+https://…").
+const USER_AGENT = "Mozilla/5.0 (compatible; DailyScribe/0.1)";
+const FEED_TIMEOUT_MS = 15000;
+
+// fast-xml-parser folds CDATA into the tag's text value by default, which is what we want.
+const xml = new XMLParser({ ignoreAttributes: true, processEntities: true, trimValues: true });
+
+interface RssItem {
+  title?: unknown;
+  description?: unknown;
+  "content:encoded"?: unknown;
+}
+
+/** Parse RSS 2.0 XML into our items. Tolerates a single-item channel (parser returns an object, not array). */
+function parseRssItems(body: string, max: number): NewsItem[] {
+  const doc = xml.parse(body) as { rss?: { channel?: { item?: RssItem | RssItem[] } } };
+  const raw = doc?.rss?.channel?.item;
+  const arr = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  return arr.slice(0, max).map((it) => {
+    const summary = toPlainText(String(it.description ?? it["content:encoded"] ?? ""));
+    return {
+      title: toPlainText(String(it.title ?? "Untitled")),
+      summary: summary.length > SUMMARY_MAX_CHARS ? `${summary.slice(0, SUMMARY_MAX_CHARS)}…` : summary,
+    };
+  });
+}
+
+/**
+ * Fetch and parse each feed into a section, using the platform fetch (works under
+ * Next/Vercel). Per-feed failures are tolerated (a bad feed is skipped, not fatal)
+ * so one outage can't sink the whole edition.
+ */
+export async function fetchCbcSections(cfg: CbcConfig): Promise<NewsSection[]> {
+  const sections = await Promise.all(
+    cfg.feeds.map(async (feed): Promise<NewsSection | null> => {
+      try {
+        const res = await fetch(feed.url, {
+          headers: { "User-Agent": USER_AGENT, Accept: "application/rss+xml, application/xml, text/xml" },
+          signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const items = parseRssItems(await res.text(), cfg.maxPerFeed);
+        return items.length > 0 ? { label: feed.label, items } : null;
+      } catch (err) {
+        console.warn(`CBC feed "${feed.key}" failed:`, err instanceof Error ? err.message : err);
+        return null;
+      }
+    }),
+  );
+  return sections.filter((s): s is NewsSection => s !== null);
+}
+
+const styles = StyleSheet.create({
+  page: { paddingVertical: 48, paddingHorizontal: 56, fontFamily: "Helvetica", color: "#111111" },
+  masthead: { fontSize: 26, fontFamily: "Helvetica-Bold", marginBottom: 2 },
+  date: { fontSize: 12, color: "#444444", marginBottom: 18 },
+  section: { marginBottom: 16 },
+  sectionTitle: {
+    fontSize: 15,
+    fontFamily: "Helvetica-Bold",
+    borderBottom: "1pt solid #000000",
+    paddingBottom: 3,
+    marginBottom: 8,
+  },
+  item: { marginBottom: 9 },
+  itemTitle: { fontSize: 11.5, fontFamily: "Helvetica-Bold", lineHeight: 1.3 },
+  itemSummary: { fontSize: 9.5, color: "#333333", lineHeight: 1.4, marginTop: 2 },
+  footer: { position: "absolute", bottom: 24, left: 56, right: 56, fontSize: 8, color: "#888888", textAlign: "center" },
+});
+
+function formatLongDate(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "UTC",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+}
+
+/** The PDF document for a CBC edition. Grayscale, generous type — built for e-ink. */
+function CbcDocument({ sections, date }: { sections: NewsSection[]; date: Date }) {
+  return (
+    <Document title={`CBC News — ${formatIsoDate(date)}`} author="Daily Scribe">
+      <Page size="A4" style={styles.page} wrap>
+        <Text style={styles.masthead}>CBC News</Text>
+        <Text style={styles.date}>{formatLongDate(date)}</Text>
+        {sections.map((section) => (
+          <View key={section.label} style={styles.section} wrap={false}>
+            <Text style={styles.sectionTitle}>{section.label}</Text>
+            {section.items.map((item, i) => (
+              <View key={i} style={styles.item} wrap={false}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                {item.summary ? <Text style={styles.itemSummary}>{item.summary}</Text> : null}
+              </View>
+            ))}
+          </View>
+        ))}
+        <Text
+          style={styles.footer}
+          render={({ pageNumber, totalPages }) =>
+            `Delivered by Daily Scribe · Page ${pageNumber} of ${totalPages}`
+          }
+          fixed
+        />
+      </Page>
+    </Document>
+  );
+}
+
+/** Render CBC sections to a PDF buffer (pure JS — no native deps, runs on Vercel). */
+export async function renderCbcPdf(sections: NewsSection[], date: Date): Promise<Buffer> {
+  return renderToBuffer(<CbcDocument sections={sections} date={date} />);
+}
+
+export const cbcNewsPlugin: ServicePlugin = {
+  id: "cbc",
+  label: "CBC News",
+  async run(ctx: RunContext): Promise<Asset[]> {
+    const cfg = parseCbcConfig(ctx.config);
+    const sections = await fetchCbcSections(cfg);
+    if (sections.length === 0) {
+      throw new Error("No CBC feeds could be fetched — all sources failed or returned empty.");
+    }
+    const bytes = await renderCbcPdf(sections, ctx.date);
+    return [
+      {
+        filename: `cbc-news-${formatIsoDate(ctx.date)}.pdf`,
+        contentType: "application/pdf",
+        bytes,
+      },
+    ];
+  },
+};

@@ -19,14 +19,14 @@ export interface UserSecret {
   updatedAt: Date;
 }
 
-/** Services in the catalog. Milestone 1 ships only the NYT crossword. */
-export type ServiceId = "nyt-crossword";
+/** Services in the catalog. */
+export type ServiceId = "nyt-crossword" | "cbc";
 
 /** NYT crossword print layouts (ported from the reference repo's CROSSWORD_VERSION). */
 export type CrosswordVersion = "games" | "newspaper" | "big" | "southpaw";
 
-export interface SubscriptionConfig {
-  version: CrosswordVersion;
+/** Delivery/scheduling fields shared by every service. */
+export interface BaseSubscriptionConfig {
   /** Local delivery time "HH:MM" (24h). */
   deliveryTime: string;
   /** IANA timezone, e.g. "America/Toronto". */
@@ -34,6 +34,21 @@ export interface SubscriptionConfig {
   /** Destination Kindle "Send to Kindle" email address. */
   kindleEmail: string;
 }
+
+export interface NytCrosswordConfig extends BaseSubscriptionConfig {
+  version: CrosswordVersion;
+}
+
+export interface CbcNewsConfig extends BaseSubscriptionConfig {
+  /** CBC feed keys to include; omitted/empty = a curated default set. */
+  feeds?: string[];
+  /** Max articles per feed (default 9, clamped 1–15). */
+  maxPerFeed?: number;
+}
+
+/** Per-service config. The runner reads only the shared base fields; each plugin
+ *  validates its own service-specific shape from the untyped RunContext.config. */
+export type SubscriptionConfig = NytCrosswordConfig | CbcNewsConfig;
 
 export interface Subscription {
   _id?: ObjectId;

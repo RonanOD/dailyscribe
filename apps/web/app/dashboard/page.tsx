@@ -30,7 +30,8 @@ export default async function DashboardPage() {
 
   const userId = session.user.id;
   const { subscriptions, userSecrets } = await collections();
-  const sub = await subscriptions.findOne({ userId, service: "nyt-crossword" });
+  const nytSub = await subscriptions.findOne({ userId, service: "nyt-crossword" });
+  const cbcSub = await subscriptions.findOne({ userId, service: "cbc" });
   const secretDocs = await userSecrets.find({ userId }).project({ provider: 1 }).toArray();
   const configured = {
     nyt: secretDocs.some((d) => d.provider === "nyt"),
@@ -57,8 +58,8 @@ export default async function DashboardPage() {
       </header>
 
       <DashboardForm
-        initialConfig={sub?.config ?? null}
-        initialEnabled={sub?.enabled ?? true}
+        nyt={nytSub ? { config: nytSub.config, enabled: nytSub.enabled } : null}
+        cbc={cbcSub ? { config: cbcSub.config, enabled: cbcSub.enabled } : null}
         configured={configured}
       />
     </main>

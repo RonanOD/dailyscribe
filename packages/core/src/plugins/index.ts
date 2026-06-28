@@ -23,6 +23,8 @@ export interface RunContext {
  */
 export interface ServicePlugin {
   id: string;
+  /** Human-readable name, used for email subjects and UI. */
+  label: string;
   run(ctx: RunContext): Promise<Asset[]>;
 }
 
