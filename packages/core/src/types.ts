@@ -7,8 +7,8 @@ export interface EncryptedPayload {
   authTag: string; // base64
 }
 
-/** Providers a user can store credentials for. */
-export type SecretProvider = "nyt" | "gmail";
+/** Providers a user can store credentials for. Delivery needs none (app-wide Resend). */
+export type SecretProvider = "nyt";
 
 /** Per-user encrypted credential. Never store plaintext. */
 export interface UserSecret {

@@ -26,10 +26,17 @@ pnpm dev         # run the app locally (http://localhost:3000)
    (add `http://localhost:3000/api/auth/callback/github` for local dev).
 3. Copy Client ID/Secret → `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET`.
 
-### Gmail (delivery)
-- A Gmail account with 2FA and an **App Password** (entered per-user in the dashboard, stored
-  encrypted — not an env var). The Gmail address must be on the Kindle's **Approved Personal
-  Document E-mail List** (Amazon → Manage Your Content and Devices → Preferences).
+### Resend (delivery)
+Daily Scribe sends all email itself from **one address: `Daily Scribe <my@dailyscribe.ca>`**.
+No per-user email credentials exist anywhere.
+1. Create a [Resend](https://resend.com) account → **Domains → Add** `dailyscribe.ca`.
+2. Add the DNS records Resend issues (DKIM TXT, SPF TXT + MX on `send.`, and a `_dmarc` TXT —
+   `v=DMARC1; p=none;` to start) at the DNS host (Cloudflare; keep records **DNS-only/grey
+   cloud**). Wait for the domain to show **Verified**.
+3. Create an API key (Sending access) → `RESEND_API_KEY`.
+4. Each user adds `my@dailyscribe.ca` to their Kindle's **Approved Personal Document E-mail
+   List** (Amazon → Manage Your Content and Devices → Preferences → Personal Document
+   Settings) — once; new services need no extra setup.
 
 ## 3. Environment variables
 
@@ -43,6 +50,8 @@ Copy `.env.example` → `apps/web/.env.local` for dev, and set the same in Verce
 | `AUTH_SECRET` | Auth.js session secret |
 | `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | GitHub OAuth app |
 | `CRON_SECRET` | Bearer token Vercel Cron must present to `/api/cron/dispatch` |
+| `RESEND_API_KEY` | Resend API key (app-wide outbound email) |
+| `MAIL_FROM_DEFAULT` | From address, `Daily Scribe <my@dailyscribe.ca>` (also the code default) |
 
 Generate keys:
 ```bash
@@ -56,22 +65,24 @@ openssl rand -hex 32                                                         # C
 1. In the existing project's settings, set **Root Directory = `apps/web`** (framework: Next.js).
    This replaces the old static `index.html` placeholder with the app.
 2. Add all env vars above (Production + Preview).
-3. The cron in `apps/web/vercel.json` calls `/api/cron/dispatch` hourly. Vercel attaches
+3. The cron in `apps/web/vercel.json` calls `/api/cron/dispatch` daily at 11:00 UTC
+   (08:00 ADT; Vercel cron is UTC-only — no DST handling). Vercel attaches
    `Authorization: Bearer $CRON_SECRET` automatically. **Vercel Hobby limits cron frequency**
-   (≈once/day) — for hourly, timezone-aware coverage use Pro, or set a single daily schedule.
+   (≈once/day) — hourly, timezone-aware coverage needs Pro.
 
 ## 5. End-to-end verification (you as customer #1)
 
 1. `pnpm dev`, open `http://localhost:3000`, **Sign in with GitHub**.
-2. In the dashboard:
-   - Paste your nytimes.com cookie (must include `NYT-S`) → **Save NYT cookie**.
-   - Enter Gmail address + App Password → **Save Gmail credentials**.
-   - Set layout, delivery time, timezone, and your **Send-to-Kindle email** → **Save settings**.
-3. Confirm secrets are stored **encrypted** (Atlas → `userSecrets` shows `data.ciphertext`,
+2. Whitelist `my@dailyscribe.ca` in Amazon's **Personal Document Settings** (one-time).
+3. In the dashboard:
+   - Paste your nytimes.com cookie (must include `NYT-S`) → **Save NYT cookie** (crossword only).
+   - Set layout/feeds, delivery time, timezone, and your **Send-to-Kindle email** → save each
+     service's settings.
+4. Confirm secrets are stored **encrypted** (Atlas → `userSecrets` shows `data.ciphertext`,
    never plaintext).
-4. Click **Send test now** → the PDF should arrive on your Kindle, and a `success` row should
+5. Click **Send test now** → the PDF should arrive on your Kindle, and a `success` row should
    appear in `deliveries`.
-5. Cron check (local):
+6. Cron check (local):
    ```bash
    curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/dispatch
    ```
@@ -79,5 +90,9 @@ openssl rand -hex 32                                                         # C
 
 ## Notes / follow-ups
 - ESLint is intentionally deferred (TypeScript strict + Prettier cover this milestone).
-- Renderer-heavy services (CBC, Home Assistant) will be added as Python workers under
-  `workers/`, called behind the same `ServicePlugin.run()` contract — see `CLAUDE.md`.
+- CBC News renders in pure TS (`@react-pdf/renderer` in `apps/web/lib/plugins/cbc.tsx`) — no
+  Python worker needed. Truly render-heavy services (e.g. Home Assistant) may still land as
+  Python workers under `workers/`, behind the same `ServicePlugin.run()` contract.
+- Gotcha (cost us hours): Amazon accepts mail for non-approved senders with a 250 ("Delivered"
+  in Resend) and then **silently discards** it — no rejection notice, nothing in cloud Docs.
+  If a send shows Delivered but never lands, delete and hand-retype the approved-sender entry.

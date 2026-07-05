@@ -1,10 +1,11 @@
 import {
   collections,
-  createGmailDeliverer,
+  createResendDeliverer,
   decryptSecret,
   getPlugin,
   nytCrosswordPlugin,
   registerPlugin,
+  type Deliverer,
   type Subscription,
 } from "@dailyscribe/core";
 import { cbcNewsPlugin } from "@/lib/plugins/cbc";
@@ -12,6 +13,19 @@ import { cbcNewsPlugin } from "@/lib/plugins/cbc";
 // Register the available service plugins once per runtime.
 registerPlugin(nytCrosswordPlugin);
 registerPlugin(cbcNewsPlugin);
+
+/**
+ * App-wide deliverer: Resend, sending from Daily Scribe's single verified address.
+ * Users whitelist my@dailyscribe.ca once; one API key replaces per-user Gmail credentials.
+ */
+function getDeliverer(): Deliverer {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error("RESEND_API_KEY is not set.");
+  return createResendDeliverer({
+    apiKey,
+    from: process.env.MAIL_FROM_DEFAULT ?? "Daily Scribe <my@dailyscribe.ca>",
+  });
+}
 
 export interface RunResult {
   subscriptionId: string;
@@ -80,9 +94,6 @@ export async function runSubscription(
     const secrets: Record<string, string> = {};
     for (const doc of secretDocs) secrets[doc.provider] = decryptSecret(doc.data);
 
-    if (!secrets.gmail) throw new Error("Gmail delivery credentials are not configured.");
-    const gmail = JSON.parse(secrets.gmail) as { user: string; appPassword: string };
-
     const assets = await plugin.run({
       userId: sub.userId,
       date: utcMidnight,
@@ -90,7 +101,7 @@ export async function runSubscription(
       secrets,
     });
 
-    await createGmailDeliverer(gmail).deliver({
+    await getDeliverer().deliver({
       to: sub.config.kindleEmail,
       subject: `${plugin.label} — ${isoDate}`,
       text: `Your daily ${plugin.label}, delivered by Daily Scribe.`,

@@ -35,7 +35,6 @@ export default async function DashboardPage() {
   const secretDocs = await userSecrets.find({ userId }).project({ provider: 1 }).toArray();
   const configured = {
     nyt: secretDocs.some((d) => d.provider === "nyt"),
-    gmail: secretDocs.some((d) => d.provider === "gmail"),
   };
 
   return (

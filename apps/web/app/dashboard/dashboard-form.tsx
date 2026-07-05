@@ -21,7 +21,7 @@ interface CbcConfig {
 interface Props {
   nyt: { config: NytConfig; enabled: boolean } | null;
   cbc: { config: CbcConfig; enabled: boolean } | null;
-  configured: { nyt: boolean; gmail: boolean };
+  configured: { nyt: boolean };
 }
 
 const VERSIONS = [
@@ -110,12 +110,9 @@ export function DashboardForm({ nyt, cbc, configured }: Props) {
   const [cbcKindle, setCbcKindle] = useState(cbc?.config.kindleEmail ?? "");
   const [cbcEnabled, setCbcEnabled] = useState(cbc?.enabled ?? true);
 
-  // Secrets (shared)
+  // Secrets
   const [nytCookie, setNytCookie] = useState("");
-  const [gmailUser, setGmailUser] = useState("");
-  const [gmailPassword, setGmailPassword] = useState("");
   const [nytSaved, setNytSaved] = useState(configured.nyt);
-  const [gmailSaved, setGmailSaved] = useState(configured.gmail);
 
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -180,17 +177,6 @@ export function DashboardForm({ nyt, cbc, configured }: Props) {
       setNytSaved(true);
       setNytCookie("");
       ok("NYT cookie stored (encrypted).");
-    });
-
-  const saveGmail = () =>
-    run("gmail", async () => {
-      await postJson("/api/secrets", {
-        provider: "gmail",
-        value: { user: gmailUser, appPassword: gmailPassword },
-      });
-      setGmailSaved(true);
-      setGmailPassword("");
-      ok("Gmail credentials stored (encrypted).");
     });
 
   const sendTest = (service: string, key: string) =>
@@ -315,43 +301,13 @@ export function DashboardForm({ nyt, cbc, configured }: Props) {
       </section>
 
       <section className="section">
-        <h2>
-          Gmail delivery{" "}
-          <span className={`badge${gmailSaved ? " on" : ""}`}>{gmailSaved ? "stored" : "not set"}</span>
-        </h2>
+        <h2>Kindle setup</h2>
         <p className="hint">
-          A Gmail address + App Password (2FA required) used to email your Kindle. Add this address to your
-          Kindle&apos;s “Approved Personal Document E-mail List”. Shared across all services.
+          Daily Scribe sends everything from one address. Add <code>my@dailyscribe.ca</code> to your
+          Kindle&apos;s “Approved Personal Document E-mail List” — once — under Amazon&apos;s{" "}
+          <em>Manage Your Content &amp; Devices → Preferences → Personal Document Settings</em>. That&apos;s
+          it: no email credentials to share, and new services need no extra setup.
         </p>
-        <div className="row">
-          <div className="field">
-            <label htmlFor="gmailUser">Gmail address</label>
-            <input
-              id="gmailUser"
-              type="email"
-              value={gmailUser}
-              onChange={(e) => setGmailUser(e.target.value)}
-              placeholder="you@gmail.com"
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="gmailPassword">App password</label>
-            <input
-              id="gmailPassword"
-              type="password"
-              value={gmailPassword}
-              onChange={(e) => setGmailPassword(e.target.value)}
-              placeholder="16-char app password"
-            />
-          </div>
-        </div>
-        <button
-          className="button"
-          onClick={saveGmail}
-          disabled={busy !== null || gmailUser.trim() === "" || gmailPassword.trim() === ""}
-        >
-          {busy === "gmail" ? "Saving…" : "Save Gmail credentials"}
-        </button>
       </section>
 
       {message && <p className={`message ${message.kind}`}>{message.text}</p>}

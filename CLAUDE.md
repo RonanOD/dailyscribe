@@ -39,11 +39,19 @@ emailed to the owner's Kindle, on multi-tenant-ready foundations — is built an
 - **Auth:** **Auth.js (NextAuth v5)** with the MongoDB adapter + GitHub OAuth.
 - **Scheduling:** **Vercel Cron** → `GET /api/cron/dispatch` (guarded by `CRON_SECRET`),
   timezone-aware, idempotent per day. (Note: Vercel Hobby limits cron frequency; hourly needs Pro.)
+- **Email delivery:** **Resend**, sending from the single verified address
+  `Daily Scribe <my@dailyscribe.ca>` (users whitelist it once in their Kindle settings; service
+  identity lives in the subject line). One app-wide `RESEND_API_KEY` — **no per-user email
+  credentials**. DNS (DKIM/SPF/DMARC) is verified on `dailyscribe.ca` via Cloudflare.
+  Inbound (e.g. `dnd@` for the Phase 5 return path) is deferred; receiving addresses don't
+  need Kindle whitelisting, so per-service inbound stays open.
 - **Shared code:** `packages/core` (framework-free TS) — Mongo client, AES-256-GCM secret
-  crypto, the `ServicePlugin` interface + registry, the NYT plugin, and the Gmail `Deliverer`.
-- **Renderers:** **NYT needs no rendering** (NYT serves a ready-made PDF to subscribers), so it
-  runs in pure TS. Render-heavy services (CBC, HA) will arrive as **Python renderer workers**
-  in `workers/`, invoked behind the identical `ServicePlugin.run()` contract.
+  crypto, the `ServicePlugin` interface + registry, the NYT plugin, and the `Deliverer`
+  abstraction (Resend-only; the Kindle round trip is verified end-to-end).
+- **Renderers:** **NYT needs no rendering** (NYT serves a ready-made PDF) and **CBC renders in
+  pure TS** (`@react-pdf/renderer` in `apps/web`). Truly render-heavy services (e.g. HA) may
+  arrive as **Python renderer workers** in `workers/`, behind the same `ServicePlugin.run()`
+  contract.
 
 See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end verification.
 
@@ -103,9 +111,10 @@ NYT crossword · CBC News · Home Assistant summary · DnD 5e campaign · Kanji-
 Track eating · Read a classic novel.
 
 ## Constraints & notes
-- Amazon Kindle requires sender email allowlisting; onboarding must guide users through it.
-- Gmail delivery uses App Passwords today — at SaaS scale, evaluate a transactional email
-  provider (deliverability, per-user from-addresses, bounce handling).
+- Amazon Kindle requires sender email allowlisting; onboarding guides users to whitelist the
+  single address `my@dailyscribe.ca` once (dashboard "Kindle setup" section).
+- Watch Resend bounce/complaint metrics and Amazon throttling on the shared sender as users
+  grow; `my+userid@` subaddressing is the escape hatch (same approved sender for Amazon).
 - NYT (and similar) services need the user's own subscription/cookies; respect each source's
   ToS and keep credentials user-scoped.
 
