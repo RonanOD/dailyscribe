@@ -8,13 +8,13 @@ import {
 } from "@dailyscribe/core";
 import { NextResponse } from "next/server";
 import { requireUserId } from "@/lib/session";
-import { CBC_FEEDS } from "@/lib/cbc-feeds";
+import { ALL_CBC_FEEDS } from "@/lib/cbc-feeds";
 
 export const runtime = "nodejs";
 
 const SERVICES: ServiceId[] = ["nyt-crossword", "cbc"];
 const VERSIONS: CrosswordVersion[] = ["games", "newspaper", "big", "southpaw"];
-const CBC_FEED_KEYS = new Set(CBC_FEEDS.map((f) => f.key));
+const CBC_FEED_KEYS = new Set(ALL_CBC_FEEDS.map((f) => f.key));
 
 function parseService(value: unknown): ServiceId | null {
   return SERVICES.includes(value as ServiceId) ? (value as ServiceId) : null;

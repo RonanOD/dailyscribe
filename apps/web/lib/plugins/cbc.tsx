@@ -1,6 +1,7 @@
 import { formatIsoDate, type Asset, type RunContext, type ServicePlugin } from "@dailyscribe/core";
 import {
   Document,
+  Link,
   Page,
   StyleSheet,
   Text,
@@ -8,9 +9,9 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import { XMLParser } from "fast-xml-parser";
-import { CBC_FEEDS, type CbcFeed } from "@/lib/cbc-feeds";
+import { ALL_CBC_FEEDS, CBC_FEEDS, type CbcFeed } from "@/lib/cbc-feeds";
 
-const FEEDS_BY_KEY = new Map(CBC_FEEDS.map((f) => [f.key, f]));
+const FEEDS_BY_KEY = new Map(ALL_CBC_FEEDS.map((f) => [f.key, f]));
 const DEFAULT_MAX_PER_FEED = 9;
 const SUMMARY_MAX_CHARS = 320;
 
@@ -54,6 +55,8 @@ export function toPlainText(html: string): string {
 export interface NewsItem {
   title: string;
   summary: string;
+  /** Article URL from the feed; when present the headline renders as a tappable link. */
+  link?: string;
 }
 
 export interface NewsSection {
@@ -70,6 +73,7 @@ const xml = new XMLParser({ ignoreAttributes: true, processEntities: true, trimV
 
 interface RssItem {
   title?: unknown;
+  link?: unknown;
   description?: unknown;
   "content:encoded"?: unknown;
 }
@@ -81,8 +85,10 @@ function parseRssItems(body: string, max: number): NewsItem[] {
   const arr = Array.isArray(raw) ? raw : raw ? [raw] : [];
   return arr.slice(0, max).map((it) => {
     const summary = toPlainText(String(it.description ?? it["content:encoded"] ?? ""));
+    const rawLink = String(it.link ?? "").trim();
     return {
       title: toPlainText(String(it.title ?? "Untitled")),
+      link: /^https?:\/\//.test(rawLink) ? rawLink : undefined,
       summary: summary.length > SUMMARY_MAX_CHARS ? `${summary.slice(0, SUMMARY_MAX_CHARS)}…` : summary,
     };
   });
@@ -127,6 +133,8 @@ const styles = StyleSheet.create({
   },
   item: { marginBottom: 9 },
   itemTitle: { fontSize: 11.5, fontFamily: "Helvetica-Bold", lineHeight: 1.3 },
+  // Tappable headline: keep e-ink-friendly dark text; underline is the tap affordance.
+  itemLink: { color: "#111111", textDecoration: "underline" },
   itemSummary: { fontSize: 9.5, color: "#333333", lineHeight: 1.4, marginTop: 2 },
   footer: { position: "absolute", bottom: 24, left: 56, right: 56, fontSize: 8, color: "#888888", textAlign: "center" },
 });
@@ -153,7 +161,13 @@ function CbcDocument({ sections, date }: { sections: NewsSection[]; date: Date }
             <Text style={styles.sectionTitle}>{section.label}</Text>
             {section.items.map((item, i) => (
               <View key={i} style={styles.item} wrap={false}>
-                <Text style={styles.itemTitle}>{item.title}</Text>
+                {item.link ? (
+                  <Link src={item.link} style={[styles.itemTitle, styles.itemLink]}>
+                    {item.title}
+                  </Link>
+                ) : (
+                  <Text style={styles.itemTitle}>{item.title}</Text>
+                )}
                 {item.summary ? <Text style={styles.itemSummary}>{item.summary}</Text> : null}
               </View>
             ))}

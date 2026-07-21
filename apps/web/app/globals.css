@@ -227,6 +227,39 @@ a {
   font-size: 0.9rem;
 }
 
+/* Checkbox grid (e.g. CBC sections). .check input overrides .field input's width:100%. */
+.checkgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px 16px;
+  margin-top: 4px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.check input {
+  width: auto;
+  padding: 0;
+  /* Explicit spacing between box and label (flex gap isn't honored for the text run here). */
+  margin: 0 10px 0 0;
+}
+
+.regionrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.regionrow select {
+  width: auto;
+  min-width: 220px;
+}
+
 .message {
   margin-top: 14px;
   font-size: 0.9rem;

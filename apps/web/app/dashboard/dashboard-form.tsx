@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { CBC_FEEDS } from "@/lib/cbc-feeds";
+import { CBC_FEEDS, CBC_REGIONS } from "@/lib/cbc-feeds";
+
+const REGION_KEYS = new Set(CBC_REGIONS.map((f) => f.key));
 
 interface NytConfig {
   version?: string;
@@ -101,9 +103,15 @@ export function DashboardForm({ nyt, cbc, configured }: Props) {
   const [nytKindle, setNytKindle] = useState(nyt?.config.kindleEmail ?? "");
   const [nytEnabled, setNytEnabled] = useState(nyt?.enabled ?? true);
 
-  // CBC news
-  const initialFeeds = cbc?.config.feeds?.length ? cbc.config.feeds : CBC_FEEDS.map((f) => f.key);
-  const [cbcFeeds, setCbcFeeds] = useState<Set<string>>(new Set(initialFeeds));
+  // CBC news — saved feeds split into general checkboxes and (at most one) region.
+  const savedFeeds = cbc?.config.feeds?.length ? cbc.config.feeds : null;
+  const initialGeneral = savedFeeds
+    ? savedFeeds.filter((k) => !REGION_KEYS.has(k))
+    : CBC_FEEDS.map((f) => f.key);
+  const initialRegion = savedFeeds?.find((k) => REGION_KEYS.has(k));
+  const [cbcFeeds, setCbcFeeds] = useState<Set<string>>(new Set(initialGeneral));
+  const [regionOn, setRegionOn] = useState(Boolean(initialRegion));
+  const [regionKey, setRegionKey] = useState(initialRegion ?? "canada-novascotia");
   const [cbcMax, setCbcMax] = useState(cbc?.config.maxPerFeed ?? 9);
   const [cbcTime, setCbcTime] = useState(cbc?.config.deliveryTime ?? "08:00");
   const [cbcTz, setCbcTz] = useState(cbc?.config.timezone ?? browserTz);
@@ -161,7 +169,7 @@ export function DashboardForm({ nyt, cbc, configured }: Props) {
     run("cbc-settings", async () => {
       await postJson("/api/subscriptions", {
         service: "cbc",
-        feeds: [...cbcFeeds],
+        feeds: [...cbcFeeds, ...(regionOn ? [regionKey] : [])],
         maxPerFeed: cbcMax,
         deliveryTime: cbcTime,
         timezone: cbcTz,
@@ -234,13 +242,35 @@ export function DashboardForm({ nyt, cbc, configured }: Props) {
 
         <div className="field">
           <label>Sections</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px", marginTop: 4 }}>
+          <div className="checkgrid">
             {CBC_FEEDS.map((f) => (
-              <label key={f.key} className="toggle" style={{ minWidth: 130 }}>
+              <label key={f.key} className="check">
                 <input type="checkbox" checked={cbcFeeds.has(f.key)} onChange={() => toggleFeed(f.key)} />
                 {f.label}
               </label>
             ))}
+          </div>
+        </div>
+
+        <div className="field">
+          <label htmlFor="cbc-region">Regional news</label>
+          <div className="regionrow">
+            <label className="check">
+              <input type="checkbox" checked={regionOn} onChange={(e) => setRegionOn(e.target.checked)} />
+              Include a region
+            </label>
+            <select
+              id="cbc-region"
+              value={regionKey}
+              onChange={(e) => setRegionKey(e.target.value)}
+              disabled={!regionOn}
+            >
+              {CBC_REGIONS.map((r) => (
+                <option key={r.key} value={r.key}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -271,7 +301,11 @@ export function DashboardForm({ nyt, cbc, configured }: Props) {
             <input type="checkbox" checked={cbcEnabled} onChange={(e) => setCbcEnabled(e.target.checked)} />
             Enabled
           </label>
-          <button className="button" onClick={saveCbc} disabled={busy !== null || cbcFeeds.size === 0}>
+          <button
+            className="button"
+            onClick={saveCbc}
+            disabled={busy !== null || (cbcFeeds.size === 0 && !regionOn)}
+          >
             {busy === "cbc-settings" ? "Saving…" : "Save CBC settings"}
           </button>
           <button className="link" onClick={() => sendTest("cbc", "test-cbc")} disabled={busy !== null}>
