@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   const userId = await requireUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const service = parseService(new URL(req.url).searchParams.get("service")) ?? "nyt-crossword";
+  const service = parseService(new URL(req.url).searchParams.get("service")) ?? "cbc";
   const { subscriptions } = await collections();
   const subscription = await subscriptions.findOne({ userId, service });
   return NextResponse.json({
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     enabled?: boolean;
   };
 
-  const service = parseService(body.service) ?? "nyt-crossword";
+  const service = parseService(body.service) ?? "cbc";
 
   // Shared scheduling/delivery fields.
   const deliveryTime = /^\d{2}:\d{2}$/.test(body.deliveryTime ?? "")

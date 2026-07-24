@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { service?: string };
   const service = SERVICES.includes(body.service as ServiceId)
     ? (body.service as ServiceId)
-    : "nyt-crossword";
+    : "cbc";
 
   const { subscriptions } = await collections();
   const sub = await subscriptions.findOne({ userId, service });

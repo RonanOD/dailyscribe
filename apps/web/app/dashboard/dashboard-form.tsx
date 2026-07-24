@@ -5,13 +5,6 @@ import { CBC_FEEDS, CBC_REGIONS } from "@/lib/cbc-feeds";
 
 const REGION_KEYS = new Set(CBC_REGIONS.map((f) => f.key));
 
-interface NytConfig {
-  version?: string;
-  deliveryTime?: string;
-  timezone?: string;
-  kindleEmail?: string;
-}
-
 interface CbcConfig {
   feeds?: string[];
   maxPerFeed?: number;
@@ -21,17 +14,8 @@ interface CbcConfig {
 }
 
 interface Props {
-  nyt: { config: NytConfig; enabled: boolean } | null;
   cbc: { config: CbcConfig; enabled: boolean } | null;
-  configured: { nyt: boolean };
 }
-
-const VERSIONS = [
-  { value: "games", label: "Games (puzzle + solution)" },
-  { value: "newspaper", label: "Newspaper" },
-  { value: "big", label: "Big (large print)" },
-  { value: "southpaw", label: "Southpaw (left-handed)" },
-];
 
 async function postJson(url: string, body: unknown): Promise<Record<string, unknown>> {
   const res = await fetch(url, {
@@ -92,16 +76,9 @@ function DeliveryFields(props: {
   );
 }
 
-export function DashboardForm({ nyt, cbc, configured }: Props) {
+export function DashboardForm({ cbc }: Props) {
   const browserTz =
     typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "America/Toronto";
-
-  // NYT crossword
-  const [version, setVersion] = useState(nyt?.config.version ?? "games");
-  const [nytTime, setNytTime] = useState(nyt?.config.deliveryTime ?? "08:00");
-  const [nytTz, setNytTz] = useState(nyt?.config.timezone ?? browserTz);
-  const [nytKindle, setNytKindle] = useState(nyt?.config.kindleEmail ?? "");
-  const [nytEnabled, setNytEnabled] = useState(nyt?.enabled ?? true);
 
   // CBC news — saved feeds split into general checkboxes and (at most one) region.
   const savedFeeds = cbc?.config.feeds?.length ? cbc.config.feeds : null;
@@ -117,10 +94,6 @@ export function DashboardForm({ nyt, cbc, configured }: Props) {
   const [cbcTz, setCbcTz] = useState(cbc?.config.timezone ?? browserTz);
   const [cbcKindle, setCbcKindle] = useState(cbc?.config.kindleEmail ?? "");
   const [cbcEnabled, setCbcEnabled] = useState(cbc?.enabled ?? true);
-
-  // Secrets
-  const [nytCookie, setNytCookie] = useState("");
-  const [nytSaved, setNytSaved] = useState(configured.nyt);
 
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -152,19 +125,6 @@ export function DashboardForm({ nyt, cbc, configured }: Props) {
     });
   }
 
-  const saveNyt = () =>
-    run("nyt-settings", async () => {
-      await postJson("/api/subscriptions", {
-        service: "nyt-crossword",
-        version,
-        deliveryTime: nytTime,
-        timezone: nytTz,
-        kindleEmail: nytKindle,
-        enabled: nytEnabled,
-      });
-      ok("NYT crossword settings saved.");
-    });
-
   const saveCbc = () =>
     run("cbc-settings", async () => {
       await postJson("/api/subscriptions", {
@@ -179,14 +139,6 @@ export function DashboardForm({ nyt, cbc, configured }: Props) {
       ok("CBC News settings saved.");
     });
 
-  const saveNytCookie = () =>
-    run("nyt-cookie", async () => {
-      await postJson("/api/secrets", { provider: "nyt", value: nytCookie });
-      setNytSaved(true);
-      setNytCookie("");
-      ok("NYT cookie stored (encrypted).");
-    });
-
   const sendTest = (service: string, key: string) =>
     run(key, async () => {
       const data = await postJson("/api/deliver-now", { service });
@@ -197,45 +149,6 @@ export function DashboardForm({ nyt, cbc, configured }: Props) {
 
   return (
     <>
-      <section className="section">
-        <h2>NYT Crossword</h2>
-        <p className="hint">Pick a layout and when it should land on your Kindle.</p>
-
-        <div className="field">
-          <label htmlFor="version">Layout</label>
-          <select id="version" value={version} onChange={(e) => setVersion(e.target.value)}>
-            {VERSIONS.map((v) => (
-              <option key={v.value} value={v.value}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <DeliveryFields
-          idPrefix="nyt"
-          time={nytTime}
-          setTime={setNytTime}
-          tz={nytTz}
-          setTz={setNytTz}
-          kindle={nytKindle}
-          setKindle={setNytKindle}
-        />
-
-        <div className="actions">
-          <label className="toggle">
-            <input type="checkbox" checked={nytEnabled} onChange={(e) => setNytEnabled(e.target.checked)} />
-            Enabled
-          </label>
-          <button className="button" onClick={saveNyt} disabled={busy !== null}>
-            {busy === "nyt-settings" ? "Saving…" : "Save NYT settings"}
-          </button>
-          <button className="link" onClick={() => sendTest("nyt-crossword", "test-nyt")} disabled={busy !== null}>
-            {busy === "test-nyt" ? "Sending…" : "Send test now"}
-          </button>
-        </div>
-      </section>
-
       <section className="section">
         <h2>CBC News</h2>
         <p className="hint">A daily PDF of CBC headlines and summaries. Choose your sections.</p>
@@ -312,26 +225,6 @@ export function DashboardForm({ nyt, cbc, configured }: Props) {
             {busy === "test-cbc" ? "Sending…" : "Send test now"}
           </button>
         </div>
-      </section>
-
-      <section className="section">
-        <h2>
-          NYT cookie <span className={`badge${nytSaved ? " on" : ""}`}>{nytSaved ? "stored" : "not set"}</span>
-        </h2>
-        <p className="hint">
-          Paste your logged-in nytimes.com cookie string (must include the <code>NYT-S</code> token). Stored
-          encrypted; never shown again. Only needed for the crossword.
-        </p>
-        <div className="field">
-          <textarea
-            value={nytCookie}
-            onChange={(e) => setNytCookie(e.target.value)}
-            placeholder="NYT-S=...; nyt-a=...; ..."
-          />
-        </div>
-        <button className="button" onClick={saveNytCookie} disabled={busy !== null || nytCookie.trim() === ""}>
-          {busy === "nyt-cookie" ? "Saving…" : "Save NYT cookie"}
-        </button>
       </section>
 
       <section className="section">

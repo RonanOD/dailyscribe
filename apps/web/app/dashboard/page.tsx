@@ -29,13 +29,8 @@ export default async function DashboardPage() {
   }
 
   const userId = session.user.id;
-  const { subscriptions, userSecrets } = await collections();
-  const nytSub = await subscriptions.findOne({ userId, service: "nyt-crossword" });
+  const { subscriptions } = await collections();
   const cbcSub = await subscriptions.findOne({ userId, service: "cbc" });
-  const secretDocs = await userSecrets.find({ userId }).project({ provider: 1 }).toArray();
-  const configured = {
-    nyt: secretDocs.some((d) => d.provider === "nyt"),
-  };
 
   return (
     <main className="dashboard">
@@ -57,9 +52,7 @@ export default async function DashboardPage() {
       </header>
 
       <DashboardForm
-        nyt={nytSub ? { config: nytSub.config, enabled: nytSub.enabled } : null}
         cbc={cbcSub ? { config: cbcSub.config, enabled: cbcSub.enabled } : null}
-        configured={configured}
       />
     </main>
   );
