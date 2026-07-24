@@ -150,6 +150,16 @@ export function DashboardForm({ cbc }: Props) {
   return (
     <>
       <section className="section">
+        <h2>Kindle setup</h2>
+        <p className="hint">
+          Daily Scribe sends everything from one address. Add <code>my@dailyscribe.ca</code> to your
+          Kindle&apos;s “Approved Personal Document E-mail List” — once — under Amazon&apos;s{" "}
+          <em>Manage Your Content &amp; Devices → Preferences → Personal Document Settings</em>. That&apos;s
+          it: no email credentials to share, and new services need no extra setup.
+        </p>
+      </section>
+
+      <section className="section">
         <h2>CBC News</h2>
         <p className="hint">A daily PDF of CBC headlines and summaries. Choose your sections.</p>
 
@@ -225,16 +235,6 @@ export function DashboardForm({ cbc }: Props) {
             {busy === "test-cbc" ? "Sending…" : "Send test now"}
           </button>
         </div>
-      </section>
-
-      <section className="section">
-        <h2>Kindle setup</h2>
-        <p className="hint">
-          Daily Scribe sends everything from one address. Add <code>my@dailyscribe.ca</code> to your
-          Kindle&apos;s “Approved Personal Document E-mail List” — once — under Amazon&apos;s{" "}
-          <em>Manage Your Content &amp; Devices → Preferences → Personal Document Settings</em>. That&apos;s
-          it: no email credentials to share, and new services need no extra setup.
-        </p>
       </section>
 
       {message && <p className={`message ${message.kind}`}>{message.text}</p>}
