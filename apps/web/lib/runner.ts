@@ -9,10 +9,12 @@ import {
   type Subscription,
 } from "@dailyscribe/core";
 import { cbcNewsPlugin } from "@/lib/plugins/cbc";
+import { haSummaryPlugin } from "@/lib/plugins/ha";
 
 // Register the available service plugins once per runtime.
 registerPlugin(nytCrosswordPlugin);
 registerPlugin(cbcNewsPlugin);
+registerPlugin(haSummaryPlugin);
 
 /**
  * App-wide deliverer: Resend, sending from Daily Scribe's single verified address.

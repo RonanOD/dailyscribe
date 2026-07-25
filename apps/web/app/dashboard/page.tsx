@@ -29,8 +29,13 @@ export default async function DashboardPage() {
   }
 
   const userId = session.user.id;
-  const { subscriptions } = await collections();
+  const { subscriptions, userSecrets } = await collections();
   const cbcSub = await subscriptions.findOne({ userId, service: "cbc" });
+  const haSub = await subscriptions.findOne({ userId, service: "ha-summary" });
+  const secretDocs = await userSecrets.find({ userId }).project({ provider: 1 }).toArray();
+  const configured = {
+    ha: secretDocs.some((d) => d.provider === "ha"),
+  };
 
   return (
     <main className="dashboard">
@@ -53,6 +58,8 @@ export default async function DashboardPage() {
 
       <DashboardForm
         cbc={cbcSub ? { config: cbcSub.config, enabled: cbcSub.enabled } : null}
+        ha={haSub ? { config: haSub.config, enabled: haSub.enabled } : null}
+        configured={configured}
       />
     </main>
   );

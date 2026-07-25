@@ -2,6 +2,7 @@ import {
   collections,
   type CbcNewsConfig,
   type CrosswordVersion,
+  type HaSummaryConfig,
   type NytCrosswordConfig,
   type ServiceId,
   type SubscriptionConfig,
@@ -12,7 +13,7 @@ import { ALL_CBC_FEEDS } from "@/lib/cbc-feeds";
 
 export const runtime = "nodejs";
 
-const SERVICES: ServiceId[] = ["nyt-crossword", "cbc"];
+const SERVICES: ServiceId[] = ["nyt-crossword", "cbc", "ha-summary"];
 const VERSIONS: CrosswordVersion[] = ["games", "newspaper", "big", "southpaw"];
 const CBC_FEED_KEYS = new Set(ALL_CBC_FEEDS.map((f) => f.key));
 
@@ -43,6 +44,8 @@ export async function POST(req: Request) {
     version?: string;
     feeds?: unknown;
     maxPerFeed?: unknown;
+    weatherEntity?: string;
+    wasteCalendar?: string;
     deliveryTime?: string;
     timezone?: string;
     kindleEmail?: string;
@@ -71,6 +74,12 @@ export async function POST(req: Request) {
     const maxPerFeed =
       typeof body.maxPerFeed === "number" ? Math.min(Math.max(Math.floor(body.maxPerFeed), 1), 15) : 9;
     config = { ...base, feeds: requested, maxPerFeed } satisfies CbcNewsConfig;
+  } else if (service === "ha-summary") {
+    config = {
+      ...base,
+      weatherEntity: (body.weatherEntity || "weather.forecast_home").trim(),
+      wasteCalendar: (body.wasteCalendar || "calendar.halifax_ns").trim(),
+    } satisfies HaSummaryConfig;
   } else {
     const version = VERSIONS.includes(body.version as CrosswordVersion)
       ? (body.version as CrosswordVersion)

@@ -8,7 +8,7 @@ export interface EncryptedPayload {
 }
 
 /** Providers a user can store credentials for. Delivery needs none (app-wide Resend). */
-export type SecretProvider = "nyt";
+export type SecretProvider = "nyt" | "ha";
 
 /** Per-user encrypted credential. Never store plaintext. */
 export interface UserSecret {
@@ -20,7 +20,7 @@ export interface UserSecret {
 }
 
 /** Services in the catalog. */
-export type ServiceId = "nyt-crossword" | "cbc";
+export type ServiceId = "nyt-crossword" | "cbc" | "ha-summary";
 
 /** NYT crossword print layouts (ported from the reference repo's CROSSWORD_VERSION). */
 export type CrosswordVersion = "games" | "newspaper" | "big" | "southpaw";
@@ -46,9 +46,16 @@ export interface CbcNewsConfig extends BaseSubscriptionConfig {
   maxPerFeed?: number;
 }
 
+export interface HaSummaryConfig extends BaseSubscriptionConfig {
+  /** Optional custom weather entity (default: "weather.forecast_home"). */
+  weatherEntity?: string;
+  /** Optional custom waste calendar entity (default: "calendar.halifax_ns"). */
+  wasteCalendar?: string;
+}
+
 /** Per-service config. The runner reads only the shared base fields; each plugin
  *  validates its own service-specific shape from the untyped RunContext.config. */
-export type SubscriptionConfig = NytCrosswordConfig | CbcNewsConfig;
+export type SubscriptionConfig = NytCrosswordConfig | CbcNewsConfig | HaSummaryConfig;
 
 export interface Subscription {
   _id?: ObjectId;

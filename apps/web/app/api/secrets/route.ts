@@ -13,6 +13,7 @@ export async function GET() {
   const docs = await userSecrets.find({ userId }).project({ provider: 1 }).toArray();
   const configured = {
     nyt: docs.some((d) => d.provider === "nyt"),
+    ha: docs.some((d) => d.provider === "ha"),
   };
   return NextResponse.json({ configured });
 }
@@ -24,16 +25,31 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => ({}))) as { provider?: string; value?: unknown };
   const provider = body.provider;
-  if (provider !== "nyt") {
+
+  let secretText = "";
+
+  if (provider === "nyt") {
+    const cookie = typeof body.value === "string" ? body.value.trim() : "";
+    if (!cookie.includes("NYT-S")) {
+      return NextResponse.json({ error: "NYT cookie must include the NYT-S token" }, { status: 400 });
+    }
+    secretText = cookie;
+  } else if (provider === "ha") {
+    const val = (body.value ?? {}) as { url?: unknown; token?: unknown };
+    const url = typeof val.url === "string" ? val.url.trim() : "";
+    const token = typeof val.token === "string" ? val.token.trim() : "";
+    if (!url || !token) {
+      return NextResponse.json({ error: "Home Assistant URL and Access Token are required" }, { status: 400 });
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      return NextResponse.json({ error: "Home Assistant URL must start with http:// or https://" }, { status: 400 });
+    }
+    secretText = JSON.stringify({ url, token });
+  } else {
     return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
   }
 
-  const cookie = typeof body.value === "string" ? body.value.trim() : "";
-  if (!cookie.includes("NYT-S")) {
-    return NextResponse.json({ error: "NYT cookie must include the NYT-S token" }, { status: 400 });
-  }
-
-  const data = encryptSecret(cookie);
+  const data = encryptSecret(secretText);
   const { userSecrets } = await collections();
   await userSecrets.updateOne(
     { userId, provider },

@@ -13,8 +13,18 @@ interface CbcConfig {
   kindleEmail?: string;
 }
 
+interface HaConfig {
+  weatherEntity?: string;
+  wasteCalendar?: string;
+  deliveryTime?: string;
+  timezone?: string;
+  kindleEmail?: string;
+}
+
 interface Props {
   cbc: { config: CbcConfig; enabled: boolean } | null;
+  ha?: { config: HaConfig; enabled: boolean } | null;
+  configured?: { ha: boolean };
 }
 
 async function postJson(url: string, body: unknown): Promise<Record<string, unknown>> {
@@ -76,7 +86,7 @@ function DeliveryFields(props: {
   );
 }
 
-export function DashboardForm({ cbc }: Props) {
+export function DashboardForm({ cbc, ha, configured }: Props) {
   const browserTz =
     typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "America/Toronto";
 
@@ -94,6 +104,17 @@ export function DashboardForm({ cbc }: Props) {
   const [cbcTz, setCbcTz] = useState(cbc?.config.timezone ?? browserTz);
   const [cbcKindle, setCbcKindle] = useState(cbc?.config.kindleEmail ?? "");
   const [cbcEnabled, setCbcEnabled] = useState(cbc?.enabled ?? true);
+
+  // Home Assistant credentials & summary settings
+  const [haUrl, setHaUrl] = useState("");
+  const [haToken, setHaToken] = useState("");
+  const [haSaved, setHaSaved] = useState(Boolean(configured?.ha));
+  const [weatherEntity, setWeatherEntity] = useState(ha?.config.weatherEntity ?? "weather.forecast_home");
+  const [wasteCalendar, setWasteCalendar] = useState(ha?.config.wasteCalendar ?? "calendar.halifax_ns");
+  const [haTime, setHaTime] = useState(ha?.config.deliveryTime ?? "08:00");
+  const [haTz, setHaTz] = useState(ha?.config.timezone ?? browserTz);
+  const [haKindle, setHaKindle] = useState(ha?.config.kindleEmail ?? "");
+  const [haEnabled, setHaEnabled] = useState(ha?.enabled ?? true);
 
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -137,6 +158,31 @@ export function DashboardForm({ cbc }: Props) {
         enabled: cbcEnabled,
       });
       ok("CBC News settings saved.");
+    });
+
+  const saveHaCredentials = () =>
+    run("ha-credentials", async () => {
+      await postJson("/api/secrets", {
+        provider: "ha",
+        value: { url: haUrl, token: haToken },
+      });
+      setHaSaved(true);
+      setHaToken("");
+      ok("Home Assistant credentials saved (encrypted).");
+    });
+
+  const saveHa = () =>
+    run("ha-settings", async () => {
+      await postJson("/api/subscriptions", {
+        service: "ha-summary",
+        weatherEntity,
+        wasteCalendar,
+        deliveryTime: haTime,
+        timezone: haTz,
+        kindleEmail: haKindle,
+        enabled: haEnabled,
+      });
+      ok("Home Assistant Summary settings saved.");
     });
 
   const sendTest = (service: string, key: string) =>
@@ -233,6 +279,97 @@ export function DashboardForm({ cbc }: Props) {
           </button>
           <button className="link" onClick={() => sendTest("cbc", "test-cbc")} disabled={busy !== null}>
             {busy === "test-cbc" ? "Sending…" : "Send test now"}
+          </button>
+        </div>
+      </section>
+
+      <section className="section">
+        <h2>
+          Home Assistant credentials{" "}
+          <span className={`badge${haSaved ? " on" : ""}`}>{haSaved ? "stored" : "not set"}</span>
+        </h2>
+        <p className="hint">
+          Connect to your Home Assistant instance using your URL and a Long-Lived Access Token. Credentials are stored encrypted at rest.
+        </p>
+
+        <div className="field">
+          <label htmlFor="ha-url">Home Assistant Base URL</label>
+          <input
+            id="ha-url"
+            type="url"
+            value={haUrl}
+            onChange={(e) => setHaUrl(e.target.value)}
+            placeholder="http://192.168.68.104:8123 or https://your-ha.nabu.casa"
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="ha-token">Long-Lived Access Token</label>
+          <input
+            id="ha-token"
+            type="password"
+            value={haToken}
+            onChange={(e) => setHaToken(e.target.value)}
+            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          />
+        </div>
+
+        <button
+          className="button"
+          onClick={saveHaCredentials}
+          disabled={busy !== null || !haUrl.trim() || !haToken.trim()}
+        >
+          {busy === "ha-credentials" ? "Saving…" : "Save HA credentials"}
+        </button>
+      </section>
+
+      <section className="section">
+        <h2>Home Assistant Summary</h2>
+        <p className="hint">Daily morning PDF briefing of your home status, 12h weather forecast, climate, and security alerts.</p>
+
+        <div className="row">
+          <div className="field">
+            <label htmlFor="weather-entity">Weather Entity</label>
+            <input
+              id="weather-entity"
+              type="text"
+              value={weatherEntity}
+              onChange={(e) => setWeatherEntity(e.target.value)}
+              placeholder="weather.forecast_home"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="waste-calendar">Waste Calendar Entity</label>
+            <input
+              id="waste-calendar"
+              type="text"
+              value={wasteCalendar}
+              onChange={(e) => setWasteCalendar(e.target.value)}
+              placeholder="calendar.halifax_ns"
+            />
+          </div>
+        </div>
+
+        <DeliveryFields
+          idPrefix="ha"
+          time={haTime}
+          setTime={setHaTime}
+          tz={haTz}
+          setTz={setHaTz}
+          kindle={haKindle}
+          setKindle={setHaKindle}
+        />
+
+        <div className="actions">
+          <label className="toggle">
+            <input type="checkbox" checked={haEnabled} onChange={(e) => setHaEnabled(e.target.checked)} />
+            Enabled
+          </label>
+          <button className="button" onClick={saveHa} disabled={busy !== null}>
+            {busy === "ha-settings" ? "Saving…" : "Save HA settings"}
+          </button>
+          <button className="link" onClick={() => sendTest("ha-summary", "test-ha")} disabled={busy !== null}>
+            {busy === "test-ha" ? "Sending…" : "Send test now"}
           </button>
         </div>
       </section>
