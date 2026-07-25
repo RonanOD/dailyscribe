@@ -34,55 +34,47 @@ async function postJson(url: string, body: unknown): Promise<Record<string, unkn
     body: JSON.stringify(body),
   });
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) throw new Error((data.error as string) ?? `Request failed (${res.status})`);
+  if (!res.ok) {
+    const errorMsg =
+      (data.error as string) ??
+      (data.result as { error?: string })?.error ??
+      `Request failed (${res.status})`;
+    throw new Error(errorMsg);
+  }
   return data;
 }
 
-/** Shared delivery-time / timezone / Kindle-email inputs used by every service. */
+/** Shared delivery-time & timezone inputs used by every service. */
 function DeliveryFields(props: {
   idPrefix: string;
   time: string;
   setTime: (v: string) => void;
   tz: string;
   setTz: (v: string) => void;
-  kindle: string;
-  setKindle: (v: string) => void;
 }) {
   const { idPrefix } = props;
   return (
-    <>
-      <div className="row">
-        <div className="field">
-          <label htmlFor={`${idPrefix}-time`}>Delivery time</label>
-          <input
-            id={`${idPrefix}-time`}
-            type="time"
-            value={props.time}
-            onChange={(e) => props.setTime(e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor={`${idPrefix}-tz`}>Timezone (IANA)</label>
-          <input
-            id={`${idPrefix}-tz`}
-            type="text"
-            value={props.tz}
-            onChange={(e) => props.setTz(e.target.value)}
-            placeholder="America/Toronto"
-          />
-        </div>
-      </div>
+    <div className="row">
       <div className="field">
-        <label htmlFor={`${idPrefix}-kindle`}>Send-to-Kindle email</label>
+        <label htmlFor={`${idPrefix}-time`}>Delivery time</label>
         <input
-          id={`${idPrefix}-kindle`}
-          type="email"
-          value={props.kindle}
-          onChange={(e) => props.setKindle(e.target.value)}
-          placeholder="you@kindle.com"
+          id={`${idPrefix}-time`}
+          type="time"
+          value={props.time}
+          onChange={(e) => props.setTime(e.target.value)}
         />
       </div>
-    </>
+      <div className="field">
+        <label htmlFor={`${idPrefix}-tz`}>Timezone (IANA)</label>
+        <input
+          id={`${idPrefix}-tz`}
+          type="text"
+          value={props.tz}
+          onChange={(e) => props.setTz(e.target.value)}
+          placeholder="America/Toronto"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -90,34 +82,87 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
   const browserTz =
     typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "America/Toronto";
 
-  // CBC news — saved feeds split into general checkboxes and (at most one) region.
+  // Initial values snapshot for dirty checking
+  const initialKindleEmail = cbc?.config.kindleEmail ?? ha?.config.kindleEmail ?? "";
+
   const savedFeeds = cbc?.config.feeds?.length ? cbc.config.feeds : null;
   const initialGeneral = savedFeeds
     ? savedFeeds.filter((k) => !REGION_KEYS.has(k))
     : CBC_FEEDS.map((f) => f.key);
   const initialRegion = savedFeeds?.find((k) => REGION_KEYS.has(k));
-  const [cbcFeeds, setCbcFeeds] = useState<Set<string>>(new Set(initialGeneral));
-  const [regionOn, setRegionOn] = useState(Boolean(initialRegion));
-  const [regionKey, setRegionKey] = useState(initialRegion ?? "canada-novascotia");
-  const [cbcMax, setCbcMax] = useState(cbc?.config.maxPerFeed ?? 9);
-  const [cbcTime, setCbcTime] = useState(cbc?.config.deliveryTime ?? "08:00");
-  const [cbcTz, setCbcTz] = useState(cbc?.config.timezone ?? browserTz);
-  const [cbcKindle, setCbcKindle] = useState(cbc?.config.kindleEmail ?? "");
-  const [cbcEnabled, setCbcEnabled] = useState(cbc?.enabled ?? true);
 
-  // Home Assistant credentials & summary settings
+  const initialCbc = {
+    feeds: new Set(initialGeneral),
+    regionOn: Boolean(initialRegion),
+    regionKey: initialRegion ?? "canada-novascotia",
+    maxPerFeed: cbc?.config.maxPerFeed ?? 9,
+    deliveryTime: cbc?.config.deliveryTime ?? "08:00",
+    timezone: cbc?.config.timezone ?? browserTz,
+    enabled: cbc?.enabled ?? true,
+  };
+
+  const initialHa = {
+    weatherEntity: ha?.config.weatherEntity ?? "weather.forecast_home",
+    wasteCalendar: ha?.config.wasteCalendar ?? "calendar.halifax_ns",
+    deliveryTime: ha?.config.deliveryTime ?? "08:00",
+    timezone: ha?.config.timezone ?? browserTz,
+    enabled: ha?.enabled ?? true,
+  };
+
+  // State
+  const [kindleEmail, setKindleEmail] = useState(initialKindleEmail);
+
+  // CBC State
+  const [cbcFeeds, setCbcFeeds] = useState<Set<string>>(initialCbc.feeds);
+  const [regionOn, setRegionOn] = useState(initialCbc.regionOn);
+  const [regionKey, setRegionKey] = useState(initialCbc.regionKey);
+  const [cbcMax, setCbcMax] = useState(initialCbc.maxPerFeed);
+  const [cbcTime, setCbcTime] = useState(initialCbc.deliveryTime);
+  const [cbcTz, setCbcTz] = useState(initialCbc.timezone);
+  const [cbcEnabled, setCbcEnabled] = useState(initialCbc.enabled);
+
+  // HA State
   const [haUrl, setHaUrl] = useState("");
   const [haToken, setHaToken] = useState("");
   const [haSaved, setHaSaved] = useState(Boolean(configured?.ha));
-  const [weatherEntity, setWeatherEntity] = useState(ha?.config.weatherEntity ?? "weather.forecast_home");
-  const [wasteCalendar, setWasteCalendar] = useState(ha?.config.wasteCalendar ?? "calendar.halifax_ns");
-  const [haTime, setHaTime] = useState(ha?.config.deliveryTime ?? "08:00");
-  const [haTz, setHaTz] = useState(ha?.config.timezone ?? browserTz);
-  const [haKindle, setHaKindle] = useState(ha?.config.kindleEmail ?? "");
-  const [haEnabled, setHaEnabled] = useState(ha?.enabled ?? true);
+  const [weatherEntity, setWeatherEntity] = useState(initialHa.weatherEntity);
+  const [wasteCalendar, setWasteCalendar] = useState(initialHa.wasteCalendar);
+  const [haTime, setHaTime] = useState(initialHa.deliveryTime);
+  const [haTz, setHaTz] = useState(initialHa.timezone);
+  const [haEnabled, setHaEnabled] = useState(initialHa.enabled);
+
+  // Baseline reference snapshot to compare dirty status against
+  const [baseKindle, setBaseKindle] = useState(initialKindleEmail);
+  const [baseCbc, setBaseCbc] = useState(initialCbc);
+  const [baseHa, setBaseHa] = useState(initialHa);
 
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  // Dirty checking
+  const cbcFeedsChanged =
+    cbcFeeds.size !== baseCbc.feeds.size || [...cbcFeeds].some((f) => !baseCbc.feeds.has(f));
+  const isCbcDirty =
+    cbcFeedsChanged ||
+    regionOn !== baseCbc.regionOn ||
+    regionKey !== baseCbc.regionKey ||
+    cbcMax !== baseCbc.maxPerFeed ||
+    cbcTime !== baseCbc.deliveryTime ||
+    cbcTz !== baseCbc.timezone ||
+    cbcEnabled !== baseCbc.enabled;
+
+  const isHaCredsDirty = Boolean(haUrl.trim()) && Boolean(haToken.trim());
+
+  const isHaSettingsDirty =
+    weatherEntity !== baseHa.weatherEntity ||
+    wasteCalendar !== baseHa.wasteCalendar ||
+    haTime !== baseHa.deliveryTime ||
+    haTz !== baseHa.timezone ||
+    haEnabled !== baseHa.enabled;
+
+  const isKindleDirty = kindleEmail !== baseKindle;
+
+  const isDirty = isKindleDirty || isCbcDirty || isHaCredsDirty || isHaSettingsDirty;
 
   function ok(text: string) {
     setMessage({ kind: "ok", text });
@@ -125,6 +170,7 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
   function fail(err: unknown) {
     setMessage({ kind: "err", text: err instanceof Error ? err.message : String(err) });
   }
+
   async function run(key: string, fn: () => Promise<void>) {
     setBusy(key);
     setMessage(null);
@@ -146,43 +192,65 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
     });
   }
 
-  const saveCbc = () =>
-    run("cbc-settings", async () => {
+  const saveAll = () =>
+    run("save-all", async () => {
+      if (!kindleEmail.includes("@")) {
+        throw new Error("A valid Send-to-Kindle email is required under Kindle setup.");
+      }
+
+      // 1. Save HA credentials if entered
+      if (haUrl.trim() && haToken.trim()) {
+        await postJson("/api/secrets", {
+          provider: "ha",
+          value: { url: haUrl, token: haToken },
+        });
+        setHaSaved(true);
+        setHaToken("");
+        setHaUrl("");
+      }
+
+      // 2. Save CBC settings
       await postJson("/api/subscriptions", {
         service: "cbc",
         feeds: [...cbcFeeds, ...(regionOn ? [regionKey] : [])],
         maxPerFeed: cbcMax,
         deliveryTime: cbcTime,
         timezone: cbcTz,
-        kindleEmail: cbcKindle,
+        kindleEmail: kindleEmail.trim(),
         enabled: cbcEnabled,
       });
-      ok("CBC News settings saved.");
-    });
 
-  const saveHaCredentials = () =>
-    run("ha-credentials", async () => {
-      await postJson("/api/secrets", {
-        provider: "ha",
-        value: { url: haUrl, token: haToken },
-      });
-      setHaSaved(true);
-      setHaToken("");
-      ok("Home Assistant credentials saved (encrypted).");
-    });
-
-  const saveHa = () =>
-    run("ha-settings", async () => {
+      // 3. Save HA settings
       await postJson("/api/subscriptions", {
         service: "ha-summary",
         weatherEntity,
         wasteCalendar,
         deliveryTime: haTime,
         timezone: haTz,
-        kindleEmail: haKindle,
+        kindleEmail: kindleEmail.trim(),
         enabled: haEnabled,
       });
-      ok("Home Assistant Summary settings saved.");
+
+      // Update baseline snapshots
+      setBaseKindle(kindleEmail.trim());
+      setBaseCbc({
+        feeds: new Set(cbcFeeds),
+        regionOn,
+        regionKey,
+        maxPerFeed: cbcMax,
+        deliveryTime: cbcTime,
+        timezone: cbcTz,
+        enabled: cbcEnabled,
+      });
+      setBaseHa({
+        weatherEntity,
+        wasteCalendar,
+        deliveryTime: haTime,
+        timezone: haTz,
+        enabled: haEnabled,
+      });
+
+      ok("All settings saved successfully.");
     });
 
   const sendTest = (service: string, key: string) =>
@@ -195,16 +263,27 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
 
   return (
     <>
+      {/* Kindle Setup Section */}
       <section className="section">
         <h2>Kindle setup</h2>
         <p className="hint">
           Daily Scribe sends everything from one address. Add <code>my@dailyscribe.ca</code> to your
           Kindle&apos;s “Approved Personal Document E-mail List” — once — under Amazon&apos;s{" "}
-          <em>Manage Your Content &amp; Devices → Preferences → Personal Document Settings</em>. That&apos;s
-          it: no email credentials to share, and new services need no extra setup.
+          <em>Manage Your Content &amp; Devices → Preferences → Personal Document Settings</em>.
         </p>
+        <div className="field">
+          <label htmlFor="global-kindle-email">Send-to-Kindle email</label>
+          <input
+            id="global-kindle-email"
+            type="email"
+            value={kindleEmail}
+            onChange={(e) => setKindleEmail(e.target.value)}
+            placeholder="you@kindle.com"
+          />
+        </div>
       </section>
 
+      {/* CBC News Section */}
       <section className="section">
         <h2>CBC News</h2>
         <p className="hint">A daily PDF of CBC headlines and summaries. Choose your sections.</p>
@@ -261,8 +340,6 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
           setTime={setCbcTime}
           tz={cbcTz}
           setTz={setCbcTz}
-          kindle={cbcKindle}
-          setKindle={setCbcKindle}
         />
 
         <div className="actions">
@@ -270,19 +347,13 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
             <input type="checkbox" checked={cbcEnabled} onChange={(e) => setCbcEnabled(e.target.checked)} />
             Enabled
           </label>
-          <button
-            className="button"
-            onClick={saveCbc}
-            disabled={busy !== null || (cbcFeeds.size === 0 && !regionOn)}
-          >
-            {busy === "cbc-settings" ? "Saving…" : "Save CBC settings"}
-          </button>
           <button className="link" onClick={() => sendTest("cbc", "test-cbc")} disabled={busy !== null}>
             {busy === "test-cbc" ? "Sending…" : "Send test now"}
           </button>
         </div>
       </section>
 
+      {/* Home Assistant Credentials Section */}
       <section className="section">
         <h2>
           Home Assistant credentials{" "}
@@ -313,16 +384,9 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
             placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
           />
         </div>
-
-        <button
-          className="button"
-          onClick={saveHaCredentials}
-          disabled={busy !== null || !haUrl.trim() || !haToken.trim()}
-        >
-          {busy === "ha-credentials" ? "Saving…" : "Save HA credentials"}
-        </button>
       </section>
 
+      {/* Home Assistant Summary Section */}
       <section className="section">
         <h2>Home Assistant Summary</h2>
         <p className="hint">Daily morning PDF briefing of your home status, 12h weather forecast, climate, and security alerts.</p>
@@ -356,8 +420,6 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
           setTime={setHaTime}
           tz={haTz}
           setTz={setHaTz}
-          kindle={haKindle}
-          setKindle={setHaKindle}
         />
 
         <div className="actions">
@@ -365,13 +427,22 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
             <input type="checkbox" checked={haEnabled} onChange={(e) => setHaEnabled(e.target.checked)} />
             Enabled
           </label>
-          <button className="button" onClick={saveHa} disabled={busy !== null}>
-            {busy === "ha-settings" ? "Saving…" : "Save HA settings"}
-          </button>
           <button className="link" onClick={() => sendTest("ha-summary", "test-ha")} disabled={busy !== null}>
             {busy === "test-ha" ? "Sending…" : "Send test now"}
           </button>
         </div>
+      </section>
+
+      {/* Single Unified Save Button at bottom */}
+      <section className="section" style={{ borderTop: "2px solid #eaeaea", paddingTop: 16 }}>
+        <button
+          className="button"
+          onClick={saveAll}
+          disabled={busy !== null || !isDirty}
+          style={{ width: "100%", padding: "12px 20px", fontSize: 16 }}
+        >
+          {busy === "save-all" ? "Saving changes…" : "Save changes"}
+        </button>
       </section>
 
       {message && <p className={`message ${message.kind}`}>{message.text}</p>}

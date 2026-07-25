@@ -79,17 +79,30 @@ export interface HaForecastItem {
 // API Callers
 async function haFetch<T>(baseUrl: string, token: string, path: string, options: RequestInit = {}): Promise<T> {
   const url = `${baseUrl}${path}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...(options.headers ?? {}),
-    },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  });
-  if (!res.ok) throw new Error(`HA API ${path} returned HTTP ${res.status}`);
-  return (await res.json()) as T;
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        ...(options.headers ?? {}),
+      },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      if (res.status === 401) {
+        throw new Error(`Home Assistant HTTP 401 Unauthorized — check your Access Token.`);
+      }
+      throw new Error(`Home Assistant API ${path} returned HTTP ${res.status}`);
+    }
+    return (await res.json()) as T;
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("Home Assistant")) {
+      throw err;
+    }
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to connect to Home Assistant at ${baseUrl}: ${msg}`);
+  }
 }
 
 export async function fetchHaStates(baseUrl: string, token: string): Promise<HaState[]> {

@@ -25,5 +25,8 @@ export async function POST(req: Request) {
   }
 
   const result = await runSubscription(sub, new Date(), { force: true });
-  return NextResponse.json({ result }, { status: result.status === "failed" ? 500 : 200 });
+  if (result.status === "failed") {
+    return NextResponse.json({ error: result.error ?? "Delivery failed.", result }, { status: 400 });
+  }
+  return NextResponse.json({ result }, { status: 200 });
 }
