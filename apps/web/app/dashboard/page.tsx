@@ -1,4 +1,4 @@
-import { collections } from "@dailyscribe/core";
+import { collections, decryptSecret } from "@dailyscribe/core";
 import { auth, signIn, signOut } from "@/auth";
 import { DashboardForm } from "./dashboard-form";
 
@@ -32,9 +32,21 @@ export default async function DashboardPage() {
   const { subscriptions, userSecrets } = await collections();
   const cbcSub = await subscriptions.findOne({ userId, service: "cbc" });
   const haSub = await subscriptions.findOne({ userId, service: "ha-summary" });
-  const secretDocs = await userSecrets.find({ userId }).project({ provider: 1 }).toArray();
+  const secretDocs = await userSecrets.find({ userId }).toArray();
+  const haDoc = secretDocs.find((d) => d.provider === "ha");
+  let haUrl: string | undefined = undefined;
+  if (haDoc) {
+    try {
+      const parsed = JSON.parse(decryptSecret(haDoc.data)) as { url?: string };
+      haUrl = parsed.url;
+    } catch {
+      // Ignore
+    }
+  }
+
   const configured = {
-    ha: secretDocs.some((d) => d.provider === "ha"),
+    ha: Boolean(haDoc),
+    haUrl,
   };
 
   return (

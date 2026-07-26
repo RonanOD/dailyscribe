@@ -24,7 +24,7 @@ interface HaConfig {
 interface Props {
   cbc: { config: CbcConfig; enabled: boolean } | null;
   ha?: { config: HaConfig; enabled: boolean } | null;
-  configured?: { ha: boolean };
+  configured?: { ha: boolean; haUrl?: string };
 }
 
 async function postJson(url: string, body: unknown): Promise<Record<string, unknown>> {
@@ -84,6 +84,7 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
 
   // Initial values snapshot for dirty checking
   const initialKindleEmail = cbc?.config.kindleEmail ?? ha?.config.kindleEmail ?? "";
+  const initialHaUrl = configured?.haUrl ?? "";
 
   const savedFeeds = cbc?.config.feeds?.length ? cbc.config.feeds : null;
   const initialGeneral = savedFeeds
@@ -122,7 +123,7 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
   const [cbcEnabled, setCbcEnabled] = useState(initialCbc.enabled);
 
   // HA State
-  const [haUrl, setHaUrl] = useState("");
+  const [haUrl, setHaUrl] = useState(initialHaUrl);
   const [haToken, setHaToken] = useState("");
   const [haSaved, setHaSaved] = useState(Boolean(configured?.ha));
   const [weatherEntity, setWeatherEntity] = useState(initialHa.weatherEntity);
@@ -135,6 +136,7 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
   const [baseKindle, setBaseKindle] = useState(initialKindleEmail);
   const [baseCbc, setBaseCbc] = useState(initialCbc);
   const [baseHa, setBaseHa] = useState(initialHa);
+  const [baseHaUrl, setBaseHaUrl] = useState(initialHaUrl);
 
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -151,7 +153,7 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
     cbcTz !== baseCbc.timezone ||
     cbcEnabled !== baseCbc.enabled;
 
-  const isHaCredsDirty = Boolean(haUrl.trim()) && Boolean(haToken.trim());
+  const isHaCredsDirty = haUrl.trim() !== baseHaUrl.trim() || Boolean(haToken.trim());
 
   const isHaSettingsDirty =
     weatherEntity !== baseHa.weatherEntity ||
@@ -198,15 +200,15 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
         throw new Error("A valid Send-to-Kindle email is required under Kindle setup.");
       }
 
-      // 1. Save HA credentials if entered
-      if (haUrl.trim() && haToken.trim()) {
+      // 1. Save HA credentials if changed or entered
+      if (haUrl.trim() !== baseHaUrl.trim() || haToken.trim()) {
         await postJson("/api/secrets", {
           provider: "ha",
-          value: { url: haUrl, token: haToken },
+          value: { url: haUrl.trim(), token: haToken.trim() },
         });
         setHaSaved(true);
         setHaToken("");
-        setHaUrl("");
+        setBaseHaUrl(haUrl.trim());
       }
 
       // 2. Save CBC settings
@@ -381,7 +383,7 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
             type="password"
             value={haToken}
             onChange={(e) => setHaToken(e.target.value)}
-            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            placeholder={haSaved ? "******************************" : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}
           />
         </div>
       </section>
