@@ -101,7 +101,17 @@ async function haFetch<T>(baseUrl: string, token: string, path: string, options:
       throw err;
     }
     const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Failed to connect to Home Assistant at ${baseUrl}: ${msg}`);
+    const cause = err instanceof Error && "cause" in err ? (err as { cause?: unknown }).cause : undefined;
+    let causeText = "";
+    if (cause instanceof Error) {
+      causeText = cause.message;
+    } else if (cause && typeof cause === "object") {
+      const code = (cause as { code?: string }).code;
+      const sysMsg = (cause as { message?: string }).message;
+      causeText = code ?? sysMsg ?? "";
+    }
+    const detail = causeText && causeText !== msg ? `${msg} (${causeText})` : msg;
+    throw new Error(`Failed to connect to Home Assistant at ${baseUrl}: ${detail}`);
   }
 }
 
