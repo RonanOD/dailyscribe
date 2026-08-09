@@ -10,11 +10,13 @@ import {
 } from "@dailyscribe/core";
 import { cbcNewsPlugin } from "@/lib/plugins/cbc";
 import { haSummaryPlugin } from "@/lib/plugins/ha";
+import { kanjiPlugin } from "@/lib/plugins/kanji";
 
 // Register the available service plugins once per runtime.
 registerPlugin(nytCrosswordPlugin);
 registerPlugin(cbcNewsPlugin);
 registerPlugin(haSummaryPlugin);
+registerPlugin(kanjiPlugin);
 
 /**
  * App-wide deliverer: Resend, sending from Daily Scribe's single verified address.

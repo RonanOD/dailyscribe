@@ -21,9 +21,20 @@ interface HaConfig {
   kindleEmail?: string;
 }
 
+interface KanjiConfig {
+  kanjiPerDay?: number;
+  maxJlptLevel?: number;
+  deliveryTime?: string;
+  timezone?: string;
+  kindleEmail?: string;
+}
+
+const JLPT_LEVELS = [5, 4, 3, 2, 1] as const;
+
 interface Props {
   cbc: { config: CbcConfig; enabled: boolean } | null;
   ha?: { config: HaConfig; enabled: boolean } | null;
+  kanji?: { config: KanjiConfig; enabled: boolean } | null;
   configured?: { ha: boolean; haUrl?: string };
 }
 
@@ -78,12 +89,12 @@ function DeliveryFields(props: {
   );
 }
 
-export function DashboardForm({ cbc, ha, configured }: Props) {
+export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
   const browserTz =
     typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "America/Toronto";
 
   // Initial values snapshot for dirty checking
-  const initialKindleEmail = cbc?.config.kindleEmail ?? ha?.config.kindleEmail ?? "";
+  const initialKindleEmail = cbc?.config.kindleEmail ?? ha?.config.kindleEmail ?? kanji?.config.kindleEmail ?? "";
   const initialHaUrl = configured?.haUrl ?? "";
 
   const savedFeeds = cbc?.config.feeds?.length ? cbc.config.feeds : null;
@@ -110,6 +121,14 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
     enabled: ha?.enabled ?? true,
   };
 
+  const initialKanji = {
+    kanjiPerDay: kanji?.config.kanjiPerDay ?? 3,
+    maxJlptLevel: kanji?.config.maxJlptLevel ?? 5,
+    deliveryTime: kanji?.config.deliveryTime ?? "08:00",
+    timezone: kanji?.config.timezone ?? browserTz,
+    enabled: kanji?.enabled ?? true,
+  };
+
   // State
   const [kindleEmail, setKindleEmail] = useState(initialKindleEmail);
 
@@ -132,11 +151,19 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
   const [haTz, setHaTz] = useState(initialHa.timezone);
   const [haEnabled, setHaEnabled] = useState(initialHa.enabled);
 
+  // Kanji State
+  const [kanjiPerDay, setKanjiPerDay] = useState(initialKanji.kanjiPerDay);
+  const [maxJlptLevel, setMaxJlptLevel] = useState(initialKanji.maxJlptLevel);
+  const [kanjiTime, setKanjiTime] = useState(initialKanji.deliveryTime);
+  const [kanjiTz, setKanjiTz] = useState(initialKanji.timezone);
+  const [kanjiEnabled, setKanjiEnabled] = useState(initialKanji.enabled);
+
   // Baseline reference snapshot to compare dirty status against
   const [baseKindle, setBaseKindle] = useState(initialKindleEmail);
   const [baseCbc, setBaseCbc] = useState(initialCbc);
   const [baseHa, setBaseHa] = useState(initialHa);
   const [baseHaUrl, setBaseHaUrl] = useState(initialHaUrl);
+  const [baseKanji, setBaseKanji] = useState(initialKanji);
 
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -164,7 +191,14 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
 
   const isKindleDirty = kindleEmail !== baseKindle;
 
-  const isDirty = isKindleDirty || isCbcDirty || isHaCredsDirty || isHaSettingsDirty;
+  const isKanjiDirty =
+    kanjiPerDay !== baseKanji.kanjiPerDay ||
+    maxJlptLevel !== baseKanji.maxJlptLevel ||
+    kanjiTime !== baseKanji.deliveryTime ||
+    kanjiTz !== baseKanji.timezone ||
+    kanjiEnabled !== baseKanji.enabled;
+
+  const isDirty = isKindleDirty || isCbcDirty || isHaCredsDirty || isHaSettingsDirty || isKanjiDirty;
 
   function ok(text: string) {
     setMessage({ kind: "ok", text });
@@ -233,6 +267,17 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
         enabled: haEnabled,
       });
 
+      // 4. Save Kanji settings
+      await postJson("/api/subscriptions", {
+        service: "kanji",
+        kanjiPerDay,
+        maxJlptLevel,
+        deliveryTime: kanjiTime,
+        timezone: kanjiTz,
+        kindleEmail: kindleEmail.trim(),
+        enabled: kanjiEnabled,
+      });
+
       // Update baseline snapshots
       setBaseKindle(kindleEmail.trim());
       setBaseCbc({
@@ -250,6 +295,13 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
         deliveryTime: haTime,
         timezone: haTz,
         enabled: haEnabled,
+      });
+      setBaseKanji({
+        kanjiPerDay,
+        maxJlptLevel,
+        deliveryTime: kanjiTime,
+        timezone: kanjiTz,
+        enabled: kanjiEnabled,
       });
 
       ok("All settings saved successfully.");
@@ -431,6 +483,61 @@ export function DashboardForm({ cbc, ha, configured }: Props) {
           </label>
           <button className="link" onClick={() => sendTest("ha-summary", "test-ha")} disabled={busy !== null}>
             {busy === "test-ha" ? "Sending…" : "Send test now"}
+          </button>
+        </div>
+      </section>
+
+      {/* Kanji A Day Section */}
+      <section className="section">
+        <h2>Kanji A Day</h2>
+        <p className="hint">
+          A daily kanji practice sheet — stroke order, readings, an example word, and a writing
+          grid. Each day introduces new kanji; nothing repeats until you reach the end of the level.
+        </p>
+
+        <div className="row">
+          <div className="field" style={{ maxWidth: 220 }}>
+            <label htmlFor="kanji-per-day">New kanji per day</label>
+            <input
+              id="kanji-per-day"
+              type="number"
+              min={1}
+              max={10}
+              value={kanjiPerDay}
+              onChange={(e) => setKanjiPerDay(Math.min(Math.max(Number(e.target.value) || 1, 1), 10))}
+            />
+          </div>
+          <div className="field" style={{ maxWidth: 220 }}>
+            <label htmlFor="kanji-level">Study up to</label>
+            <select
+              id="kanji-level"
+              value={maxJlptLevel}
+              onChange={(e) => setMaxJlptLevel(Number(e.target.value))}
+            >
+              {JLPT_LEVELS.map((lvl) => (
+                <option key={lvl} value={lvl}>
+                  JLPT N{lvl}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <DeliveryFields
+          idPrefix="kanji"
+          time={kanjiTime}
+          setTime={setKanjiTime}
+          tz={kanjiTz}
+          setTz={setKanjiTz}
+        />
+
+        <div className="actions">
+          <label className="toggle">
+            <input type="checkbox" checked={kanjiEnabled} onChange={(e) => setKanjiEnabled(e.target.checked)} />
+            Enabled
+          </label>
+          <button className="link" onClick={() => sendTest("kanji", "test-kanji")} disabled={busy !== null}>
+            {busy === "test-kanji" ? "Sending…" : "Send test now"}
           </button>
         </div>
       </section>

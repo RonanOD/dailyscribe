@@ -1,5 +1,5 @@
 import { MongoClient, type Db } from "mongodb";
-import type { Delivery, Subscription, UserSecret } from "./types";
+import type { Delivery, KanjiProgress, Subscription, UserSecret } from "./types";
 
 // Cache the client across hot-reloads / serverless invocations.
 const globalForMongo = globalThis as unknown as {
@@ -33,5 +33,6 @@ export async function collections() {
     userSecrets: db.collection<UserSecret>("userSecrets"),
     subscriptions: db.collection<Subscription>("subscriptions"),
     deliveries: db.collection<Delivery>("deliveries"),
+    kanjiProgress: db.collection<KanjiProgress>("kanjiProgress"),
   };
 }

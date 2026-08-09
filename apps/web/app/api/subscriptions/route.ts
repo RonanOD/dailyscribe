@@ -3,6 +3,7 @@ import {
   type CbcNewsConfig,
   type CrosswordVersion,
   type HaSummaryConfig,
+  type KanjiServiceConfig,
   type NytCrosswordConfig,
   type ServiceId,
   type SubscriptionConfig,
@@ -13,7 +14,8 @@ import { ALL_CBC_FEEDS } from "@/lib/cbc-feeds";
 
 export const runtime = "nodejs";
 
-const SERVICES: ServiceId[] = ["nyt-crossword", "cbc", "ha-summary"];
+const SERVICES: ServiceId[] = ["nyt-crossword", "cbc", "ha-summary", "kanji"];
+const JLPT_LEVELS = [1, 2, 3, 4, 5] as const;
 const VERSIONS: CrosswordVersion[] = ["games", "newspaper", "big", "southpaw"];
 const CBC_FEED_KEYS = new Set(ALL_CBC_FEEDS.map((f) => f.key));
 
@@ -46,6 +48,8 @@ export async function POST(req: Request) {
     maxPerFeed?: unknown;
     weatherEntity?: string;
     wasteCalendar?: string;
+    kanjiPerDay?: unknown;
+    maxJlptLevel?: unknown;
     deliveryTime?: string;
     timezone?: string;
     kindleEmail?: string;
@@ -80,6 +84,14 @@ export async function POST(req: Request) {
       weatherEntity: (body.weatherEntity || "weather.forecast_home").trim(),
       wasteCalendar: (body.wasteCalendar || "calendar.halifax_ns").trim(),
     } satisfies HaSummaryConfig;
+  } else if (service === "kanji") {
+    const kanjiPerDay =
+      typeof body.kanjiPerDay === "number" ? Math.min(Math.max(Math.floor(body.kanjiPerDay), 1), 10) : 3;
+    const levelNum = typeof body.maxJlptLevel === "number" ? Math.floor(body.maxJlptLevel) : 5;
+    const maxJlptLevel = (JLPT_LEVELS as readonly number[]).includes(levelNum)
+      ? (levelNum as 1 | 2 | 3 | 4 | 5)
+      : 5;
+    config = { ...base, kanjiPerDay, maxJlptLevel } satisfies KanjiServiceConfig;
   } else {
     const version = VERSIONS.includes(body.version as CrosswordVersion)
       ? (body.version as CrosswordVersion)

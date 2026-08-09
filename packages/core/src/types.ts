@@ -20,7 +20,7 @@ export interface UserSecret {
 }
 
 /** Services in the catalog. */
-export type ServiceId = "nyt-crossword" | "cbc" | "ha-summary";
+export type ServiceId = "nyt-crossword" | "cbc" | "ha-summary" | "kanji";
 
 /** NYT crossword print layouts (ported from the reference repo's CROSSWORD_VERSION). */
 export type CrosswordVersion = "games" | "newspaper" | "big" | "southpaw";
@@ -53,9 +53,16 @@ export interface HaSummaryConfig extends BaseSubscriptionConfig {
   wasteCalendar?: string;
 }
 
+export interface KanjiServiceConfig extends BaseSubscriptionConfig {
+  /** New kanji introduced per day (default 3, clamped 1–10). */
+  kanjiPerDay: number;
+  /** How far into the JLPT curriculum to draw from (5 = N5 only ... 1 = N5 through N1). */
+  maxJlptLevel: 1 | 2 | 3 | 4 | 5;
+}
+
 /** Per-service config. The runner reads only the shared base fields; each plugin
  *  validates its own service-specific shape from the untyped RunContext.config. */
-export type SubscriptionConfig = NytCrosswordConfig | CbcNewsConfig | HaSummaryConfig;
+export type SubscriptionConfig = NytCrosswordConfig | CbcNewsConfig | HaSummaryConfig | KanjiServiceConfig;
 
 export interface Subscription {
   _id?: ObjectId;
@@ -77,4 +84,16 @@ export interface Delivery {
   status: DeliveryStatus;
   error?: string;
   deliveredAt: Date;
+}
+
+/** Per-user cursor into the Kanji curriculum (packages/core/src/data/kanji.ts).
+ *  The curriculum is a fixed ordered array, so "how far along" a user is
+ *  is fully captured by an integer offset — no per-item seen-set needed. */
+export interface KanjiProgress {
+  _id?: ObjectId;
+  userId: string;
+  cursor: number;
+  /** Guards against cursor drift if kanji.ts is regenerated/reordered. */
+  datasetVersion: string;
+  updatedAt: Date;
 }
