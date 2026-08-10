@@ -95,5 +95,34 @@ export interface KanjiProgress {
   cursor: number;
   /** Guards against cursor drift if kanji.ts is regenerated/reordered. */
   datasetVersion: string;
+  /** Random, unguessable local-part used to route inbound mail to this user
+   *  (e.g. `kanji-<inboundToken>@<inbound domain>`) — not the raw userId, so a
+   *  webhook payload claiming to be for a given user can't be forged by anyone
+   *  who doesn't already have this token. */
+  inboundToken: string;
+  /** Char list from the most recently sent batch, snapshotted so a future
+   *  vision-check phase knows what was expected without re-deriving it from
+   *  cursor math (which depends on config at send time, not read time). */
+  lastBatchChars?: string[];
   updatedAt: Date;
+}
+
+export type KanjiSubmissionStatus = "received" | "processed" | "failed";
+
+/** One inbound email captured for a user's Kanji practice check-in — an event
+ *  log (one row per email), unlike KanjiProgress which is a per-user singleton. */
+export interface KanjiSubmission {
+  _id?: ObjectId;
+  userId: string;
+  /** Resend's email_id — idempotency key, since Resend may retry the webhook. */
+  resendEmailId: string;
+  receivedAt: Date;
+  attachmentFilename: string;
+  attachmentContentType: string;
+  attachmentBytes: Buffer;
+  /** Copied from KanjiProgress.lastBatchChars at receipt time. */
+  batchCharsAtReceipt: string[];
+  /** "received" is all this phase sets; "processed"/"failed" are reserved for
+   *  the future vision-check phase. */
+  status: KanjiSubmissionStatus;
 }

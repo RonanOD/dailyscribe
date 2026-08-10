@@ -6,3 +6,4 @@ export * from "./plugins/nyt-crossword";
 export * from "./plugins/kanji";
 export * from "./delivery/email";
 export * from "./data/kanji";
+export * from "./kanji-progress";

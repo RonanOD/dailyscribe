@@ -32,11 +32,11 @@ describe("buildResendEmail", () => {
     expect(buildResendEmail(opts({ text: "hello" }), DEFAULT_FROM).text).toBe("hello");
   });
 
-  it("maps each Asset to a Resend attachment (filename, buffer content, content_type)", () => {
+  it("maps each Asset to a Resend attachment (filename, buffer content, contentType)", () => {
     const bytes = Buffer.from("%PDF-1.3 fake");
     const payload = buildResendEmail(opts({ assets: [{ filename: "a.pdf", contentType: "application/pdf", bytes }] }), DEFAULT_FROM);
     expect(payload.attachments).toEqual([
-      { filename: "a.pdf", content: bytes, content_type: "application/pdf" },
+      { filename: "a.pdf", content: bytes, contentType: "application/pdf" },
     ]);
   });
 

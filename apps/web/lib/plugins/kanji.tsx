@@ -1,7 +1,7 @@
 import {
   collections,
-  DATASET_VERSION,
   formatIsoDate,
+  getOrCreateKanjiProgress,
   KANJI_CURRICULUM,
   parseKanjiConfig,
   selectBatch,
@@ -179,32 +179,27 @@ export const kanjiPlugin: ServicePlugin = {
       throw new Error(`No kanji available for JLPT N${config.maxJlptLevel}+.`);
     }
 
-    const { kanjiProgress } = await collections();
-    let progress = await kanjiProgress.findOneAndUpdate(
-      { userId: ctx.userId },
-      { $setOnInsert: { userId: ctx.userId, cursor: 0, datasetVersion: DATASET_VERSION, updatedAt: new Date() } },
-      { upsert: true, returnDocument: "after" },
-    );
-    if (!progress) throw new Error("Failed to load kanji progress.");
-
-    // A regenerated/reordered dataset invalidates a stored numeric cursor.
-    if (progress.datasetVersion !== DATASET_VERSION) {
-      await kanjiProgress.updateOne(
-        { userId: ctx.userId },
-        { $set: { cursor: 0, datasetVersion: DATASET_VERSION, updatedAt: new Date() } },
-      );
-      progress = { ...progress, cursor: 0, datasetVersion: DATASET_VERSION };
-    }
-
+    const progress = await getOrCreateKanjiProgress(ctx.userId);
     const batch = selectBatch(pool, progress.cursor, config.kanjiPerDay);
     const bytes = await renderKanjiPdf(batch, ctx.date);
 
     // Only advance the cursor once the PDF has actually been built, so a
-    // render failure never skips kanji the user never received.
+    // render failure never skips kanji the user never received. Snapshot
+    // the sent batch's characters so a future check-in can know what was
+    // expected without re-deriving it from cursor math.
+    const { kanjiProgress } = await collections();
     if (!batch.levelCompleted) {
       await kanjiProgress.updateOne(
         { userId: ctx.userId },
-        { $inc: { cursor: batch.entries.length }, $set: { updatedAt: new Date() } },
+        {
+          $inc: { cursor: batch.entries.length },
+          $set: { lastBatchChars: batch.entries.map((e) => e.char), updatedAt: new Date() },
+        },
+      );
+    } else {
+      await kanjiProgress.updateOne(
+        { userId: ctx.userId },
+        { $set: { lastBatchChars: batch.entries.map((e) => e.char), updatedAt: new Date() } },
       );
     }
 

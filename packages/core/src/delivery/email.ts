@@ -28,7 +28,7 @@ export interface ResendEmailPayload {
   to: string;
   subject: string;
   text: string;
-  attachments: { filename: string; content: Buffer; content_type: string }[];
+  attachments: { filename: string; content: Buffer; contentType: string }[];
 }
 
 /** Build the Resend send payload from generic DeliverOptions. Pure — no side effects. */
@@ -41,7 +41,7 @@ export function buildResendEmail(opts: DeliverOptions, defaultFrom: string): Res
     attachments: opts.assets.map((a) => ({
       filename: a.filename,
       content: a.bytes,
-      content_type: a.contentType,
+      contentType: a.contentType,
     })),
   };
 }
