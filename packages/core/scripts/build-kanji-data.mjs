@@ -22,7 +22,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_PATH = path.join(__dirname, "../src/data/kanji.ts");
-const DATASET_VERSION = "2026-08-09";
+const DATASET_VERSION = "2026-08-10";
 
 const KANJI_DATA_URL = "https://raw.githubusercontent.com/davidluzgouveia/kanji-data/master/kanji.json";
 const KANJIVG_BASE = "https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji";
@@ -39,15 +39,21 @@ function codepointFile(char) {
  * (numeral counters, i-adjectives), so they're preferred first. A reading
  * with no dot and no dash is already a standalone word (e.g. "みず" for 水).
  * A leading "-" marks a suffix-only reading and a trailing "-" marks a
- * prefix-only reading (e.g. "ひと-" for 一 used in compounds like 一月) —
- * neither stands alone, so they're only used as a last resort (dash
- * stripped). Falls back to the bare kanji + first on-yomi reading if the
- * kanji has no kun readings at all. */
+ * prefix-only reading (e.g. "ひと-" for 一, or "-た.い" for 度) — neither
+ * stands alone even if it also happens to contain a dot, so dash-marked
+ * readings are excluded from the dotted/plain buckets entirely and only
+ * used as a last resort (dash and dot both stripped). Falls back to the
+ * bare kanji + first on-yomi reading if the kanji has no kun readings at
+ * all. Note: this only fixes the mechanical dash/dot bug — it can't tell
+ * which reading is the *most idiomatic* one when a kanji has several
+ * unrelated-looking kun readings (e.g. 事's rarely-used つか.う), so a few
+ * entries may still read oddly; spot-check the generated output. */
 function deriveExample(char, meanings, kunReadings) {
   const readings = kunReadings ?? [];
-  const dotted = readings.filter((r) => r.includes("."));
-  const plain = readings.filter((r) => !r.includes(".") && !r.startsWith("-") && !r.endsWith("-"));
-  const affix = readings.filter((r) => r.startsWith("-") || r.endsWith("-"));
+  const isAffix = (r) => r.startsWith("-") || r.endsWith("-");
+  const dotted = readings.filter((r) => r.includes(".") && !isAffix(r));
+  const plain = readings.filter((r) => !r.includes(".") && !isAffix(r));
+  const affix = readings.filter(isAffix);
 
   for (const reading of dotted) {
     const dot = reading.indexOf(".");
@@ -59,7 +65,10 @@ function deriveExample(char, meanings, kunReadings) {
     return { word: char, reading, meaning: meanings[0] ?? "" };
   }
   for (const reading of affix) {
-    return { word: char, reading: reading.replace(/^-|-$/g, ""), meaning: meanings[0] ?? "" };
+    const stripped = reading.replace(/^-|-$/g, "");
+    const dot = stripped.indexOf(".");
+    const clean = dot === -1 ? stripped : stripped.slice(0, dot) + stripped.slice(dot + 1);
+    return { word: char, reading: clean, meaning: meanings[0] ?? "" };
   }
   return null; // caller falls back to on-yomi
 }
@@ -85,9 +94,12 @@ async function main() {
   console.error(`Fetching kanji-data.json ...`);
   const all = await fetchJson(KANJI_DATA_URL);
 
+  // Group by JLPT level first (5 = easiest, taught first), then by frequency
+  // rank within each level — a pure frequency sort would interleave levels
+  // and could teach a rarer N5 kanji after a more common N4 one.
   const candidates = Object.entries(all)
     .filter(([, v]) => typeof v.jlpt_new === "number" && v.jlpt_new >= maxJlptLevel)
-    .sort((a, b) => (a[1].freq ?? 9999) - (b[1].freq ?? 9999));
+    .sort((a, b) => b[1].jlpt_new - a[1].jlpt_new || (a[1].freq ?? 9999) - (b[1].freq ?? 9999));
 
   console.error(`${candidates.length} candidate kanji at JLPT N${maxJlptLevel}+; fetching stroke data ...`);
 
