@@ -36,5 +36,14 @@ export async function getOrCreateKanjiProgress(userId: string): Promise<KanjiPro
     progress = { ...progress, cursor: 0, datasetVersion: DATASET_VERSION };
   }
 
+  // $setOnInsert only populates fields for a brand-new document — a doc
+  // created before inboundToken existed (or by any other write path) needs
+  // an explicit backfill, or it's stuck with a missing token forever.
+  if (!progress.inboundToken) {
+    const inboundToken = randomBytes(8).toString("hex");
+    await kanjiProgress.updateOne({ userId }, { $set: { inboundToken, updatedAt: new Date() } });
+    progress = { ...progress, inboundToken };
+  }
+
   return progress;
 }
