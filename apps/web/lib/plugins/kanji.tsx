@@ -1,4 +1,3 @@
-import path from "node:path";
 import {
   collections,
   DATASET_VERSION,
@@ -13,22 +12,25 @@ import {
   type ServicePlugin,
 } from "@dailyscribe/core";
 import { Document, Font, G, Line, Page, Path, Rect, StyleSheet, Svg, Text, View, renderToBuffer } from "@react-pdf/renderer";
+import { NOTO_SANS_JP_400, NOTO_SANS_JP_700 } from "./fonts/noto-sans-jp";
 
 const PRACTICE_BOXES = 6;
 const GLYPH_VIEWBOX = 109; // KanjiVG's native coordinate space
 const FONT_FAMILY = "NotoSansJP";
 
 // Helvetica (react-pdf's default) has no Japanese glyphs; every kanji/kana
-// string in this document needs a CJK-capable font instead. The bundled TTFs
-// are a Noto Sans JP subset containing only hiragana/katakana + the kanji
-// curriculum's own glyphs (built via Google Fonts' `text=` subsetting param),
-// to keep the file small rather than shipping full Noto Sans JP.
-const FONTS_DIR = path.join(__dirname, "fonts");
+// string in this document needs a CJK-capable font instead. The font is
+// inlined as a base64 data URI (see ./fonts/noto-sans-jp.ts) rather than
+// loaded from a .ttf file at runtime — Next's serverless file tracing
+// didn't reliably bundle a file-based font across a Vercel monorepo build,
+// causing an ENOENT in production. It's a Noto Sans JP *subset* containing
+// only hiragana/katakana + the kanji curriculum's own glyphs (built via
+// Google Fonts' `text=` subsetting param), to keep it small.
 Font.register({
   family: FONT_FAMILY,
   fonts: [
-    { src: path.join(FONTS_DIR, "noto-sans-jp-400.ttf"), fontWeight: "normal" },
-    { src: path.join(FONTS_DIR, "noto-sans-jp-700.ttf"), fontWeight: "bold" },
+    { src: NOTO_SANS_JP_400, fontWeight: "normal" },
+    { src: NOTO_SANS_JP_700, fontWeight: "bold" },
   ],
 });
 
