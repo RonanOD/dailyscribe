@@ -4,9 +4,9 @@ import {
   getOrCreateKanjiProgress,
   KANJI_CURRICULUM,
   parseKanjiConfig,
-  selectBatch,
+  selectDailyBatch,
   type Asset,
-  type KanjiBatch,
+  type DailyKanjiBatch,
   type KanjiEntry,
   type RunContext,
   type ServicePlugin,
@@ -131,7 +131,7 @@ function KanjiCard({ entry }: { entry: KanjiEntry }) {
   );
 }
 
-export function KanjiDocument({ batch, date }: { batch: KanjiBatch; date: Date }) {
+export function KanjiDocument({ batch, date }: { batch: DailyKanjiBatch; date: Date }) {
   const dateFormatted = new Intl.DateTimeFormat("en-CA", {
     weekday: "long",
     year: "numeric",
@@ -145,6 +145,11 @@ export function KanjiDocument({ batch, date }: { batch: KanjiBatch; date: Date }
       <Page size="A4" style={styles.page} wrap>
         <Text style={styles.masthead}>Kanji A Day</Text>
         <Text style={styles.date}>{dateFormatted}</Text>
+        {batch.isRetry && (
+          <Text style={styles.completedNote}>
+            A few of these didn&apos;t come through clearly last time — here they are again for more practice.
+          </Text>
+        )}
         {batch.levelCompleted && (
           <Text style={styles.completedNote}>
             You&apos;ve reached the end of this level — here&apos;s a review of the last batch.
@@ -165,7 +170,7 @@ export function KanjiDocument({ batch, date }: { batch: KanjiBatch; date: Date }
   );
 }
 
-export async function renderKanjiPdf(batch: KanjiBatch, date: Date): Promise<Buffer> {
+export async function renderKanjiPdf(batch: DailyKanjiBatch, date: Date): Promise<Buffer> {
   return renderToBuffer(<KanjiDocument batch={batch} date={date} />);
 }
 
@@ -180,15 +185,17 @@ export const kanjiPlugin: ServicePlugin = {
     }
 
     const progress = await getOrCreateKanjiProgress(ctx.userId);
-    const batch = selectBatch(pool, progress.cursor, config.kanjiPerDay);
+    const batch = selectDailyBatch(KANJI_CURRICULUM, pool, progress.cursor, config.kanjiPerDay, progress.retryChars ?? []);
     const bytes = await renderKanjiPdf(batch, ctx.date);
 
     // Only advance the cursor once the PDF has actually been built, so a
     // render failure never skips kanji the user never received. Snapshot
     // the sent batch's characters so a future check-in can know what was
-    // expected without re-deriving it from cursor math.
+    // expected without re-deriving it from cursor math. A retry batch never
+    // advances the cursor — it's a resend of characters a past check-in
+    // flagged as unclear/no_attempt, not new curriculum.
     const { kanjiProgress } = await collections();
-    if (!batch.levelCompleted) {
+    if (!batch.isRetry && !batch.levelCompleted) {
       await kanjiProgress.updateOne(
         { userId: ctx.userId },
         {

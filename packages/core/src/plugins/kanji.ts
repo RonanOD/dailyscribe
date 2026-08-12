@@ -40,3 +40,34 @@ export function selectBatch(pool: KanjiEntry[], cursor: number, kanjiPerDay: num
   }
   return { entries: pool.slice(cursor, cursor + kanjiPerDay), levelCompleted: false };
 }
+
+export interface DailyKanjiBatch extends KanjiBatch {
+  /** True when this batch is a resend of previously-unmatched characters
+   *  (KanjiProgress.retryChars) rather than fresh curriculum. */
+  isRetry: boolean;
+}
+
+/** Chooses the day's batch: if any characters from a past check-in came back
+ *  unclear/no_attempt, resend those (capped at kanjiPerDay) instead of
+ *  advancing into fresh curriculum, so a user who didn't quite get a
+ *  character keeps seeing it until a check-in reports it matched. Falls back
+ *  to the normal cursor-based selection if retryChars is empty, or if none
+ *  of its characters still resolve in the curriculum (e.g. dataset changed). */
+export function selectDailyBatch(
+  curriculum: KanjiEntry[],
+  pool: KanjiEntry[],
+  cursor: number,
+  kanjiPerDay: number,
+  retryChars: string[],
+): DailyKanjiBatch {
+  if (retryChars.length > 0) {
+    const entries = retryChars
+      .map((char) => curriculum.find((e) => e.char === char))
+      .filter((e): e is KanjiEntry => Boolean(e))
+      .slice(0, kanjiPerDay);
+    if (entries.length > 0) {
+      return { entries, levelCompleted: false, isRetry: true };
+    }
+  }
+  return { ...selectBatch(pool, cursor, kanjiPerDay), isRetry: false };
+}

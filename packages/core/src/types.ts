@@ -104,6 +104,10 @@ export interface KanjiProgress {
    *  vision-check phase knows what was expected without re-deriving it from
    *  cursor math (which depends on config at send time, not read time). */
   lastBatchChars?: string[];
+  /** Characters from a graded check-in that came back unclear/no_attempt —
+   *  resent on the next send instead of advancing into fresh curriculum,
+   *  until a later check-in reports them matched. */
+  retryChars?: string[];
   updatedAt: Date;
 }
 

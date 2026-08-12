@@ -157,6 +157,16 @@ export async function POST(req: Request) {
           { _id: insertedId },
           { $set: { status: "processed", checkResults, processedAt: new Date() } },
         );
+
+        // Queue anything not clearly matched to be resent (instead of fresh
+        // curriculum) on the next send; clear anything that's now matched,
+        // including chars queued by an earlier check-in.
+        const matchedChars = checkResults.filter((r) => r.status === "matched").map((r) => r.char);
+        const unmatchedChars = checkResults.filter((r) => r.status !== "matched").map((r) => r.char);
+        const retryChars = Array.from(
+          new Set([...(progress.retryChars ?? []).filter((c) => !matchedChars.includes(c)), ...unmatchedChars]),
+        );
+        await kanjiProgress.updateOne({ userId: progress.userId }, { $set: { retryChars, updatedAt: new Date() } });
       } catch (err) {
         console.error("resend-inbound: Gemini kanji check failed:", err instanceof Error ? err.message : err);
         await kanjiSubmissions.updateOne(
