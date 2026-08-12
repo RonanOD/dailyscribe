@@ -1,4 +1,4 @@
-import { collections } from "@dailyscribe/core";
+import { collections, createGeminiKanjiCheckClient, KANJI_CURRICULUM, type KanjiCharCheckResult } from "@dailyscribe/core";
 import { NextResponse } from "next/server";
 import { Resend, type AttachmentData, type EmailReceivedEvent } from "resend";
 
@@ -23,13 +23,12 @@ function extractInboundToken(toAddresses: string[]): string | null {
 
 /**
  * Resend inbound webhook (event.type "email.received") for the Kanji
- * handwriting check-in. Phase 1 only: verify → route by per-user token →
- * fetch the attachment → store it. No AI call yet (see kanjiSubmissions'
- * `status: "received"` — "processed"/"failed" are reserved for that later
- * phase). Anyone can email this endpoint once they know a user's token, so
- * this only proves the request really came from Resend, not that the sender
- * is who they claim to be — the token itself is the only practical guard
- * available (see KanjiProgress.inboundToken).
+ * handwriting check-in. Verify → route by per-user token → fetch the
+ * attachment → store it → grade it against the expected batch via Gemini.
+ * Anyone can email this endpoint once they know a user's token, so this only
+ * proves the request really came from Resend, not that the sender is who
+ * they claim to be — the token itself is the only practical guard available
+ * (see KanjiProgress.inboundToken).
  */
 export async function POST(req: Request) {
   const webhookSecret = process.env.RESEND_INBOUND_WEBHOOK_SECRET;
@@ -114,17 +113,65 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to download attachment" }, { status: 502 });
   }
   const attachmentBytes = Buffer.from(await fileRes.arrayBuffer());
+  const batchCharsAtReceipt = progress.lastBatchChars ?? [];
 
-  await kanjiSubmissions.insertOne({
+  const { insertedId } = await kanjiSubmissions.insertOne({
     userId: progress.userId,
     resendEmailId,
     receivedAt: new Date(),
     attachmentFilename: candidate.filename ?? "submission",
     attachmentContentType: candidate.content_type,
     attachmentBytes,
-    batchCharsAtReceipt: progress.lastBatchChars ?? [],
+    batchCharsAtReceipt,
     status: "received",
   });
+
+  // Grade the submission against the batch it was sent for. This never blocks
+  // the response to Resend — the capture above already durably succeeded,
+  // and a non-200 here would only cost a wasted retry (the idempotency check
+  // above means a retry can never reach this step a second time anyway).
+  if (batchCharsAtReceipt.length === 0) {
+    // Happens when a submission arrives before the user's first Kanji send
+    // (no lastBatchChars snapshot yet) — nothing to check against.
+    await kanjiSubmissions.updateOne(
+      { _id: insertedId },
+      { $set: { status: "processed", checkResults: [], processedAt: new Date() } },
+    );
+  } else {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      console.warn("resend-inbound: GEMINI_API_KEY not set, leaving submission unchecked");
+    } else {
+      try {
+        const expected = batchCharsAtReceipt.map((char) => ({
+          char,
+          meanings: KANJI_CURRICULUM.find((e) => e.char === char)?.meanings ?? [],
+        }));
+        const client = createGeminiKanjiCheckClient({ apiKey: geminiApiKey, model: process.env.GEMINI_MODEL || undefined });
+        const checkResults: KanjiCharCheckResult[] = await client.check({
+          attachmentBytes,
+          contentType: candidate.content_type,
+          expected,
+        });
+        await kanjiSubmissions.updateOne(
+          { _id: insertedId },
+          { $set: { status: "processed", checkResults, processedAt: new Date() } },
+        );
+      } catch (err) {
+        console.error("resend-inbound: Gemini kanji check failed:", err instanceof Error ? err.message : err);
+        await kanjiSubmissions.updateOne(
+          { _id: insertedId },
+          {
+            $set: {
+              status: "failed",
+              processingError: err instanceof Error ? err.message : String(err),
+              processedAt: new Date(),
+            },
+          },
+        );
+      }
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }

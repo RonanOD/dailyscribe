@@ -109,6 +109,15 @@ export interface KanjiProgress {
 
 export type KanjiSubmissionStatus = "received" | "processed" | "failed";
 
+export type KanjiCharCheckStatus = "matched" | "unclear" | "no_attempt";
+
+/** Gemini's per-character verdict for one submission, one entry per char in
+ *  KanjiSubmission.batchCharsAtReceipt. */
+export interface KanjiCharCheckResult {
+  char: string;
+  status: KanjiCharCheckStatus;
+}
+
 /** One inbound email captured for a user's Kanji practice check-in — an event
  *  log (one row per email), unlike KanjiProgress which is a per-user singleton. */
 export interface KanjiSubmission {
@@ -122,7 +131,12 @@ export interface KanjiSubmission {
   attachmentBytes: Buffer;
   /** Copied from KanjiProgress.lastBatchChars at receipt time. */
   batchCharsAtReceipt: string[];
-  /** "received" is all this phase sets; "processed"/"failed" are reserved for
-   *  the future vision-check phase. */
   status: KanjiSubmissionStatus;
+  /** Set once status moves past "received". Empty array (not omitted) when
+   *  batchCharsAtReceipt was empty — there was nothing to check, not an error. */
+  checkResults?: KanjiCharCheckResult[];
+  /** When the transition to "processed"/"failed" happened. */
+  processedAt?: Date;
+  /** Set only when status === "failed" — the thrown error's message. */
+  processingError?: string;
 }
