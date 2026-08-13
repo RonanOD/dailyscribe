@@ -91,47 +91,52 @@ export default async function DashboardPage() {
         ha={haSub ? { config: haSub.config, enabled: haSub.enabled } : null}
         kanji={kanjiSub ? { config: kanjiSub.config, enabled: kanjiSub.enabled } : null}
         configured={configured}
-      />
-
-      {kanjiSub && (
-        <section className="section">
-          <h2>Kanji practice check-in</h2>
-          {kanjiInboundAddress ? (
-            <>
-              <p className="hint">
-                Mail your marked-up practice page back to <code>{kanjiInboundAddress}</code> (save it as a
-                contact on your Kindle Scribe) and we&apos;ll check which characters you attempted.
-              </p>
-              {lastSubmission ? (
+        afterFields={
+          kanjiSub && (
+            <section className="section">
+              <h2>Kanji practice check-in</h2>
+              {kanjiInboundAddress ? (
                 <>
-                  <p className="hint">Last submission received: {lastSubmission.receivedAt.toLocaleString()}</p>
-                  {lastSubmission.status === "processed" &&
-                    lastSubmission.checkResults &&
-                    lastSubmission.checkResults.length > 0 && (
-                      <p className="hint">
-                        {lastSubmission.checkResults.filter((r) => r.status === "matched").length}/
-                        {lastSubmission.checkResults.length} matched —{" "}
-                        {lastSubmission.checkResults.map((r) => `${r.char} (${CHECK_LABEL[r.status]})`).join(", ")}
-                      </p>
-                    )}
-                  {lastSubmission.status === "processed" && lastSubmission.checkResults?.length === 0 && (
-                    <p className="hint">
-                      No expected characters were on record for this submission, so there was nothing to check.
-                    </p>
-                  )}
-                  {lastSubmission.status === "failed" && (
-                    <p className="hint">We received this submission, but the automatic check couldn&apos;t be completed.</p>
+                  <p className="hint">
+                    Mail your marked-up practice page back to <code>{kanjiInboundAddress}</code> (save it as a
+                    contact on your Kindle Scribe) and we&apos;ll check which characters you attempted.
+                  </p>
+                  {lastSubmission ? (
+                    <>
+                      <p className="hint">Last submission received: {lastSubmission.receivedAt.toLocaleString()}</p>
+                      {lastSubmission.status === "processed" &&
+                        lastSubmission.checkResults &&
+                        lastSubmission.checkResults.length > 0 && (
+                          <p className="hint">
+                            {lastSubmission.checkResults.filter((r) => r.status === "matched").length}/
+                            {lastSubmission.checkResults.length} matched —{" "}
+                            {lastSubmission.checkResults
+                              .map((r) => `${r.char} (${CHECK_LABEL[r.status]})`)
+                              .join(", ")}
+                          </p>
+                        )}
+                      {lastSubmission.status === "processed" && lastSubmission.checkResults?.length === 0 && (
+                        <p className="hint">
+                          No expected characters were on record for this submission, so there was nothing to check.
+                        </p>
+                      )}
+                      {lastSubmission.status === "failed" && (
+                        <p className="hint">
+                          We received this submission, but the automatic check couldn&apos;t be completed.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="hint">No submissions received yet.</p>
                   )}
                 </>
               ) : (
-                <p className="hint">No submissions received yet.</p>
+                <p className="hint">Inbound email isn&apos;t configured yet.</p>
               )}
-            </>
-          ) : (
-            <p className="hint">Inbound email isn&apos;t configured yet.</p>
-          )}
-        </section>
-      )}
+            </section>
+          )
+        }
+      />
     </main>
   );
 }

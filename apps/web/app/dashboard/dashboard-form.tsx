@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { CBC_FEEDS, CBC_REGIONS } from "@/lib/cbc-feeds";
 
 const REGION_KEYS = new Set(CBC_REGIONS.map((f) => f.key));
@@ -41,6 +41,9 @@ interface Props {
   ha?: { config: HaConfig; enabled: boolean } | null;
   kanji?: { config: KanjiConfig; enabled: boolean } | null;
   configured?: { ha: boolean; haUrl?: string };
+  /** Server-rendered content (e.g. the Kanji check-in status) shown above the
+   *  Save button, so the button stays the last element on the page. */
+  afterFields?: ReactNode;
 }
 
 async function postJson(url: string, body: unknown): Promise<Record<string, unknown>> {
@@ -105,7 +108,7 @@ function DeliveryFields(props: {
   );
 }
 
-export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
+export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props) {
   const browserTz =
     typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "America/Toronto";
 
@@ -529,6 +532,8 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
           </button>
         </div>
       </section>
+
+      {afterFields}
 
       {/* Single Unified Save Button at bottom */}
       <section className="section" style={{ borderTop: "2px solid #eaeaea", paddingTop: 16 }}>
