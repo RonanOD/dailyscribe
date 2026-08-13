@@ -624,13 +624,14 @@ export const haSummaryPlugin: ServicePlugin = {
       }),
     );
 
+    const timezone = (ctx.config as { timezone?: string }).timezone || "America/Toronto";
     const summaryData = extractHaSummaryData(
       states,
       hourlyForecast,
       dailyForecast,
       calendarEvents,
       config,
-      "America/Toronto",
+      timezone,
       ctx.date,
     );
 
