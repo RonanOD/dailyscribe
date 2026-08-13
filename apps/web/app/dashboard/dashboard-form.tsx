@@ -55,7 +55,7 @@ async function postJson(url: string, body: unknown): Promise<Record<string, unkn
   return data;
 }
 
-/** Shared delivery-time & timezone inputs used by every service. */
+/** Shared delivery-time & timezone inputs, used once for all services. */
 function DeliveryFields(props: {
   idPrefix: string;
   time: string;
@@ -97,6 +97,11 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
   const initialKindleEmail = cbc?.config.kindleEmail ?? ha?.config.kindleEmail ?? kanji?.config.kindleEmail ?? "";
   const initialHaUrl = configured?.haUrl ?? "";
 
+  const initialDelivery = {
+    time: cbc?.config.deliveryTime ?? ha?.config.deliveryTime ?? kanji?.config.deliveryTime ?? "08:00",
+    timezone: cbc?.config.timezone ?? ha?.config.timezone ?? kanji?.config.timezone ?? browserTz,
+  };
+
   const savedFeeds = cbc?.config.feeds?.length ? cbc.config.feeds : null;
   const initialGeneral = savedFeeds
     ? savedFeeds.filter((k) => !REGION_KEYS.has(k))
@@ -108,37 +113,31 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
     regionOn: Boolean(initialRegion),
     regionKey: initialRegion ?? "canada-novascotia",
     maxPerFeed: cbc?.config.maxPerFeed ?? 9,
-    deliveryTime: cbc?.config.deliveryTime ?? "08:00",
-    timezone: cbc?.config.timezone ?? browserTz,
     enabled: cbc?.enabled ?? true,
   };
 
   const initialHa = {
     weatherEntity: ha?.config.weatherEntity ?? "weather.forecast_home",
     wasteCalendar: ha?.config.wasteCalendar ?? "calendar.halifax_ns",
-    deliveryTime: ha?.config.deliveryTime ?? "08:00",
-    timezone: ha?.config.timezone ?? browserTz,
     enabled: ha?.enabled ?? true,
   };
 
   const initialKanji = {
     kanjiPerDay: kanji?.config.kanjiPerDay ?? 3,
     maxJlptLevel: kanji?.config.maxJlptLevel ?? 5,
-    deliveryTime: kanji?.config.deliveryTime ?? "08:00",
-    timezone: kanji?.config.timezone ?? browserTz,
     enabled: kanji?.enabled ?? true,
   };
 
   // State
   const [kindleEmail, setKindleEmail] = useState(initialKindleEmail);
+  const [deliveryTime, setDeliveryTime] = useState(initialDelivery.time);
+  const [deliveryTz, setDeliveryTz] = useState(initialDelivery.timezone);
 
   // CBC State
   const [cbcFeeds, setCbcFeeds] = useState<Set<string>>(initialCbc.feeds);
   const [regionOn, setRegionOn] = useState(initialCbc.regionOn);
   const [regionKey, setRegionKey] = useState(initialCbc.regionKey);
   const [cbcMax, setCbcMax] = useState(initialCbc.maxPerFeed);
-  const [cbcTime, setCbcTime] = useState(initialCbc.deliveryTime);
-  const [cbcTz, setCbcTz] = useState(initialCbc.timezone);
   const [cbcEnabled, setCbcEnabled] = useState(initialCbc.enabled);
 
   // HA State
@@ -147,19 +146,16 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
   const [haSaved, setHaSaved] = useState(Boolean(configured?.ha));
   const [weatherEntity, setWeatherEntity] = useState(initialHa.weatherEntity);
   const [wasteCalendar, setWasteCalendar] = useState(initialHa.wasteCalendar);
-  const [haTime, setHaTime] = useState(initialHa.deliveryTime);
-  const [haTz, setHaTz] = useState(initialHa.timezone);
   const [haEnabled, setHaEnabled] = useState(initialHa.enabled);
 
   // Kanji State
   const [kanjiPerDay, setKanjiPerDay] = useState(initialKanji.kanjiPerDay);
   const [maxJlptLevel, setMaxJlptLevel] = useState(initialKanji.maxJlptLevel);
-  const [kanjiTime, setKanjiTime] = useState(initialKanji.deliveryTime);
-  const [kanjiTz, setKanjiTz] = useState(initialKanji.timezone);
   const [kanjiEnabled, setKanjiEnabled] = useState(initialKanji.enabled);
 
   // Baseline reference snapshot to compare dirty status against
   const [baseKindle, setBaseKindle] = useState(initialKindleEmail);
+  const [baseDelivery, setBaseDelivery] = useState(initialDelivery);
   const [baseCbc, setBaseCbc] = useState(initialCbc);
   const [baseHa, setBaseHa] = useState(initialHa);
   const [baseHaUrl, setBaseHaUrl] = useState(initialHaUrl);
@@ -169,6 +165,8 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   // Dirty checking
+  const isDeliveryDirty = deliveryTime !== baseDelivery.time || deliveryTz !== baseDelivery.timezone;
+
   const cbcFeedsChanged =
     cbcFeeds.size !== baseCbc.feeds.size || [...cbcFeeds].some((f) => !baseCbc.feeds.has(f));
   const isCbcDirty =
@@ -176,8 +174,6 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
     regionOn !== baseCbc.regionOn ||
     regionKey !== baseCbc.regionKey ||
     cbcMax !== baseCbc.maxPerFeed ||
-    cbcTime !== baseCbc.deliveryTime ||
-    cbcTz !== baseCbc.timezone ||
     cbcEnabled !== baseCbc.enabled;
 
   const isHaCredsDirty = haUrl.trim() !== baseHaUrl.trim() || Boolean(haToken.trim());
@@ -185,8 +181,6 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
   const isHaSettingsDirty =
     weatherEntity !== baseHa.weatherEntity ||
     wasteCalendar !== baseHa.wasteCalendar ||
-    haTime !== baseHa.deliveryTime ||
-    haTz !== baseHa.timezone ||
     haEnabled !== baseHa.enabled;
 
   const isKindleDirty = kindleEmail !== baseKindle;
@@ -194,11 +188,10 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
   const isKanjiDirty =
     kanjiPerDay !== baseKanji.kanjiPerDay ||
     maxJlptLevel !== baseKanji.maxJlptLevel ||
-    kanjiTime !== baseKanji.deliveryTime ||
-    kanjiTz !== baseKanji.timezone ||
     kanjiEnabled !== baseKanji.enabled;
 
-  const isDirty = isKindleDirty || isCbcDirty || isHaCredsDirty || isHaSettingsDirty || isKanjiDirty;
+  const isDirty =
+    isKindleDirty || isDeliveryDirty || isCbcDirty || isHaCredsDirty || isHaSettingsDirty || isKanjiDirty;
 
   function ok(text: string) {
     setMessage({ kind: "ok", text });
@@ -231,7 +224,7 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
   const saveAll = () =>
     run("save-all", async () => {
       if (!kindleEmail.includes("@")) {
-        throw new Error("A valid Send-to-Kindle email is required under Kindle setup.");
+        throw new Error("A valid Send-to-Kindle email is required under Delivery setup.");
       }
 
       // 1. Save HA credentials if changed or entered
@@ -250,8 +243,8 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
         service: "cbc",
         feeds: [...cbcFeeds, ...(regionOn ? [regionKey] : [])],
         maxPerFeed: cbcMax,
-        deliveryTime: cbcTime,
-        timezone: cbcTz,
+        deliveryTime,
+        timezone: deliveryTz,
         kindleEmail: kindleEmail.trim(),
         enabled: cbcEnabled,
       });
@@ -261,8 +254,8 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
         service: "ha-summary",
         weatherEntity,
         wasteCalendar,
-        deliveryTime: haTime,
-        timezone: haTz,
+        deliveryTime,
+        timezone: deliveryTz,
         kindleEmail: kindleEmail.trim(),
         enabled: haEnabled,
       });
@@ -272,35 +265,30 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
         service: "kanji",
         kanjiPerDay,
         maxJlptLevel,
-        deliveryTime: kanjiTime,
-        timezone: kanjiTz,
+        deliveryTime,
+        timezone: deliveryTz,
         kindleEmail: kindleEmail.trim(),
         enabled: kanjiEnabled,
       });
 
       // Update baseline snapshots
       setBaseKindle(kindleEmail.trim());
+      setBaseDelivery({ time: deliveryTime, timezone: deliveryTz });
       setBaseCbc({
         feeds: new Set(cbcFeeds),
         regionOn,
         regionKey,
         maxPerFeed: cbcMax,
-        deliveryTime: cbcTime,
-        timezone: cbcTz,
         enabled: cbcEnabled,
       });
       setBaseHa({
         weatherEntity,
         wasteCalendar,
-        deliveryTime: haTime,
-        timezone: haTz,
         enabled: haEnabled,
       });
       setBaseKanji({
         kanjiPerDay,
         maxJlptLevel,
-        deliveryTime: kanjiTime,
-        timezone: kanjiTz,
         enabled: kanjiEnabled,
       });
 
@@ -317,9 +305,9 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
 
   return (
     <>
-      {/* Kindle Setup Section */}
+      {/* Delivery Setup Section */}
       <section className="section">
-        <h2>Kindle setup</h2>
+        <h2>Delivery setup</h2>
         <p className="hint">
           Daily Scribe sends everything from one address. Add <code>my@dailyscribe.ca</code> to your
           Kindle&apos;s “Approved Personal Document E-mail List” — once — under Amazon&apos;s{" "}
@@ -335,6 +323,14 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
             placeholder="you@kindle.com"
           />
         </div>
+
+        <DeliveryFields
+          idPrefix="delivery"
+          time={deliveryTime}
+          setTime={setDeliveryTime}
+          tz={deliveryTz}
+          setTz={setDeliveryTz}
+        />
       </section>
 
       {/* CBC News Section */}
@@ -387,14 +383,6 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
             onChange={(e) => setCbcMax(Math.min(Math.max(Number(e.target.value) || 1, 1), 15))}
           />
         </div>
-
-        <DeliveryFields
-          idPrefix="cbc"
-          time={cbcTime}
-          setTime={setCbcTime}
-          tz={cbcTz}
-          setTz={setCbcTz}
-        />
 
         <div className="actions">
           <label className="toggle">
@@ -468,14 +456,6 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
           </div>
         </div>
 
-        <DeliveryFields
-          idPrefix="ha"
-          time={haTime}
-          setTime={setHaTime}
-          tz={haTz}
-          setTz={setHaTz}
-        />
-
         <div className="actions">
           <label className="toggle">
             <input type="checkbox" checked={haEnabled} onChange={(e) => setHaEnabled(e.target.checked)} />
@@ -522,14 +502,6 @@ export function DashboardForm({ cbc, ha, kanji, configured }: Props) {
             </select>
           </div>
         </div>
-
-        <DeliveryFields
-          idPrefix="kanji"
-          time={kanjiTime}
-          setTime={setKanjiTime}
-          tz={kanjiTz}
-          setTz={setKanjiTz}
-        />
 
         <div className="actions">
           <label className="toggle">
