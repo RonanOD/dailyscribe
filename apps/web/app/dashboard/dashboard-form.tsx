@@ -5,6 +5,11 @@ import { CBC_FEEDS, CBC_REGIONS } from "@/lib/cbc-feeds";
 
 const REGION_KEYS = new Set(CBC_REGIONS.map((f) => f.key));
 
+const IANA_TIMEZONES: string[] =
+  typeof Intl !== "undefined" && typeof Intl.supportedValuesOf === "function"
+    ? Intl.supportedValuesOf("timeZone")
+    : [];
+
 interface CbcConfig {
   feeds?: string[];
   maxPerFeed?: number;
@@ -77,13 +82,24 @@ function DeliveryFields(props: {
       </div>
       <div className="field">
         <label htmlFor={`${idPrefix}-tz`}>Timezone (IANA)</label>
-        <input
-          id={`${idPrefix}-tz`}
-          type="text"
-          value={props.tz}
-          onChange={(e) => props.setTz(e.target.value)}
-          placeholder="America/Toronto"
-        />
+        {IANA_TIMEZONES.length > 0 ? (
+          <select id={`${idPrefix}-tz`} value={props.tz} onChange={(e) => props.setTz(e.target.value)}>
+            {!IANA_TIMEZONES.includes(props.tz) && <option value={props.tz}>{props.tz}</option>}
+            {IANA_TIMEZONES.map((tz) => (
+              <option key={tz} value={tz}>
+                {tz}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            id={`${idPrefix}-tz`}
+            type="text"
+            value={props.tz}
+            onChange={(e) => props.setTz(e.target.value)}
+            placeholder="America/Toronto"
+          />
+        )}
       </div>
     </div>
   );
