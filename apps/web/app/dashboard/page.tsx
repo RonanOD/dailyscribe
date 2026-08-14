@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { collections, decryptSecret, getOrCreateKanjiProgress, type KanjiSubmission } from "@dailyscribe/core";
 import { auth, signIn, signOut } from "@/auth";
 import { DashboardForm } from "./dashboard-form";
@@ -86,6 +87,7 @@ export default async function DashboardPage() {
         </div>
       </header>
 
+      <Suspense fallback={null}>
       <DashboardForm
         cbc={cbcSub ? { config: cbcSub.config, enabled: cbcSub.enabled } : null}
         ha={haSub ? { config: haSub.config, enabled: haSub.enabled } : null}
@@ -137,6 +139,7 @@ export default async function DashboardPage() {
           )
         }
       />
+      </Suspense>
     </main>
   );
 }

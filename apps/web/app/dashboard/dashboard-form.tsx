@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CBC_FEEDS, CBC_REGIONS } from "@/lib/cbc-feeds";
+import { TabNav, type TabDef } from "./tab-nav";
+
+const TAB_KEYS = ["delivery", "cbc", "home-assistant", "kanji"] as const;
+type TabKey = (typeof TAB_KEYS)[number];
+const DEFAULT_TAB: TabKey = "delivery";
 
 const REGION_KEYS = new Set(CBC_REGIONS.map((f) => f.key));
 
@@ -109,6 +115,18 @@ function DeliveryFields(props: {
 }
 
 export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab: TabKey = (TAB_KEYS as readonly string[]).includes(tabParam ?? "")
+    ? (tabParam as TabKey)
+    : DEFAULT_TAB;
+
+  function setTab(key: string) {
+    router.replace(`${pathname}?tab=${key}`, { scroll: false });
+  }
+
   const browserTz =
     typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "America/Toronto";
 
@@ -211,6 +229,19 @@ export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props
 
   const isDirty =
     isKindleDirty || isDeliveryDirty || isCbcDirty || isHaCredsDirty || isHaSettingsDirty || isKanjiDirty;
+
+  const tabs: TabDef[] = [
+    { key: "delivery", label: "Delivery", icon: "📬", dirty: isKindleDirty || isDeliveryDirty },
+    { key: "cbc", label: "CBC News", icon: "📰", iconSrc: "/icons/cbc.svg", dirty: isCbcDirty },
+    {
+      key: "home-assistant",
+      label: "Home Assistant",
+      icon: "🏠",
+      iconSrc: "/icons/home-assistant.svg",
+      dirty: isHaCredsDirty || isHaSettingsDirty,
+    },
+    { key: "kanji", label: "Kanji", icon: "🈷️", dirty: isKanjiDirty },
+  ];
 
   function ok(text: string) {
     setMessage({ kind: "ok", text });
@@ -324,7 +355,10 @@ export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props
 
   return (
     <>
+      <TabNav tabs={tabs} active={activeTab} onChange={setTab} />
+
       {/* Delivery Setup Section */}
+      <div hidden={activeTab !== "delivery"}>
       <section className="section">
         <h2>Delivery setup</h2>
         <p className="hint">
@@ -351,8 +385,10 @@ export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props
           setTz={setDeliveryTz}
         />
       </section>
+      </div>
 
       {/* CBC News Section */}
+      <div hidden={activeTab !== "cbc"}>
       <section className="section">
         <h2>CBC News</h2>
         <p className="hint">A daily PDF of CBC headlines and summaries. Choose your sections.</p>
@@ -413,8 +449,10 @@ export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props
           </button>
         </div>
       </section>
+      </div>
 
       {/* Home Assistant Credentials Section */}
+      <div hidden={activeTab !== "home-assistant"}>
       <section className="section">
         <h2>
           Home Assistant credentials{" "}
@@ -485,8 +523,10 @@ export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props
           </button>
         </div>
       </section>
+      </div>
 
       {/* Kanji A Day Section */}
+      <div hidden={activeTab !== "kanji"}>
       <section className="section">
         <h2>Kanji A Day</h2>
         <p className="hint">
@@ -534,6 +574,7 @@ export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props
       </section>
 
       {afterFields}
+      </div>
 
       {/* Single Unified Save Button at bottom */}
       <section className="section" style={{ borderTop: "2px solid #eaeaea", paddingTop: 16 }}>
