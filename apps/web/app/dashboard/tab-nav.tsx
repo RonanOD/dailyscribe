@@ -34,7 +34,9 @@ export function TabNav({
           {t.iconSrc ? (
             <img src={t.iconSrc} alt="" aria-hidden="true" className="tabnav-icon" />
           ) : (
-            <span aria-hidden="true">{t.icon}</span>
+            <span aria-hidden="true" className="tabnav-emoji">
+              {t.icon}
+            </span>
           )}
           {t.dirty && <span className="tabnav-dot" aria-hidden="true" />}
         </button>
