@@ -19,6 +19,85 @@ const ACCEPTED_CONTENT_TYPES = new Set(["application/pdf"]);
 // this is read via plain text extraction, not vision/OCR.
 const SUBJECT_RE = /dailyscribe:([a-z0-9_-]+):([a-f0-9]+)/;
 
+// Kindle Scribe's "send" flow doesn't always attach the file directly —
+// for larger PDFs it instead emails a notification with a click-tracking
+// link (wrapping a presigned S3 URL) to a cloud-hosted copy, and Resend then
+// reports attachments: [] even though a real file exists. Confirmed against
+// a real submission: the wrapped link only resolves with a normal browser
+// User-Agent (Amazon's redirect service 503s on non-browser clients).
+const AMAZON_LINK_RE = /https:\/\/www\.amazon\.[a-z.]+\/gp\/f\.html\?[^"'\s>]*/g;
+const BROWSER_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+async function fetchAttachmentFromEmailBody(resend: Resend, emailId: string): Promise<Buffer | null> {
+  const { data: emailData, error } = await resend.emails.receiving.get(emailId);
+  if (error || !emailData?.html) return null;
+
+  for (const wrappedUrl of emailData.html.match(AMAZON_LINK_RE) ?? []) {
+    const target = new URL(wrappedUrl).searchParams.get("U");
+    if (!target || !/\.s3\.amazonaws\.com\/.*\.pdf/i.test(target)) continue;
+
+    try {
+      const res = await fetch(wrappedUrl, { redirect: "follow", headers: { "User-Agent": BROWSER_USER_AGENT } });
+      if (!res.ok) continue;
+      const bytes = Buffer.from(await res.arrayBuffer());
+      if (bytes.length > MAX_ATTACHMENT_BYTES) continue;
+      return bytes;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+/** Resolves the mailed-back PDF's bytes, trying a normal attachment first
+ *  and falling back to a linked cloud copy (see fetchAttachmentFromEmailBody)
+ *  when Resend reports no attachment at all. */
+async function resolveSubmissionBytes(
+  resend: Resend,
+  resendEmailId: string,
+  attachments: readonly ReceivedEmailAttachment[],
+): Promise<{ bytes: Buffer; filename: string; contentType: string } | null> {
+  const candidate = attachments.find((a) => ACCEPTED_CONTENT_TYPES.has(a.content_type));
+  if (candidate) {
+    const { data: attachmentList, error: attachmentError } = await resend.emails.receiving.attachments.list({
+      emailId: resendEmailId,
+    });
+    if (attachmentError || !attachmentList) {
+      console.error("resend-inbound: failed to list attachments:", attachmentError);
+      return null;
+    }
+    const attachmentData = attachmentList.data.find((a: AttachmentData) => a.id === candidate.id);
+    if (!attachmentData) {
+      console.error(`resend-inbound: attachment ${candidate.id} not found in list response`);
+      return null;
+    }
+    if (attachmentData.size > MAX_ATTACHMENT_BYTES) {
+      console.warn(`resend-inbound: attachment ${candidate.id} too large (${attachmentData.size} bytes), skipping`);
+      return null;
+    }
+    // download_url expires in ~1 hour; fetched immediately within this request.
+    const fileRes = await fetch(attachmentData.download_url);
+    if (!fileRes.ok) {
+      console.error(`resend-inbound: failed to download attachment: HTTP ${fileRes.status}`);
+      return null;
+    }
+    return {
+      bytes: Buffer.from(await fileRes.arrayBuffer()),
+      filename: candidate.filename ?? "submission",
+      contentType: candidate.content_type,
+    };
+  }
+
+  const linkedBytes = await fetchAttachmentFromEmailBody(resend, resendEmailId);
+  if (linkedBytes) {
+    console.warn(`resend-inbound: no direct attachment on email ${resendEmailId}, used linked copy from body`);
+    return { bytes: linkedBytes, filename: "submission.pdf", contentType: "application/pdf" };
+  }
+
+  return null;
+}
+
 async function extractInboundRef(pdfBytes: Buffer): Promise<{ service: string; token: string } | null> {
   try {
     const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
@@ -93,37 +172,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, skipped: "already processed" });
   }
 
-  const candidate = attachments.find((a: ReceivedEmailAttachment) => ACCEPTED_CONTENT_TYPES.has(a.content_type));
-  if (!candidate) {
-    console.warn(`resend-inbound: no PDF attachment on email ${resendEmailId}`);
+  const submission = await resolveSubmissionBytes(resend, resendEmailId, attachments);
+  if (!submission) {
+    console.warn(`resend-inbound: no usable PDF (attached or linked) on email ${resendEmailId}`);
     return NextResponse.json({ ok: true, skipped: "no usable attachment" });
   }
-
-  const { data: attachmentList, error: attachmentError } = await resend.emails.receiving.attachments.list({
-    emailId: resendEmailId,
-  });
-  if (attachmentError || !attachmentList) {
-    console.error("resend-inbound: failed to list attachments:", attachmentError);
-    return NextResponse.json({ error: "Failed to fetch attachment" }, { status: 502 });
-  }
-
-  const attachmentData = attachmentList.data.find((a: AttachmentData) => a.id === candidate.id);
-  if (!attachmentData) {
-    console.error(`resend-inbound: attachment ${candidate.id} not found in list response`);
-    return NextResponse.json({ error: "Attachment not found" }, { status: 502 });
-  }
-  if (attachmentData.size > MAX_ATTACHMENT_BYTES) {
-    console.warn(`resend-inbound: attachment ${candidate.id} too large (${attachmentData.size} bytes), skipping`);
-    return NextResponse.json({ ok: true, skipped: "attachment too large" });
-  }
-
-  // download_url expires in ~1 hour; fetched immediately within this request.
-  const fileRes = await fetch(attachmentData.download_url);
-  if (!fileRes.ok) {
-    console.error(`resend-inbound: failed to download attachment: HTTP ${fileRes.status}`);
-    return NextResponse.json({ error: "Failed to download attachment" }, { status: 502 });
-  }
-  const attachmentBytes = Buffer.from(await fileRes.arrayBuffer());
+  const { bytes: attachmentBytes, filename: attachmentFilename, contentType: attachmentContentType } = submission;
 
   const ref = await extractInboundRef(attachmentBytes);
   if (!ref) {
@@ -151,8 +205,8 @@ export async function POST(req: Request) {
     userId: progress.userId,
     resendEmailId,
     receivedAt: new Date(),
-    attachmentFilename: candidate.filename ?? "submission",
-    attachmentContentType: candidate.content_type,
+    attachmentFilename,
+    attachmentContentType,
     attachmentBytes,
     batchCharsAtReceipt,
     status: "received",
@@ -182,7 +236,7 @@ export async function POST(req: Request) {
         const client = createGeminiKanjiCheckClient({ apiKey: geminiApiKey, model: process.env.GEMINI_MODEL || undefined });
         const checkResults: KanjiCharCheckResult[] = await client.check({
           attachmentBytes,
-          contentType: candidate.content_type,
+          contentType: attachmentContentType,
           expected,
         });
         await kanjiSubmissions.updateOne(
