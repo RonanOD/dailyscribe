@@ -129,11 +129,14 @@ async function resolveSubmissionBytes(
 
 async function extractInboundRef(pdfBytes: Buffer): Promise<{ service: string; token: string } | null> {
   try {
-    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    const doc = await pdfjsLib.getDocument({
-      data: new Uint8Array(pdfBytes),
-      useWorkerFetch: false,
-    }).promise;
+    // pdfjs-dist's Node build needs @napi-rs/canvas (a native binary) for
+    // DOMMatrix/Path2D polyfills, which didn't survive Vercel's serverless
+    // bundling (ReferenceError: DOMMatrix is not defined, confirmed against
+    // a real production failure) — pdfjs-serverless is a purpose-built
+    // pdfjs-dist wrapper with pure-JS polyfills for exactly this class of
+    // environment, no native deps.
+    const { getDocument } = await import("pdfjs-serverless");
+    const doc = await getDocument({ data: new Uint8Array(pdfBytes), useSystemFonts: true }).promise;
 
     let text = "";
     for (let i = 1; i <= doc.numPages; i++) {
@@ -143,13 +146,9 @@ async function extractInboundRef(pdfBytes: Buffer): Promise<{ service: string; t
       const match = text.match(SUBJECT_RE);
       if (match) return { service: match[1], token: match[2] };
     }
-    console.warn(
-      `resend-inbound: diagnostic — pdfBytes.length=${pdfBytes.length}, numPages=${doc.numPages}, ` +
-        `extractedTextLength=${text.length}, textTail=${JSON.stringify(text.slice(-200))}`,
-    );
     return null;
   } catch (err) {
-    console.error("resend-inbound: pdfjs-dist failed to parse/extract text:", err instanceof Error ? err.stack : err);
+    console.error("resend-inbound: pdfjs-serverless failed to parse/extract text:", err instanceof Error ? err.stack : err);
     return null;
   }
 }

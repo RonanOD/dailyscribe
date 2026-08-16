@@ -13,3 +13,4 @@ downloads/
 
 # os
 .DS_Store
+.vercel
