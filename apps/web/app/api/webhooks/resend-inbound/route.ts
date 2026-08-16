@@ -141,7 +141,8 @@ async function extractInboundRef(pdfBytes: Buffer): Promise<{ service: string; t
       if (match) return { service: match[1], token: match[2] };
     }
     return null;
-  } catch {
+  } catch (err) {
+    console.error("resend-inbound: pdfjs-dist failed to parse/extract text:", err instanceof Error ? err.stack : err);
     return null;
   }
 }
