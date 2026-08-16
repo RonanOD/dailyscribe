@@ -131,7 +131,15 @@ function KanjiCard({ entry }: { entry: KanjiEntry }) {
   );
 }
 
-export function KanjiDocument({ batch, date }: { batch: DailyKanjiBatch; date: Date }) {
+export function KanjiDocument({
+  batch,
+  date,
+  inboundToken,
+}: {
+  batch: DailyKanjiBatch;
+  date: Date;
+  inboundToken: string;
+}) {
   const dateFormatted = new Intl.DateTimeFormat("en-CA", {
     weekday: "long",
     year: "numeric",
@@ -161,7 +169,7 @@ export function KanjiDocument({ batch, date }: { batch: DailyKanjiBatch; date: D
         <Text
           style={styles.footer}
           render={({ pageNumber, totalPages }) =>
-            `Delivered by Daily Scribe · Page ${pageNumber} of ${totalPages} · Kanji data: KANJIDIC2/EDRDG (CC BY-SA 4.0). Stroke diagrams: KanjiVG, © Ulrich Apel (CC BY-SA 3.0).`
+            `Delivered by Daily Scribe · Page ${pageNumber} of ${totalPages} · Kanji data: KANJIDIC2/EDRDG (CC BY-SA 4.0). Stroke diagrams: KanjiVG, © Ulrich Apel (CC BY-SA 3.0). · Ref: dailyscribe:kanji:${inboundToken}`
           }
           fixed
         />
@@ -170,8 +178,8 @@ export function KanjiDocument({ batch, date }: { batch: DailyKanjiBatch; date: D
   );
 }
 
-export async function renderKanjiPdf(batch: DailyKanjiBatch, date: Date): Promise<Buffer> {
-  return renderToBuffer(<KanjiDocument batch={batch} date={date} />);
+export async function renderKanjiPdf(batch: DailyKanjiBatch, date: Date, inboundToken: string): Promise<Buffer> {
+  return renderToBuffer(<KanjiDocument batch={batch} date={date} inboundToken={inboundToken} />);
 }
 
 export const kanjiPlugin: ServicePlugin = {
@@ -186,7 +194,7 @@ export const kanjiPlugin: ServicePlugin = {
 
     const progress = await getOrCreateKanjiProgress(ctx.userId);
     const batch = selectDailyBatch(KANJI_CURRICULUM, pool, progress.cursor, config.kanjiPerDay, progress.retryChars ?? []);
-    const bytes = await renderKanjiPdf(batch, ctx.date);
+    const bytes = await renderKanjiPdf(batch, ctx.date, progress.inboundToken);
 
     // Only advance the cursor once the PDF has actually been built, so a
     // render failure never skips kanji the user never received. Snapshot

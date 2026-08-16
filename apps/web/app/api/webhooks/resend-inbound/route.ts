@@ -7,24 +7,46 @@ type ReceivedEmailAttachment = EmailReceivedEvent["data"]["attachments"][number]
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10MB — a single scanned/photographed page
-const ACCEPTED_CONTENT_TYPES = new Set(["application/pdf", "image/png", "image/jpeg"]);
-const LOCAL_PART_PREFIX = "kanji-";
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10MB — a single PDF submission
+const ACCEPTED_CONTENT_TYPES = new Set(["application/pdf"]);
 
-function extractInboundToken(toAddresses: string[]): string | null {
-  for (const to of toAddresses) {
-    const localPart = to.split("@")[0] ?? "";
-    if (localPart.startsWith(LOCAL_PART_PREFIX)) {
-      return localPart.slice(LOCAL_PART_PREFIX.length);
+// Every PDF Daily Scribe generates carries `dailyscribe:<service>:<token>` in
+// its footer text, so a single shared inbound address can route mail for any
+// (current or future) service without the address itself encoding anything —
+// the mailed-back PDF is the only source of truth. Kindle Scribe's annotate
+// pipeline strips PDF /Info metadata, but its actual text content stream
+// survives intact (confirmed against a real round-tripped submission), so
+// this is read via plain text extraction, not vision/OCR.
+const SUBJECT_RE = /dailyscribe:([a-z0-9_-]+):([a-f0-9]+)/;
+
+async function extractInboundRef(pdfBytes: Buffer): Promise<{ service: string; token: string } | null> {
+  try {
+    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const doc = await pdfjsLib.getDocument({
+      data: new Uint8Array(pdfBytes),
+      useWorkerFetch: false,
+    }).promise;
+
+    let text = "";
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      text += " " + content.items.map((it) => ("str" in it ? it.str : "")).join(" ");
+      const match = text.match(SUBJECT_RE);
+      if (match) return { service: match[1], token: match[2] };
     }
+    return null;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 /**
- * Resend inbound webhook (event.type "email.received") for the Kanji
- * handwriting check-in. Verify → route by per-user token → fetch the
- * attachment → store it → grade it against the expected batch via Gemini.
+ * Resend inbound webhook (event.type "email.received") for all mailed-back
+ * submissions, across every service — one shared address, routed entirely by
+ * metadata embedded in the PDF itself (see SUBJECT_RE) rather than by which
+ * address it was sent to. Verify → fetch the PDF attachment → read its
+ * embedded service+token → dispatch to that service's handler.
  * Anyone can email this endpoint once they know a user's token, so this only
  * proves the request really came from Resend, not that the sender is who
  * they claim to be — the token itself is the only practical guard available
@@ -63,19 +85,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, skipped: "not email.received" });
   }
 
-  const { email_id: resendEmailId, to, attachments } = event.data;
-  const inboundToken = extractInboundToken(to);
-  if (!inboundToken) {
-    console.warn(`resend-inbound: no ${LOCAL_PART_PREFIX}<token> address found in`, to);
-    return NextResponse.json({ ok: true, skipped: "no matching address" });
-  }
-
+  const { email_id: resendEmailId, attachments } = event.data;
   const { kanjiProgress, kanjiSubmissions } = await collections();
-  const progress = await kanjiProgress.findOne({ inboundToken });
-  if (!progress) {
-    console.warn(`resend-inbound: no user matches inbound token (email ${resendEmailId})`);
-    return NextResponse.json({ ok: true, skipped: "unknown token" });
-  }
 
   const already = await kanjiSubmissions.findOne({ resendEmailId });
   if (already) {
@@ -84,7 +95,7 @@ export async function POST(req: Request) {
 
   const candidate = attachments.find((a: ReceivedEmailAttachment) => ACCEPTED_CONTENT_TYPES.has(a.content_type));
   if (!candidate) {
-    console.warn(`resend-inbound: no PDF/image attachment on email ${resendEmailId}`);
+    console.warn(`resend-inbound: no PDF attachment on email ${resendEmailId}`);
     return NextResponse.json({ ok: true, skipped: "no usable attachment" });
   }
 
@@ -113,6 +124,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to download attachment" }, { status: 502 });
   }
   const attachmentBytes = Buffer.from(await fileRes.arrayBuffer());
+
+  const ref = await extractInboundRef(attachmentBytes);
+  if (!ref) {
+    console.warn(`resend-inbound: no dailyscribe ref found in PDF text (email ${resendEmailId})`);
+    return NextResponse.json({ ok: true, skipped: "no ref found in PDF text" });
+  }
+
+  switch (ref.service) {
+    case "kanji":
+      break;
+    default:
+      console.warn(`resend-inbound: unknown service "${ref.service}" (email ${resendEmailId})`);
+      return NextResponse.json({ ok: true, skipped: "unknown service" });
+  }
+
+  const progress = await kanjiProgress.findOne({ inboundToken: ref.token });
+  if (!progress) {
+    console.warn(`resend-inbound: no user matches inbound token (email ${resendEmailId})`);
+    return NextResponse.json({ ok: true, skipped: "unknown token" });
+  }
+
   const batchCharsAtReceipt = progress.lastBatchChars ?? [];
 
   const { insertedId } = await kanjiSubmissions.insertOne({

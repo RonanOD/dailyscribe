@@ -38,6 +38,21 @@ No per-user email credentials exist anywhere.
    List** (Amazon → Manage Your Content and Devices → Preferences → Personal Document
    Settings) — once; new services need no extra setup.
 
+### Resend Receiving (inbound mail)
+One shared address (`reply@my.dailyscribe.ca`) receives every mailed-back submission,
+across all services — routing is done by metadata embedded in the PDF itself (its
+`/Subject`, `dailyscribe:<service>:<token>`), not by which address it was sent to, so
+adding a new inbound-capable service needs no new address or DNS.
+1. Use a **subdomain** (`my.dailyscribe.ca`), not the root domain — the root already
+   has an active Cloudflare Email Routing rule (`my@dailyscribe.ca` → personal inbox)
+   that Resend's receiving MX records would conflict with and break.
+2. In Resend → **Domains → Add** `my.dailyscribe.ca` → enable **Receiving**, and add
+   the MX record(s) it issues at the DNS host (Cloudflare; DNS-only/grey cloud).
+3. Create a **webhook** subscribed to `email.received`, pointed at
+   `https://dailyscribe.ca/api/webhooks/resend-inbound` → copy its signing secret.
+4. Set `RESEND_INBOUND_DOMAIN=my.dailyscribe.ca` and `RESEND_INBOUND_WEBHOOK_SECRET`
+   (below).
+
 ## 3. Environment variables
 
 Copy `.env.example` → `apps/web/.env.local` for dev, and set the same in Vercel for prod.
@@ -52,6 +67,10 @@ Copy `.env.example` → `apps/web/.env.local` for dev, and set the same in Verce
 | `CRON_SECRET` | Bearer token Vercel Cron must present to `/api/cron/dispatch` |
 | `RESEND_API_KEY` | Resend API key (app-wide outbound email) |
 | `MAIL_FROM_DEFAULT` | From address, `Daily Scribe <my@dailyscribe.ca>` (also the code default) |
+| `RESEND_INBOUND_DOMAIN` | Inbound receiving subdomain, `my.dailyscribe.ca` |
+| `RESEND_INBOUND_WEBHOOK_SECRET` | Signing secret for the `email.received` webhook |
+| `GEMINI_API_KEY` | Google Gemini key for the Kanji handwriting check |
+| `GEMINI_MODEL` | Optional Gemini model override (defaults to `gemini-flash-lite-latest`) |
 
 Generate keys:
 ```bash

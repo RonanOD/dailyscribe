@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { collections, decryptSecret, getOrCreateKanjiProgress, type KanjiSubmission } from "@dailyscribe/core";
+import { collections, decryptSecret, type KanjiSubmission } from "@dailyscribe/core";
 import { auth, signIn, signOut } from "@/auth";
 import { DashboardForm } from "./dashboard-form";
 
@@ -51,16 +51,17 @@ export default async function DashboardPage() {
     haUrl,
   };
 
-  // Kanji practice check-in address — only relevant once the user has
-  // actually configured the Kanji service; shown even before their first
-  // send so they can save it as a contact on their Kindle Scribe ahead of time.
-  let kanjiInboundAddress: string | null = null;
+  // Inbound reply address — one address shared by every service (routing is
+  // done via metadata embedded in the mailed-back PDF, not the address), only
+  // relevant once the user has actually configured the Kanji service; shown
+  // even before their first send so they can save it as a contact on their
+  // Kindle Scribe ahead of time.
+  let inboundAddress: string | null = null;
   let lastSubmission: KanjiSubmission | null = null;
   if (kanjiSub) {
-    const progress = await getOrCreateKanjiProgress(userId);
     const inboundDomain = process.env.RESEND_INBOUND_DOMAIN;
     if (inboundDomain) {
-      kanjiInboundAddress = `kanji-${progress.inboundToken}@${inboundDomain}`;
+      inboundAddress = `reply@${inboundDomain}`;
     }
     const { kanjiSubmissions } = await collections();
     lastSubmission = await kanjiSubmissions.findOne({ userId }, { sort: { receivedAt: -1 } });
@@ -97,11 +98,14 @@ export default async function DashboardPage() {
           kanjiSub && (
             <section className="section">
               <h2>Kanji practice check-in</h2>
-              {kanjiInboundAddress ? (
+              {inboundAddress ? (
                 <>
                   <p className="hint">
-                    Mail your marked-up practice page back to <code>{kanjiInboundAddress}</code> (save it as a
-                    contact on your Kindle Scribe) and we&apos;ll check which characters you attempted.
+                    Mail the marked-up PDF back to <code>{inboundAddress}</code> (save it as a contact on your
+                    Kindle Scribe) — each day&apos;s PDF carries a hidden marker that ties it back to your
+                    account, so we&apos;ll know it&apos;s yours and check which characters you attempted. Send
+                    the PDF itself (e.g. via Kindle Scribe&apos;s Send/Export after marking it up) — a photo of
+                    a printed page won&apos;t work.
                   </p>
                   {lastSubmission ? (
                     <>
