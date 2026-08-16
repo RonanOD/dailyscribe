@@ -22,12 +22,29 @@ const SUBJECT_RE = /dailyscribe:([a-z0-9_-]+):([a-f0-9]+)/;
 // Kindle Scribe's "send" flow doesn't always attach the file directly —
 // for larger PDFs it instead emails a notification with a click-tracking
 // link (wrapping a presigned S3 URL) to a cloud-hosted copy, and Resend then
-// reports attachments: [] even though a real file exists. Confirmed against
-// a real submission: the wrapped link only resolves with a normal browser
-// User-Agent (Amazon's redirect service 503s on non-browser clients).
+// reports attachments: [] even though a real file exists. The wrapped link
+// only resolves for requests that look like a real browser navigation —
+// Amazon's redirect service 503s bare/non-browser clients — and even then
+// intermittently, hence the retries (mirrors a working reference
+// implementation elsewhere in this project's history, which saw the same
+// intermittent 503s from a residential IP and handled them the same way).
 const AMAZON_LINK_RE = /https:\/\/www\.amazon\.[a-z.]+\/gp\/f\.html\?[^"'\s>]*/g;
-const BROWSER_USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+const BROWSER_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Upgrade-Insecure-Requests": "1",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
+};
+const LINK_FETCH_ATTEMPTS = 3;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function fetchAttachmentFromEmailBody(resend: Resend, emailId: string): Promise<Buffer | null> {
   const { data: emailData, error } = await resend.emails.receiving.get(emailId);
@@ -37,14 +54,23 @@ async function fetchAttachmentFromEmailBody(resend: Resend, emailId: string): Pr
     const target = new URL(wrappedUrl).searchParams.get("U");
     if (!target || !/\.s3\.amazonaws\.com\/.*\.pdf/i.test(target)) continue;
 
-    try {
-      const res = await fetch(wrappedUrl, { redirect: "follow", headers: { "User-Agent": BROWSER_USER_AGENT } });
-      if (!res.ok) continue;
-      const bytes = Buffer.from(await res.arrayBuffer());
-      if (bytes.length > MAX_ATTACHMENT_BYTES) continue;
-      return bytes;
-    } catch {
-      continue;
+    for (let attempt = 1; attempt <= LINK_FETCH_ATTEMPTS; attempt++) {
+      try {
+        const res = await fetch(wrappedUrl, { redirect: "follow", headers: BROWSER_HEADERS });
+        if (!res.ok) {
+          console.warn(`resend-inbound: linked-copy fetch attempt ${attempt}/${LINK_FETCH_ATTEMPTS} got HTTP ${res.status}`);
+        } else {
+          const bytes = Buffer.from(await res.arrayBuffer());
+          if (bytes.length > MAX_ATTACHMENT_BYTES) break;
+          return bytes;
+        }
+      } catch (err) {
+        console.warn(
+          `resend-inbound: linked-copy fetch attempt ${attempt}/${LINK_FETCH_ATTEMPTS} failed:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+      if (attempt < LINK_FETCH_ATTEMPTS) await sleep(2000 * attempt);
     }
   }
   return null;
