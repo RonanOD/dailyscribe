@@ -61,6 +61,9 @@ async function fetchAttachmentFromEmailBody(resend: Resend, emailId: string): Pr
           console.warn(`resend-inbound: linked-copy fetch attempt ${attempt}/${LINK_FETCH_ATTEMPTS} got HTTP ${res.status}`);
         } else {
           const bytes = Buffer.from(await res.arrayBuffer());
+          console.warn(
+            `resend-inbound: diagnostic — fetched linked copy, contentLengthHeader=${res.headers.get("content-length")}, actualBytes=${bytes.length}`,
+          );
           if (bytes.length > MAX_ATTACHMENT_BYTES) break;
           return bytes;
         }
@@ -140,6 +143,10 @@ async function extractInboundRef(pdfBytes: Buffer): Promise<{ service: string; t
       const match = text.match(SUBJECT_RE);
       if (match) return { service: match[1], token: match[2] };
     }
+    console.warn(
+      `resend-inbound: diagnostic — pdfBytes.length=${pdfBytes.length}, numPages=${doc.numPages}, ` +
+        `extractedTextLength=${text.length}, textTail=${JSON.stringify(text.slice(-200))}`,
+    );
     return null;
   } catch (err) {
     console.error("resend-inbound: pdfjs-dist failed to parse/extract text:", err instanceof Error ? err.stack : err);
