@@ -4,7 +4,7 @@ Online Services for Kindle Scribe and other devices. The kindle scribe is pretty
 - [x] Kanji a day
 - [ ] Track eating 
 - [ ] Read a classic novel
-- [ ] NYT crossword 
+- [ ] Daily crossword 
 - [ ] DND 5e Campaign
 - [x] CBC News
 - [ ] [BBC News](https://www.bbc.co.uk/news/10628494)
