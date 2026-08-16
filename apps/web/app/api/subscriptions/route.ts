@@ -2,6 +2,7 @@ import {
   collections,
   type CbcNewsConfig,
   type CrosswordVersion,
+  type DigestConfig,
   type HaSummaryConfig,
   type KanjiServiceConfig,
   type NytCrosswordConfig,
@@ -14,7 +15,7 @@ import { ALL_CBC_FEEDS } from "@/lib/cbc-feeds";
 
 export const runtime = "nodejs";
 
-const SERVICES: ServiceId[] = ["nyt-crossword", "cbc", "ha-summary", "kanji"];
+const SERVICES: ServiceId[] = ["nyt-crossword", "cbc", "ha-summary", "kanji", "digest"];
 const JLPT_LEVELS = [1, 2, 3, 4, 5] as const;
 const VERSIONS: CrosswordVersion[] = ["games", "newspaper", "big", "southpaw"];
 const CBC_FEED_KEYS = new Set(ALL_CBC_FEEDS.map((f) => f.key));
@@ -92,6 +93,8 @@ export async function POST(req: Request) {
       ? (levelNum as 1 | 2 | 3 | 4 | 5)
       : 5;
     config = { ...base, kanjiPerDay, maxJlptLevel } satisfies KanjiServiceConfig;
+  } else if (service === "digest") {
+    config = { ...base } satisfies DigestConfig;
   } else {
     const version = VERSIONS.includes(body.version as CrosswordVersion)
       ? (body.version as CrosswordVersion)

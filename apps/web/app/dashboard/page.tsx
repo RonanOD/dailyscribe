@@ -34,6 +34,7 @@ export default async function DashboardPage() {
   const cbcSub = await subscriptions.findOne({ userId, service: "cbc" });
   const haSub = await subscriptions.findOne({ userId, service: "ha-summary" });
   const kanjiSub = await subscriptions.findOne({ userId, service: "kanji" });
+  const digestSub = await subscriptions.findOne({ userId, service: "digest" });
   const secretDocs = await userSecrets.find({ userId }).toArray();
   const haDoc = secretDocs.find((d) => d.provider === "ha");
   let haUrl: string | undefined = undefined;
@@ -95,6 +96,7 @@ export default async function DashboardPage() {
         cbc={cbcSub ? { config: cbcSub.config, enabled: cbcSub.enabled } : null}
         ha={haSub ? { config: haSub.config, enabled: haSub.enabled } : null}
         kanji={kanjiSub ? { config: kanjiSub.config, enabled: kanjiSub.enabled } : null}
+        digestEnabled={digestSub?.enabled ?? false}
         configured={configured}
         afterFields={
           kanjiSub && (

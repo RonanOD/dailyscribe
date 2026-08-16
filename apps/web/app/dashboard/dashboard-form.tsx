@@ -46,6 +46,10 @@ interface Props {
   cbc: { config: CbcConfig; enabled: boolean } | null;
   ha?: { config: HaConfig; enabled: boolean } | null;
   kanji?: { config: KanjiConfig; enabled: boolean } | null;
+  /** Whether "send all enabled services as one PDF" is on. Membership is
+   *  implicit — whichever services are enabled elsewhere — so there's no
+   *  separate config to pass here. */
+  digestEnabled?: boolean;
   configured?: { ha: boolean; haUrl?: string };
   /** Server-rendered content (e.g. the Kanji check-in status) shown above the
    *  Save button, so the button stays the last element on the page. */
@@ -114,7 +118,7 @@ function DeliveryFields(props: {
   );
 }
 
-export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props) {
+export function DashboardForm({ cbc, ha, kanji, digestEnabled: initialDigestEnabled, configured, afterFields }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -190,6 +194,10 @@ export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props
   const [maxJlptLevel, setMaxJlptLevel] = useState(initialKanji.maxJlptLevel);
   const [kanjiEnabled, setKanjiEnabled] = useState(initialKanji.enabled);
 
+  // Digest State — "send all enabled services as one PDF", using the same
+  // shared delivery time/timezone/kindle email as everything else.
+  const [digestEnabled, setDigestEnabled] = useState(initialDigestEnabled ?? false);
+
   // Baseline reference snapshot to compare dirty status against
   const [baseKindle, setBaseKindle] = useState(initialKindleEmail);
   const [baseDelivery, setBaseDelivery] = useState(initialDelivery);
@@ -197,6 +205,7 @@ export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props
   const [baseHa, setBaseHa] = useState(initialHa);
   const [baseHaUrl, setBaseHaUrl] = useState(initialHaUrl);
   const [baseKanji, setBaseKanji] = useState(initialKanji);
+  const [baseDigestEnabled, setBaseDigestEnabled] = useState(initialDigestEnabled ?? false);
 
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -227,11 +236,24 @@ export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props
     maxJlptLevel !== baseKanji.maxJlptLevel ||
     kanjiEnabled !== baseKanji.enabled;
 
+  const isDigestDirty = digestEnabled !== baseDigestEnabled;
+
   const isDirty =
-    isKindleDirty || isDeliveryDirty || isCbcDirty || isHaCredsDirty || isHaSettingsDirty || isKanjiDirty;
+    isKindleDirty ||
+    isDeliveryDirty ||
+    isCbcDirty ||
+    isHaCredsDirty ||
+    isHaSettingsDirty ||
+    isKanjiDirty ||
+    isDigestDirty;
 
   const tabs: TabDef[] = [
-    { key: "delivery", label: "Delivery", icon: "📬", dirty: isKindleDirty || isDeliveryDirty },
+    {
+      key: "delivery",
+      label: "Delivery",
+      icon: "📬",
+      dirty: isKindleDirty || isDeliveryDirty || isDigestDirty,
+    },
     { key: "cbc", label: "CBC News", icon: "📰", iconSrc: "/icons/cbc.svg", dirty: isCbcDirty },
     {
       key: "home-assistant",
@@ -321,6 +343,15 @@ export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props
         enabled: kanjiEnabled,
       });
 
+      // 5. Save Digest setting (bundles whichever services above are enabled)
+      await postJson("/api/subscriptions", {
+        service: "digest",
+        deliveryTime,
+        timezone: deliveryTz,
+        kindleEmail: kindleEmail.trim(),
+        enabled: digestEnabled,
+      });
+
       // Update baseline snapshots
       setBaseKindle(kindleEmail.trim());
       setBaseDelivery({ time: deliveryTime, timezone: deliveryTz });
@@ -341,6 +372,7 @@ export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props
         maxJlptLevel,
         enabled: kanjiEnabled,
       });
+      setBaseDigestEnabled(digestEnabled);
 
       ok("All settings saved successfully.");
     });
@@ -384,6 +416,25 @@ export function DashboardForm({ cbc, ha, kanji, configured, afterFields }: Props
           tz={deliveryTz}
           setTz={setDeliveryTz}
         />
+
+        <div className="field">
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={digestEnabled}
+              onChange={(e) => setDigestEnabled(e.target.checked)}
+            />
+            Send all selected Daily Scribe services as a single PDF
+          </label>
+        </div>
+
+        {digestEnabled && (
+          <div className="actions">
+            <button className="link" onClick={() => sendTest("digest", "test-digest")} disabled={busy !== null}>
+              {busy === "test-digest" ? "Sending…" : "Send test now"}
+            </button>
+          </div>
+        )}
       </section>
       </div>
 

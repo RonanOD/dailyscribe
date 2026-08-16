@@ -20,7 +20,7 @@ export interface UserSecret {
 }
 
 /** Services in the catalog. */
-export type ServiceId = "nyt-crossword" | "cbc" | "ha-summary" | "kanji";
+export type ServiceId = "nyt-crossword" | "cbc" | "ha-summary" | "kanji" | "digest";
 
 /** NYT crossword print layouts (ported from the reference repo's CROSSWORD_VERSION). */
 export type CrosswordVersion = "games" | "newspaper" | "big" | "southpaw";
@@ -60,9 +60,23 @@ export interface KanjiServiceConfig extends BaseSubscriptionConfig {
   maxJlptLevel: 1 | 2 | 3 | 4 | 5;
 }
 
+/** A service that can be bundled into a digest — every real service except the digest itself. */
+export type BundleableServiceId = Exclude<ServiceId, "digest">;
+
+/** A "digest" bundles all of the user's currently-*enabled* services into one
+ *  PDF/email instead of each sending its own — membership is just "is this
+ *  service enabled", not a separate list, so there's nothing digest-specific
+ *  to configure beyond the same shared schedule every service already uses. */
+export type DigestConfig = BaseSubscriptionConfig;
+
 /** Per-service config. The runner reads only the shared base fields; each plugin
  *  validates its own service-specific shape from the untyped RunContext.config. */
-export type SubscriptionConfig = NytCrosswordConfig | CbcNewsConfig | HaSummaryConfig | KanjiServiceConfig;
+export type SubscriptionConfig =
+  | NytCrosswordConfig
+  | CbcNewsConfig
+  | HaSummaryConfig
+  | KanjiServiceConfig
+  | DigestConfig;
 
 export interface Subscription {
   _id?: ObjectId;

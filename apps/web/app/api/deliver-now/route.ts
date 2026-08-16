@@ -6,7 +6,7 @@ import { requireUserId } from "@/lib/session";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const SERVICES: ServiceId[] = ["nyt-crossword", "cbc", "ha-summary", "kanji"];
+const SERVICES: ServiceId[] = ["nyt-crossword", "cbc", "ha-summary", "kanji", "digest"];
 
 /** On-demand "send test now" for the signed-in user's subscription. */
 export async function POST(req: Request) {
