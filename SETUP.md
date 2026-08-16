@@ -39,18 +39,27 @@ No per-user email credentials exist anywhere.
    Settings) — once; new services need no extra setup.
 
 ### Resend Receiving (inbound mail)
-One shared address (`reply@my.dailyscribe.ca`) receives every mailed-back submission,
-across all services — routing is done by metadata embedded in the PDF itself (its
-`/Subject`, `dailyscribe:<service>:<token>`), not by which address it was sent to, so
-adding a new inbound-capable service needs no new address or DNS.
-1. Use a **subdomain** (`my.dailyscribe.ca`), not the root domain — the root already
-   has an active Cloudflare Email Routing rule (`my@dailyscribe.ca` → personal inbox)
-   that Resend's receiving MX records would conflict with and break.
-2. In Resend → **Domains → Add** `my.dailyscribe.ca` → enable **Receiving**, and add
-   the MX record(s) it issues at the DNS host (Cloudflare; DNS-only/grey cloud).
+`my@dailyscribe.ca` — the same address every user already knows as the outbound
+sender — doubles as the shared inbound address for every mailed-back submission,
+across all services. Routing is done by a `dailyscribe:<service>:<token>` ref printed
+in each generated PDF's footer text (extracted with `pdfjs-dist` when the same PDF is
+mailed back), not by which address it was sent to, so adding a new inbound-capable
+service needs no new address or DNS.
+
+A second Resend domain (e.g. a `my.dailyscribe.ca` subdomain used only for receiving)
+was considered first, but Resend's Free plan only includes 1 domain — a second one
+requires a paid plan. Enabling Receiving directly on the existing `dailyscribe.ca`
+domain avoids that cost, at the cost of the root domain's MX: it was previously a
+Cloudflare Email Routing rule forwarding `my@dailyscribe.ca` to a personal inbox
+(unrelated to Daily Scribe's own logic) — that forward is given up in favor of this,
+since it's superseded by real webhook processing.
+1. In Resend, open the existing `dailyscribe.ca` domain (used for outbound) and toggle
+   **Enable Receiving** — no new domain entry needed.
+2. Add the MX record it issues at the DNS host (Cloudflare), **replacing** whatever
+   MX records are currently there for the root domain.
 3. Create a **webhook** subscribed to `email.received`, pointed at
    `https://dailyscribe.ca/api/webhooks/resend-inbound` → copy its signing secret.
-4. Set `RESEND_INBOUND_DOMAIN=my.dailyscribe.ca` and `RESEND_INBOUND_WEBHOOK_SECRET`
+4. Set `RESEND_INBOUND_DOMAIN=dailyscribe.ca` and `RESEND_INBOUND_WEBHOOK_SECRET`
    (below).
 
 ## 3. Environment variables

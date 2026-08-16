@@ -51,17 +51,19 @@ export default async function DashboardPage() {
     haUrl,
   };
 
-  // Inbound reply address — one address shared by every service (routing is
-  // done via metadata embedded in the mailed-back PDF, not the address), only
-  // relevant once the user has actually configured the Kanji service; shown
-  // even before their first send so they can save it as a contact on their
-  // Kindle Scribe ahead of time.
+  // Inbound reply address — the same my@dailyscribe.ca address every user
+  // already has to know as the outbound sender, doing double duty as the
+  // shared inbound address for every service (routing is done via metadata
+  // embedded in the mailed-back PDF, not the address). Only relevant once
+  // the user has actually configured the Kanji service; shown even before
+  // their first send so they can save it as a contact on their Kindle
+  // Scribe ahead of time (though it's likely already saved, as the sender).
   let inboundAddress: string | null = null;
   let lastSubmission: KanjiSubmission | null = null;
   if (kanjiSub) {
     const inboundDomain = process.env.RESEND_INBOUND_DOMAIN;
     if (inboundDomain) {
-      inboundAddress = `reply@${inboundDomain}`;
+      inboundAddress = `my@${inboundDomain}`;
     }
     const { kanjiSubmissions } = await collections();
     lastSubmission = await kanjiSubmissions.findOne({ userId }, { sort: { receivedAt: -1 } });
@@ -101,10 +103,11 @@ export default async function DashboardPage() {
               {inboundAddress ? (
                 <>
                   <p className="hint">
-                    Mail the marked-up PDF back to <code>{inboundAddress}</code> (save it as a contact on your
-                    Kindle Scribe) — each day&apos;s PDF carries a hidden marker that ties it back to your
-                    account, so we&apos;ll know it&apos;s yours and check which characters you attempted. Send
-                    the PDF itself (e.g. via Kindle Scribe&apos;s Send/Export after marking it up) — a photo of
+                    Mail the marked-up PDF back to <code>{inboundAddress}</code> — the same address Daily Scribe
+                    sends from, so it&apos;s easy to remember (worth saving as a Send-to contact on your Kindle
+                    Scribe too, for one-tap replies). Each day&apos;s PDF carries a hidden marker that ties it
+                    back to your account, so we&apos;ll know it&apos;s yours and check which characters you
+                    attempted. Send the PDF itself (e.g. via Kindle Scribe&apos;s Send/Export after marking it up) — a photo of
                     a printed page won&apos;t work.
                   </p>
                   {lastSubmission ? (
