@@ -73,6 +73,16 @@ function localParts(now: Date, timeZone: string): LocalParts {
   };
 }
 
+interface DigestSectionResult {
+  sections: DigestSection[];
+  /** Labels of members that were enabled but threw while rendering — kept
+   *  separate from "not configured"/"disabled" (those are silently skipped,
+   *  by design) so the caller can still tell the user one of their enabled
+   *  services didn't make it in today, instead of the digest just quietly
+   *  shrinking. */
+  failedLabels: string[];
+}
+
 /**
  * A "digest" has no plugin of its own — it bundles whichever of the user's
  * other services are currently enabled into one PDF. Membership is just
@@ -81,24 +91,39 @@ function localParts(now: Date, timeZone: string): LocalParts {
  * One section per member (labeled, for the cover's table of contents) —
  * a member returning more than one asset gets merged into a single section
  * first, though every plugin returns exactly one today.
+ *
+ * Each member renders independently: one member throwing (e.g. Home
+ * Assistant briefly unreachable) only drops that section, it never takes
+ * down the whole digest — the alternative (today's kanji/CBC failing to
+ * send because HA's API hiccuped) is worse than a smaller bundle.
  */
 async function collectDigestSections(
   userId: string,
   utcMidnight: Date,
   secrets: Record<string, string>,
-): Promise<DigestSection[]> {
+): Promise<DigestSectionResult> {
   const { subscriptions } = await collections();
   const sections: DigestSection[] = [];
+  const failedLabels: string[] = [];
   for (const memberId of DIGEST_MEMBER_SERVICES) {
     const member = await subscriptions.findOne({ userId, service: memberId, enabled: true });
     const plugin = member && getPlugin(memberId);
     if (!plugin) continue;
-    const memberAssets = await plugin.run({ userId, date: utcMidnight, config: member!.config, secrets });
-    if (memberAssets.length === 0) continue;
-    const asset = memberAssets.length === 1 ? memberAssets[0] : await mergePdfAssets(memberAssets, `${memberId}.pdf`);
-    sections.push({ label: plugin.label, asset });
+    try {
+      const memberAssets = await plugin.run({ userId, date: utcMidnight, config: member!.config, secrets });
+      if (memberAssets.length === 0) continue;
+      const asset =
+        memberAssets.length === 1 ? memberAssets[0] : await mergePdfAssets(memberAssets, `${memberId}.pdf`);
+      sections.push({ label: plugin.label, asset });
+    } catch (err) {
+      console.error(
+        `digest: ${plugin.label} failed for user ${userId}, dropping it from today's bundle:`,
+        err instanceof Error ? err.stack : err,
+      );
+      failedLabels.push(plugin.label);
+    }
   }
-  return sections;
+  return { sections, failedLabels };
 }
 
 /**
@@ -132,10 +157,15 @@ export async function runSubscription(
 
     let assets: Asset[];
     let label: string;
+    let noteSuffix = "";
     if (sub.service === "digest") {
-      const sections = await collectDigestSections(sub.userId, utcMidnight, secrets);
+      const { sections, failedLabels } = await collectDigestSections(sub.userId, utcMidnight, secrets);
       if (sections.length === 0) {
-        throw new Error("Digest has no configured/enabled member services to bundle.");
+        const reason =
+          failedLabels.length > 0
+            ? `all attempted services failed (${failedLabels.join(", ")})`
+            : "no configured/enabled member services to bundle";
+        throw new Error(`Digest has ${reason}.`);
       }
 
       let startPage = 3; // 2-page front matter (cover, then table of contents)
@@ -148,6 +178,9 @@ export async function runSubscription(
       const { asset: cover, tocLinkRects } = await renderDigestCoverPdf(withStartPages, utcMidnight);
       assets = [await assembleDigestPdf(cover, sections, tocLinkRects, `daily-scribe-digest-${isoDate}.pdf`)];
       label = "Daily Scribe Digest";
+      if (failedLabels.length > 0) {
+        noteSuffix = ` Note: ${failedLabels.join(", ")} couldn't be included today — it'll be back once resolved.`;
+      }
     } else {
       const plugin = getPlugin(sub.service);
       if (!plugin) throw new Error(`Unknown service: ${sub.service}`);
@@ -158,7 +191,7 @@ export async function runSubscription(
     await getDeliverer().deliver({
       to: sub.config.kindleEmail,
       subject: `${label} — ${isoDate}`,
-      text: `Your daily ${label}, delivered by Daily Scribe.`,
+      text: `Your daily ${label}, delivered by Daily Scribe.${noteSuffix}`,
       assets,
     });
 
