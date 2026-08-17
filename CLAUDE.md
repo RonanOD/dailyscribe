@@ -90,25 +90,34 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
 
 ## Roadmap
 
-- [~] **Phase 0 — Foundations.** Plugin interface (`ServicePlugin`) + registry and a pure-TS
-      NYT crossword plugin (no rendering needed) are **written but not yet trusted** — the code
-      sits uncommitted in the working tree and still needs review, real test verification, and a
-      commit before it counts as done. Python renderer workers deferred to the services that
-      actually need them (CBC, HA).
+- [x] **Phase 0 — Foundations.** Plugin interface (`ServicePlugin`) + registry, committed and
+      live. Four plugins registered: NYT crossword (pure TS, no rendering needed), CBC News,
+      Home Assistant summary, Kanji-a-day — plus a **Digest** pseudo-service (`runner.ts`) that
+      bundles whichever of a user's other services are enabled into one PDF/email, with a
+      branded cover + linked table of contents page and per-member failure isolation (one
+      service erroring drops just its section, not the whole digest). Python renderer workers
+      still deferred to the services that actually need them (none yet — CBC/HA render in pure
+      TS via `@react-pdf/renderer`).
 - [x] **Phase 1 — Multi-tenancy.** Auth.js accounts, MongoDB config (`subscriptions`), and
       encrypted per-user secrets (`userSecrets`, AES-256-GCM) replace `.env`/cookies.
-- [~] **Phase 2 — Web app.** Login + dashboard (service config, secrets, send-test-now) shipped.
-      Still to do: public signup/marketing polish, full service-catalog picker (>1 service).
+- [~] **Phase 2 — Web app.** Login + dashboard (service config, secrets, send-test-now, digest
+      checkbox) shipped. Still to do: public signup/marketing polish, full service-catalog
+      picker (>1 service) for new sign-ups — DnD 5e, classic novels, and eating tracking remain
+      unbuilt.
 - [~] **Phase 3 — Scheduling at scale.** Vercel Cron + timezone-aware, idempotent dispatch
       shipped for the solo case. Still to do: retries, failure notifications, sub-daily cron
       coverage across many timezones (Vercel Pro).
 - [ ] **Phase 4 — Billing.** Subscription tiers (e.g. free single-service vs. paid bundles).
-- [ ] **Phase 5 — Handwriting return path.** Ingest handwritten responses emailed back from
-      the Scribe (e.g. habit tracking, crossword answers).
+- [~] **Phase 5 — Handwriting return path.** Live for Kanji: `/api/webhooks/resend-inbound`
+      routes a mailed-back PDF by an embedded page ref, trims it to just that service's own
+      pages, and grades it via Gemini (`kanjiSubmissions`, `kanjiProgress`). Still to do:
+      generalize the return path beyond Kanji to other services (e.g. crossword answers, habit
+      tracking).
 
 ## Service catalog (from README)
 NYT crossword · CBC News · Home Assistant summary · DnD 5e campaign · Kanji-a-day ·
-Track eating · Read a classic novel.
+Track eating · Read a classic novel. (Digest — bundle any combination of the above into one
+PDF/email — is a delivery mode on top of these, not a catalog entry of its own.)
 
 ## Constraints & notes
 - Amazon Kindle requires sender email allowlisting; onboarding guides users to whitelist the
