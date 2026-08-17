@@ -1,16 +1,20 @@
 import {
+  assembleDigestPdf,
   collections,
   createResendDeliverer,
   decryptSecret,
+  getPdfPageCount,
   getPlugin,
   mergePdfAssets,
   nytCrosswordPlugin,
   registerPlugin,
   type Asset,
   type Deliverer,
+  type DigestSection,
   type Subscription,
 } from "@dailyscribe/core";
 import { cbcNewsPlugin } from "@/lib/plugins/cbc";
+import { renderDigestCoverPdf } from "@/lib/plugins/digest-cover";
 import { haSummaryPlugin } from "@/lib/plugins/ha";
 import { kanjiPlugin } from "@/lib/plugins/kanji";
 import { DIGEST_MEMBER_SERVICES } from "@/lib/digest";
@@ -74,21 +78,27 @@ function localParts(now: Date, timeZone: string): LocalParts {
  * other services are currently enabled into one PDF. Membership is just
  * "is this service enabled", not a separate list, so a service dropping out
  * of the digest is exactly the same action as disabling it anywhere else.
+ * One section per member (labeled, for the cover's table of contents) —
+ * a member returning more than one asset gets merged into a single section
+ * first, though every plugin returns exactly one today.
  */
-async function collectDigestAssets(
+async function collectDigestSections(
   userId: string,
   utcMidnight: Date,
   secrets: Record<string, string>,
-): Promise<Asset[]> {
+): Promise<DigestSection[]> {
   const { subscriptions } = await collections();
-  const assets: Asset[] = [];
+  const sections: DigestSection[] = [];
   for (const memberId of DIGEST_MEMBER_SERVICES) {
     const member = await subscriptions.findOne({ userId, service: memberId, enabled: true });
     const plugin = member && getPlugin(memberId);
     if (!plugin) continue;
-    assets.push(...(await plugin.run({ userId, date: utcMidnight, config: member!.config, secrets })));
+    const memberAssets = await plugin.run({ userId, date: utcMidnight, config: member!.config, secrets });
+    if (memberAssets.length === 0) continue;
+    const asset = memberAssets.length === 1 ? memberAssets[0] : await mergePdfAssets(memberAssets, `${memberId}.pdf`);
+    sections.push({ label: plugin.label, asset });
   }
-  return assets;
+  return sections;
 }
 
 /**
@@ -123,11 +133,20 @@ export async function runSubscription(
     let assets: Asset[];
     let label: string;
     if (sub.service === "digest") {
-      const memberAssets = await collectDigestAssets(sub.userId, utcMidnight, secrets);
-      if (memberAssets.length === 0) {
+      const sections = await collectDigestSections(sub.userId, utcMidnight, secrets);
+      if (sections.length === 0) {
         throw new Error("Digest has no configured/enabled member services to bundle.");
       }
-      assets = [await mergePdfAssets(memberAssets, `daily-scribe-digest-${isoDate}.pdf`)];
+
+      let startPage = 3; // 2-page front matter (cover, then table of contents)
+      const withStartPages = [];
+      for (const section of sections) {
+        withStartPages.push({ label: section.label, startPage });
+        startPage += await getPdfPageCount(section.asset.bytes);
+      }
+
+      const { asset: cover, tocLinkRects } = await renderDigestCoverPdf(withStartPages, utcMidnight);
+      assets = [await assembleDigestPdf(cover, sections, tocLinkRects, `daily-scribe-digest-${isoDate}.pdf`)];
       label = "Daily Scribe Digest";
     } else {
       const plugin = getPlugin(sub.service);

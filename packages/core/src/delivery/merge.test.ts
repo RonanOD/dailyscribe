@@ -1,7 +1,7 @@
-import { PDFDocument } from "pdf-lib";
+import { PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import type { Asset } from "../plugins/index";
-import { extractPdfPages, mergePdfAssets } from "./merge";
+import { assembleDigestPdf, extractPdfPages, getPdfPageCount, mergePdfAssets, type DigestSection } from "./merge";
 
 async function fakePdfAsset(filename: string, pageCount: number, size: [number, number] = [200, 200]): Promise<Asset> {
   const doc = await PDFDocument.create();
@@ -54,5 +54,71 @@ describe("extractPdfPages", () => {
     const extracted = await extractPdfPages(only.bytes, [0, 1, 2]);
     const extractedDoc = await PDFDocument.load(extracted);
     expect(extractedDoc.getPageCount()).toBe(3);
+  });
+});
+
+describe("getPdfPageCount", () => {
+  it("reports a PDF's page count", async () => {
+    const asset = await fakePdfAsset("x.pdf", 5);
+    await expect(getPdfPageCount(asset.bytes)).resolves.toBe(5);
+  });
+});
+
+describe("assembleDigestPdf", () => {
+  async function buildFixture() {
+    const cover = await fakePdfAsset("cover.pdf", 2, [100, 100]); // page1=cover, page2=TOC
+    const a = await fakePdfAsset("a.pdf", 1, [300, 300]);
+    const b = await fakePdfAsset("b.pdf", 2, [400, 400]);
+    const sections: DigestSection[] = [
+      { label: "A", asset: a },
+      { label: "B", asset: b },
+    ];
+    const tocLinkRects: [number, number, number, number][] = [
+      [10, 700, 500, 730],
+      [10, 660, 500, 690],
+    ];
+    return { cover, sections, tocLinkRects };
+  }
+
+  it("places the cover first, then each section's pages, in order", async () => {
+    const { cover, sections, tocLinkRects } = await buildFixture();
+    const assembled = await assembleDigestPdf(cover, sections, tocLinkRects, "digest.pdf");
+    const doc = await PDFDocument.load(assembled.bytes);
+
+    expect(doc.getPageCount()).toBe(5); // 2 cover/TOC + 1 (a) + 2 (b)
+    expect(doc.getPage(0).getWidth()).toBe(100); // cover
+    expect(doc.getPage(1).getWidth()).toBe(100); // TOC
+    expect(doc.getPage(2).getWidth()).toBe(300); // section A's first (only) page
+    expect(doc.getPage(3).getWidth()).toBe(400); // section B's first page
+    expect(doc.getPage(4).getWidth()).toBe(400); // section B's second page
+  });
+
+  it("wires one Link annotation per section on the TOC page, at the given rect, pointing at that section's first page", async () => {
+    const { cover, sections, tocLinkRects } = await buildFixture();
+    const assembled = await assembleDigestPdf(cover, sections, tocLinkRects, "digest.pdf");
+    const doc = await PDFDocument.load(assembled.bytes);
+
+    const tocPage = doc.getPage(1);
+    const annots = tocPage.node.Annots();
+    expect(annots?.size()).toBe(2);
+
+    const expectedTargets = [doc.getPage(2), doc.getPage(3)]; // section A starts at 2, section B at 3
+    for (let i = 0; i < 2; i++) {
+      const annotDict = doc.context.lookup(annots!.get(i), PDFDict);
+      expect(annotDict.lookup(PDFName.of("Subtype"), PDFName).asString()).toBe("/Link");
+
+      const rect = annotDict.lookup(PDFName.of("Rect"), PDFArray);
+      const rectValues = [0, 1, 2, 3].map((idx) => rect.lookup(idx, PDFNumber).asNumber());
+      expect(rectValues).toEqual(tocLinkRects[i]);
+
+      const dest = annotDict.lookup(PDFName.of("Dest"), PDFArray);
+      const destPageDict = doc.context.lookup(dest.get(0), PDFDict);
+      expect(destPageDict).toBe(expectedTargets[i].node);
+    }
+  });
+
+  it("throws when the assembled document has no TOC page (page 2)", async () => {
+    const onePageCoverNoSections = await fakePdfAsset("cover.pdf", 1);
+    await expect(assembleDigestPdf(onePageCoverNoSections, [], [], "digest.pdf")).rejects.toThrow();
   });
 });
