@@ -1,4 +1,10 @@
-import { collections, createGeminiKanjiCheckClient, KANJI_CURRICULUM, type KanjiCharCheckResult } from "@dailyscribe/core";
+import {
+  collections,
+  createGeminiKanjiCheckClient,
+  extractPdfPages,
+  KANJI_CURRICULUM,
+  type KanjiCharCheckResult,
+} from "@dailyscribe/core";
 import { NextResponse } from "next/server";
 import { Resend, type AttachmentData, type EmailReceivedEvent } from "resend";
 
@@ -127,7 +133,18 @@ async function resolveSubmissionBytes(
   return null;
 }
 
-async function extractInboundRef(pdfBytes: Buffer): Promise<{ service: string; token: string } | null> {
+/**
+ * Scans every page for the `dailyscribe:<service>:<token>` footer tag, since
+ * a mailed-back submission may be a digest bundling other services' pages
+ * alongside this one (the footer is `fixed` — repeated on every page of the
+ * asset it came from). Returns every page carrying the *same* service+token
+ * as the first match, so the caller can trim the PDF down to just those
+ * pages before storing/grading it — unrelated bundled pages are never sent
+ * on to a per-service handler.
+ */
+async function extractInboundRef(
+  pdfBytes: Buffer,
+): Promise<{ service: string; token: string; pageIndices: number[] } | null> {
   try {
     // pdfjs-dist's Node build needs @napi-rs/canvas (a native binary) for
     // DOMMatrix/Path2D polyfills, which didn't survive Vercel's serverless
@@ -138,15 +155,18 @@ async function extractInboundRef(pdfBytes: Buffer): Promise<{ service: string; t
     const { getDocument } = await import("pdfjs-serverless");
     const doc = await getDocument({ data: new Uint8Array(pdfBytes), useSystemFonts: true }).promise;
 
-    let text = "";
+    let ref: { service: string; token: string } | null = null;
+    const pageIndices: number[] = [];
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const content = await page.getTextContent();
-      text += " " + content.items.map((it) => ("str" in it ? it.str : "")).join(" ");
-      const match = text.match(SUBJECT_RE);
-      if (match) return { service: match[1], token: match[2] };
+      const pageText = content.items.map((it) => ("str" in it ? it.str : "")).join(" ");
+      const match = pageText.match(SUBJECT_RE);
+      if (!match) continue;
+      if (!ref) ref = { service: match[1], token: match[2] };
+      if (match[1] === ref.service && match[2] === ref.token) pageIndices.push(i - 1); // 0-based, for pdf-lib
     }
-    return null;
+    return ref ? { ...ref, pageIndices } : null;
   } catch (err) {
     console.error("resend-inbound: pdfjs-serverless failed to parse/extract text:", err instanceof Error ? err.stack : err);
     return null;
@@ -226,6 +246,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, skipped: "unknown service" });
   }
 
+  // Trim to just this service's own pages — a mailed-back digest carries
+  // other bundled services' pages too, and neither storage nor grading
+  // below should see content that isn't this submission's own.
+  const serviceBytes = await extractPdfPages(attachmentBytes, ref.pageIndices);
+
   const progress = await kanjiProgress.findOne({ inboundToken: ref.token });
   if (!progress) {
     console.warn(`resend-inbound: no user matches inbound token (email ${resendEmailId})`);
@@ -240,7 +265,7 @@ export async function POST(req: Request) {
     receivedAt: new Date(),
     attachmentFilename,
     attachmentContentType,
-    attachmentBytes,
+    attachmentBytes: serviceBytes,
     batchCharsAtReceipt,
     status: "received",
   });
@@ -268,7 +293,7 @@ export async function POST(req: Request) {
         }));
         const client = createGeminiKanjiCheckClient({ apiKey: geminiApiKey, model: process.env.GEMINI_MODEL || undefined });
         const checkResults: KanjiCharCheckResult[] = await client.check({
-          attachmentBytes,
+          attachmentBytes: serviceBytes,
           contentType: attachmentContentType,
           expected,
         });
