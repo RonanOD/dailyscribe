@@ -553,6 +553,9 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
             {busy === "test-cbc" ? "Sending…" : "Send test now"}
           </button>
         </div>
+        {digestEnabled && (
+          <p className="hint">Digest is on — this sends your bundled digest, not a standalone CBC PDF.</p>
+        )}
       </section>
       </div>
 
@@ -595,6 +598,9 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
             {busy === "test-bbc" ? "Sending…" : "Send test now"}
           </button>
         </div>
+        {digestEnabled && (
+          <p className="hint">Digest is on — this sends your bundled digest, not a standalone BBC PDF.</p>
+        )}
       </section>
       </div>
 
@@ -669,6 +675,9 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
             {busy === "test-ha" ? "Sending…" : "Send test now"}
           </button>
         </div>
+        {digestEnabled && (
+          <p className="hint">Digest is on — this sends your bundled digest, not a standalone Home Assistant PDF.</p>
+        )}
       </section>
       </div>
 
@@ -718,6 +727,9 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
             {busy === "test-kanji" ? "Sending…" : "Send test now"}
           </button>
         </div>
+        {digestEnabled && (
+          <p className="hint">Digest is on — this sends your bundled digest, not a standalone Kanji PDF.</p>
+        )}
       </section>
 
       {afterFields}

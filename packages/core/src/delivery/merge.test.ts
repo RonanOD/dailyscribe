@@ -121,4 +121,27 @@ describe("assembleDigestPdf", () => {
     const onePageCoverNoSections = await fakePdfAsset("cover.pdf", 1);
     await expect(assembleDigestPdf(onePageCoverNoSections, [], [], "digest.pdf")).rejects.toThrow();
   });
+
+  it("adds a back-to-contents link on every page after the TOC, but not on the cover or TOC pages themselves", async () => {
+    const { cover, sections, tocLinkRects } = await buildFixture();
+    const assembled = await assembleDigestPdf(cover, sections, tocLinkRects, "digest.pdf");
+    const doc = await PDFDocument.load(assembled.bytes);
+    const tocPage = doc.getPage(1);
+
+    expect(doc.getPage(0).node.Annots()).toBeUndefined(); // cover: nothing to link back from
+
+    // TOC page's annots are exactly the 2 section links asserted above — no extra back-link there.
+    expect(doc.getPage(1).node.Annots()?.size()).toBe(2);
+
+    for (let i = 2; i < doc.getPageCount(); i++) {
+      const page = doc.getPage(i);
+      const annots = page.node.Annots();
+      expect(annots?.size()).toBe(1);
+      const annotDict = doc.context.lookup(annots!.get(0), PDFDict);
+      expect(annotDict.lookup(PDFName.of("Subtype"), PDFName).asString()).toBe("/Link");
+      const dest = annotDict.lookup(PDFName.of("Dest"), PDFArray);
+      const destPageDict = doc.context.lookup(dest.get(0), PDFDict);
+      expect(destPageDict).toBe(tocPage.node);
+    }
+  });
 });

@@ -1,4 +1,4 @@
-import { PDFDocument, PDFName } from "pdf-lib";
+import { PDFDocument, PDFName, StandardFonts, rgb } from "pdf-lib";
 import type { Asset } from "../plugins/index";
 
 /**
@@ -99,6 +99,38 @@ export async function assembleDigestPdf(
     annots.push(linkRef);
   }
   tocPage.node.set(PDFName.of("Annots"), merged.context.obj(annots));
+
+  // A small back-to-contents arrow, top-left, on every page except the
+  // cover (index 0, no reason to jump anywhere from it) and the TOC page
+  // itself (index 1, already there). Drawn glyph for the visible arrow, plus
+  // a Link annotation over it (same raw-annotation technique as the TOC
+  // rows above) so it's tappable back to page 2. Plain ASCII, not a unicode
+  // arrow — the standard Helvetica font's WinAnsi encoding can't render one.
+  const backFont = await merged.embedFont(StandardFonts.Helvetica);
+  const BACK_LABEL = "<-";
+  const BACK_FONT_SIZE = 9;
+  const BACK_MARGIN = 20;
+  for (let i = 2; i < merged.getPageCount(); i++) {
+    const page = merged.getPage(i);
+    const { height } = page.getSize();
+    const x = BACK_MARGIN;
+    const y = height - BACK_MARGIN;
+    page.drawText(BACK_LABEL, { x, y, size: BACK_FONT_SIZE, font: backFont, color: rgb(0.4, 0.4, 0.4) });
+
+    const textWidth = backFont.widthOfTextAtSize(BACK_LABEL, BACK_FONT_SIZE);
+    const linkRef = merged.context.register(
+      merged.context.obj({
+        Type: "Annot",
+        Subtype: "Link",
+        Rect: [x - 2, y - 3, x + textWidth + 2, y + BACK_FONT_SIZE + 2],
+        Border: [0, 0, 0],
+        Dest: [tocPage.ref, "Fit"],
+      }),
+    );
+    const pageAnnots = (page.node.Annots()?.asArray() ?? []).slice();
+    pageAnnots.push(linkRef);
+    page.node.set(PDFName.of("Annots"), merged.context.obj(pageAnnots));
+  }
 
   return {
     filename,
