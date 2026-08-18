@@ -32,6 +32,7 @@ export default async function DashboardPage() {
   const userId = session.user.id;
   const { subscriptions, userSecrets } = await collections();
   const cbcSub = await subscriptions.findOne({ userId, service: "cbc" });
+  const bbcSub = await subscriptions.findOne({ userId, service: "bbc" });
   const haSub = await subscriptions.findOne({ userId, service: "ha-summary" });
   const kanjiSub = await subscriptions.findOne({ userId, service: "kanji" });
   const digestSub = await subscriptions.findOne({ userId, service: "digest" });
@@ -94,6 +95,7 @@ export default async function DashboardPage() {
       <Suspense fallback={null}>
       <DashboardForm
         cbc={cbcSub ? { config: cbcSub.config, enabled: cbcSub.enabled } : null}
+        bbc={bbcSub ? { config: bbcSub.config, enabled: bbcSub.enabled } : null}
         ha={haSub ? { config: haSub.config, enabled: haSub.enabled } : null}
         kanji={kanjiSub ? { config: kanjiSub.config, enabled: kanjiSub.enabled } : null}
         digestEnabled={digestSub?.enabled ?? false}

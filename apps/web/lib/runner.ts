@@ -13,6 +13,7 @@ import {
   type DigestSection,
   type Subscription,
 } from "@dailyscribe/core";
+import { bbcNewsPlugin } from "@/lib/plugins/bbc";
 import { cbcNewsPlugin } from "@/lib/plugins/cbc";
 import { renderDigestCoverPdf } from "@/lib/plugins/digest-cover";
 import { haSummaryPlugin } from "@/lib/plugins/ha";
@@ -22,6 +23,7 @@ import { DIGEST_MEMBER_SERVICES } from "@/lib/digest";
 // Register the available service plugins once per runtime.
 registerPlugin(nytCrosswordPlugin);
 registerPlugin(cbcNewsPlugin);
+registerPlugin(bbcNewsPlugin);
 registerPlugin(haSummaryPlugin);
 registerPlugin(kanjiPlugin);
 
