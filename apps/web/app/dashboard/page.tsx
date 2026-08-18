@@ -71,6 +71,17 @@ export default async function DashboardPage() {
     lastSubmission = await kanjiSubmissions.findOne({ userId }, { sort: { receivedAt: -1 } });
   }
 
+  // Server-rendered, so a plain toLocaleString() would use the server's own
+  // timezone (UTC on Vercel) rather than the user's — format explicitly in
+  // whatever timezone they've set for their delivery.
+  const lastSubmissionFormatted = lastSubmission
+    ? new Intl.DateTimeFormat("en-US", {
+        timeZone: kanjiSub?.config.timezone || "UTC",
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(lastSubmission.receivedAt)
+    : null;
+
   const CHECK_LABEL: Record<string, string> = { matched: "matched", unclear: "unclear", no_attempt: "not attempted" };
 
   return (
@@ -116,7 +127,7 @@ export default async function DashboardPage() {
                   </p>
                   {lastSubmission ? (
                     <>
-                      <p className="hint">Last submission received: {lastSubmission.receivedAt.toLocaleString()}</p>
+                      <p className="hint">Last submission received: {lastSubmissionFormatted}</p>
                       {lastSubmission.status === "processed" &&
                         lastSubmission.checkResults &&
                         lastSubmission.checkResults.length > 0 && (
