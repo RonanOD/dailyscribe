@@ -106,23 +106,40 @@ export async function assembleDigestPdf(
   // a Link annotation over it (same raw-annotation technique as the TOC
   // rows above) so it's tappable back to page 2. Plain ASCII, not a unicode
   // arrow — the standard Helvetica font's WinAnsi encoding can't render one.
-  const backFont = await merged.embedFont(StandardFonts.Helvetica);
+  const backFont = await merged.embedFont(StandardFonts.HelveticaBold);
   const BACK_LABEL = "<-";
-  const BACK_FONT_SIZE = 9;
+  const BACK_FONT_SIZE = 13;
   const BACK_MARGIN = 20;
+  const BACK_PAD_X = 6;
+  const BACK_PAD_Y = 5;
   for (let i = 2; i < merged.getPageCount(); i++) {
     const page = merged.getPage(i);
     const { height } = page.getSize();
     const x = BACK_MARGIN;
     const y = height - BACK_MARGIN;
-    page.drawText(BACK_LABEL, { x, y, size: BACK_FONT_SIZE, font: backFont, color: rgb(0.4, 0.4, 0.4) });
-
     const textWidth = backFont.widthOfTextAtSize(BACK_LABEL, BACK_FONT_SIZE);
+    const box: [number, number, number, number] = [
+      x - BACK_PAD_X,
+      y - BACK_PAD_Y,
+      x + textWidth + BACK_PAD_X,
+      y + BACK_FONT_SIZE + BACK_PAD_Y,
+    ];
+    page.drawRectangle({
+      x: box[0],
+      y: box[1],
+      width: box[2] - box[0],
+      height: box[3] - box[1],
+      borderColor: rgb(0.55, 0.55, 0.55),
+      borderWidth: 0.75,
+      color: rgb(0.95, 0.95, 0.95),
+    });
+    page.drawText(BACK_LABEL, { x, y, size: BACK_FONT_SIZE, font: backFont, color: rgb(0.15, 0.15, 0.15) });
+
     const linkRef = merged.context.register(
       merged.context.obj({
         Type: "Annot",
         Subtype: "Link",
-        Rect: [x - 2, y - 3, x + textWidth + 2, y + BACK_FONT_SIZE + 2],
+        Rect: box,
         Border: [0, 0, 0],
         Dest: [tocPage.ref, "Fit"],
       }),
