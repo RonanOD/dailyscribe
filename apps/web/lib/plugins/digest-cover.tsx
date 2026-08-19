@@ -66,17 +66,15 @@ function CoverArt({ size }: { size: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 640 800">
       <G fill="none" stroke="#111111" strokeWidth={6} strokeLinecap="round" strokeLinejoin="round">
-        <Rect x={150} y={70} width={300} height={470} rx={26} />
-        <Rect x={174} y={100} width={252} height={392} rx={10} strokeWidth={4} />
-        <Circle cx={300} cy={520} r={6} strokeWidth={4} />
-        <Line x1={200} y1={170} x2={400} y2={170} strokeWidth={3} />
-        <Line x1={200} y1={210} x2={400} y2={210} strokeWidth={3} />
-        <Line x1={200} y1={250} x2={360} y2={250} strokeWidth={3} />
-        <G transform="rotate(34 430 600)">
-          <Rect x={330} y={586} width={240} height={28} rx={14} />
-          <Path d="M570 586 l34 14 l-34 14 z" />
-          <Line x1={372} y1={586} x2={372} y2={614} strokeWidth={4} />
-        </G>
+        <Rect x={120} y={70} width={300} height={470} rx={26} />
+        <Rect x={144} y={100} width={252} height={392} rx={10} strokeWidth={4} />
+        <Circle cx={270} cy={520} r={6} strokeWidth={4} />
+        <Line x1={170} y1={170} x2={370} y2={170} strokeWidth={3} />
+        <Line x1={170} y1={210} x2={370} y2={210} strokeWidth={3} />
+        <Line x1={170} y1={250} x2={330} y2={250} strokeWidth={3} />
+        <Rect x={480} y={100} width={28} height={360} rx={14} />
+        <Line x1={480} y1={440} x2={508} y2={440} strokeWidth={4} />
+        <Path d="M480 460 L508 460 L494 496 Z" />
       </G>
     </Svg>
   );
