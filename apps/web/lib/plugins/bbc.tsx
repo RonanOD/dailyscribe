@@ -148,8 +148,11 @@ function formatLongDate(date: Date): string {
   }).format(date);
 }
 
-/** The PDF document for a BBC edition. Grayscale, generous type — built for e-ink. */
-function BbcDocument({ sections, date }: { sections: NewsSection[]; date: Date }) {
+/** The PDF document for a BBC edition. Grayscale, generous type — built for e-ink.
+ *  `digest` suppresses this document's own "Page X of Y" (only correct
+ *  relative to its own PDF) since a digest bundle gets one correct page
+ *  count drawn across the whole assembled document instead. */
+function BbcDocument({ sections, date, digest }: { sections: NewsSection[]; date: Date; digest?: boolean }) {
   return (
     <Document title={`BBC News — ${formatIsoDate(date)}`} author="Daily Scribe">
       <Page size="A4" style={styles.page} wrap>
@@ -175,7 +178,7 @@ function BbcDocument({ sections, date }: { sections: NewsSection[]; date: Date }
         <Text
           style={styles.footer}
           render={({ pageNumber, totalPages }) =>
-            `Delivered by Daily Scribe · Page ${pageNumber} of ${totalPages}`
+            digest ? "Delivered by Daily Scribe" : `Delivered by Daily Scribe · Page ${pageNumber} of ${totalPages}`
           }
           fixed
         />
@@ -185,8 +188,8 @@ function BbcDocument({ sections, date }: { sections: NewsSection[]; date: Date }
 }
 
 /** Render BBC sections to a PDF buffer (pure JS — no native deps, runs on Vercel). */
-export async function renderBbcPdf(sections: NewsSection[], date: Date): Promise<Buffer> {
-  return renderToBuffer(<BbcDocument sections={sections} date={date} />);
+export async function renderBbcPdf(sections: NewsSection[], date: Date, digest?: boolean): Promise<Buffer> {
+  return renderToBuffer(<BbcDocument sections={sections} date={date} digest={digest} />);
 }
 
 export const bbcNewsPlugin: ServicePlugin = {
@@ -198,7 +201,7 @@ export const bbcNewsPlugin: ServicePlugin = {
     if (sections.length === 0) {
       throw new Error("No BBC feeds could be fetched — all sources failed or returned empty.");
     }
-    const bytes = await renderBbcPdf(sections, ctx.date);
+    const bytes = await renderBbcPdf(sections, ctx.date, ctx.digest);
     return [
       {
         filename: `bbc-news-${formatIsoDate(ctx.date)}.pdf`,

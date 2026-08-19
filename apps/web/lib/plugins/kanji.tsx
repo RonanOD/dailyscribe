@@ -131,14 +131,21 @@ function KanjiCard({ entry }: { entry: KanjiEntry }) {
   );
 }
 
+/** `digest` suppresses this document's own "Page X of Y" (only correct
+ *  relative to its own PDF) since a digest bundle gets one correct page
+ *  count drawn across the whole assembled document instead — the rest of
+ *  the footer (attribution, and critically the `Ref:` marker the inbound
+ *  webhook matches on) stays exactly as-is either way. */
 export function KanjiDocument({
   batch,
   date,
   inboundToken,
+  digest,
 }: {
   batch: DailyKanjiBatch;
   date: Date;
   inboundToken: string;
+  digest?: boolean;
 }) {
   const dateFormatted = new Intl.DateTimeFormat("en-CA", {
     weekday: "long",
@@ -168,9 +175,10 @@ export function KanjiDocument({
         ))}
         <Text
           style={styles.footer}
-          render={({ pageNumber, totalPages }) =>
-            `Delivered by Daily Scribe · Page ${pageNumber} of ${totalPages} · Kanji data: KANJIDIC2/EDRDG (CC BY-SA 4.0). Stroke diagrams: KanjiVG, © Ulrich Apel (CC BY-SA 3.0). · Ref: dailyscribe:kanji:${inboundToken}`
-          }
+          render={({ pageNumber, totalPages }) => {
+            const pageInfo = digest ? "" : ` · Page ${pageNumber} of ${totalPages}`;
+            return `Delivered by Daily Scribe${pageInfo} · Kanji data: KANJIDIC2/EDRDG (CC BY-SA 4.0). Stroke diagrams: KanjiVG, © Ulrich Apel (CC BY-SA 3.0). · Ref: dailyscribe:kanji:${inboundToken}`;
+          }}
           fixed
         />
       </Page>
@@ -178,8 +186,13 @@ export function KanjiDocument({
   );
 }
 
-export async function renderKanjiPdf(batch: DailyKanjiBatch, date: Date, inboundToken: string): Promise<Buffer> {
-  return renderToBuffer(<KanjiDocument batch={batch} date={date} inboundToken={inboundToken} />);
+export async function renderKanjiPdf(
+  batch: DailyKanjiBatch,
+  date: Date,
+  inboundToken: string,
+  digest?: boolean,
+): Promise<Buffer> {
+  return renderToBuffer(<KanjiDocument batch={batch} date={date} inboundToken={inboundToken} digest={digest} />);
 }
 
 export const kanjiPlugin: ServicePlugin = {
@@ -194,7 +207,7 @@ export const kanjiPlugin: ServicePlugin = {
 
     const progress = await getOrCreateKanjiProgress(ctx.userId);
     const batch = selectDailyBatch(KANJI_CURRICULUM, pool, progress.cursor, config.kanjiPerDay, progress.retryChars ?? []);
-    const bytes = await renderKanjiPdf(batch, ctx.date, progress.inboundToken);
+    const bytes = await renderKanjiPdf(batch, ctx.date, progress.inboundToken, ctx.digest);
 
     // Only advance the cursor once the PDF has actually been built, so a
     // render failure never skips kanji the user never received. Snapshot

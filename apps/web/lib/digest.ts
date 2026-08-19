@@ -4,4 +4,6 @@ import type { BundleableServiceId } from "@dailyscribe/core";
  *  user currently has enabled get bundled. NYT crossword is excluded: its
  *  plugin is paused (per-user cookie privacy concerns). Shared between the
  *  runner (which services to look up) and the subscriptions API route. */
-export const DIGEST_MEMBER_SERVICES: BundleableServiceId[] = ["cbc", "bbc", "rte", "ha-summary", "kanji"];
+// Order matches the dashboard's tab order, since it also drives the digest
+// cover's table-of-contents listing order.
+export const DIGEST_MEMBER_SERVICES: BundleableServiceId[] = ["rte", "cbc", "bbc", "ha-summary", "kanji"];

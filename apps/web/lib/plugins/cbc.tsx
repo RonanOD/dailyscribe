@@ -149,8 +149,11 @@ function formatLongDate(date: Date): string {
   }).format(date);
 }
 
-/** The PDF document for a CBC edition. Grayscale, generous type — built for e-ink. */
-function CbcDocument({ sections, date }: { sections: NewsSection[]; date: Date }) {
+/** The PDF document for a CBC edition. Grayscale, generous type — built for e-ink.
+ *  `digest` suppresses this document's own "Page X of Y" (only correct
+ *  relative to its own PDF) since a digest bundle gets one correct page
+ *  count drawn across the whole assembled document instead. */
+function CbcDocument({ sections, date, digest }: { sections: NewsSection[]; date: Date; digest?: boolean }) {
   return (
     <Document title={`CBC News — ${formatIsoDate(date)}`} author="Daily Scribe">
       <Page size="A4" style={styles.page} wrap>
@@ -176,7 +179,7 @@ function CbcDocument({ sections, date }: { sections: NewsSection[]; date: Date }
         <Text
           style={styles.footer}
           render={({ pageNumber, totalPages }) =>
-            `Delivered by Daily Scribe · Page ${pageNumber} of ${totalPages}`
+            digest ? "Delivered by Daily Scribe" : `Delivered by Daily Scribe · Page ${pageNumber} of ${totalPages}`
           }
           fixed
         />
@@ -186,8 +189,8 @@ function CbcDocument({ sections, date }: { sections: NewsSection[]; date: Date }
 }
 
 /** Render CBC sections to a PDF buffer (pure JS — no native deps, runs on Vercel). */
-export async function renderCbcPdf(sections: NewsSection[], date: Date): Promise<Buffer> {
-  return renderToBuffer(<CbcDocument sections={sections} date={date} />);
+export async function renderCbcPdf(sections: NewsSection[], date: Date, digest?: boolean): Promise<Buffer> {
+  return renderToBuffer(<CbcDocument sections={sections} date={date} digest={digest} />);
 }
 
 export const cbcNewsPlugin: ServicePlugin = {
@@ -199,7 +202,7 @@ export const cbcNewsPlugin: ServicePlugin = {
     if (sections.length === 0) {
       throw new Error("No CBC feeds could be fetched — all sources failed or returned empty.");
     }
-    const bytes = await renderCbcPdf(sections, ctx.date);
+    const bytes = await renderCbcPdf(sections, ctx.date, ctx.digest);
     return [
       {
         filename: `cbc-news-${formatIsoDate(ctx.date)}.pdf`,

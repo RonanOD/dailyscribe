@@ -114,7 +114,13 @@ async function collectDigestSections(
     const plugin = member && getPlugin(memberId);
     if (!plugin) continue;
     try {
-      const memberAssets = await plugin.run({ userId, date: utcMidnight, config: member!.config, secrets });
+      const memberAssets = await plugin.run({
+        userId,
+        date: utcMidnight,
+        config: member!.config,
+        secrets,
+        digest: true,
+      });
       if (memberAssets.length === 0) continue;
       const asset =
         memberAssets.length === 1 ? memberAssets[0] : await mergePdfAssets(memberAssets, `${memberId}.pdf`);

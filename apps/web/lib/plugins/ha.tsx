@@ -429,8 +429,11 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", bottom: 20, left: 48, right: 48, fontSize: 8, color: "#888888", textAlign: "center" },
 });
 
-// React-PDF Document Component
-export function HaDocument({ data, date }: { data: HaSummaryData; date: Date }) {
+// React-PDF Document Component. `digest` suppresses this document's own
+// "Page X of Y" (only correct relative to its own PDF) since a digest
+// bundle gets one correct page count drawn across the whole assembled
+// document instead.
+export function HaDocument({ data, date, digest }: { data: HaSummaryData; date: Date; digest?: boolean }) {
   const width = 500;
   const height = 110;
   const padL = 30;
@@ -579,7 +582,9 @@ export function HaDocument({ data, date }: { data: HaSummaryData; date: Date }) 
 
         <Text
           style={styles.footer}
-          render={({ pageNumber, totalPages }) => `Delivered by Daily Scribe · Page ${pageNumber} of ${totalPages}`}
+          render={({ pageNumber, totalPages }) =>
+            digest ? "Delivered by Daily Scribe" : `Delivered by Daily Scribe · Page ${pageNumber} of ${totalPages}`
+          }
           fixed
         />
       </Page>
@@ -587,8 +592,8 @@ export function HaDocument({ data, date }: { data: HaSummaryData; date: Date }) 
   );
 }
 
-export async function renderHaPdf(data: HaSummaryData, date: Date): Promise<Buffer> {
-  return renderToBuffer(<HaDocument data={data} date={date} />);
+export async function renderHaPdf(data: HaSummaryData, date: Date, digest?: boolean): Promise<Buffer> {
+  return renderToBuffer(<HaDocument data={data} date={date} digest={digest} />);
 }
 
 export const haSummaryPlugin: ServicePlugin = {
@@ -635,7 +640,7 @@ export const haSummaryPlugin: ServicePlugin = {
       ctx.date,
     );
 
-    const bytes = await renderHaPdf(summaryData, ctx.date);
+    const bytes = await renderHaPdf(summaryData, ctx.date, ctx.digest);
     return [
       {
         filename: `home-status-${formatIsoDate(ctx.date)}.pdf`,

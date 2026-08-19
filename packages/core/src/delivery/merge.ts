@@ -100,23 +100,30 @@ export async function assembleDigestPdf(
   }
   tocPage.node.set(PDFName.of("Annots"), merged.context.obj(annots));
 
-  // A small back-to-contents arrow, top-left, on every page except the
+  // A small back-to-contents arrow, bottom-left, on every page except the
   // cover (index 0, no reason to jump anywhere from it) and the TOC page
-  // itself (index 1, already there). Drawn glyph for the visible arrow, plus
-  // a Link annotation over it (same raw-annotation technique as the TOC
-  // rows above) so it's tappable back to page 2. Plain ASCII, not a unicode
-  // arrow — the standard Helvetica font's WinAnsi encoding can't render one.
+  // itself (index 1, already there). Top-left was tried first, but on a
+  // Kindle Scribe a tap that high on the screen opens the device's own
+  // reading toolbar before it ever reaches the PDF's link annotation —
+  // bottom-left doesn't collide with that. Drawn glyph for the visible
+  // arrow, plus a Link annotation over it (same raw-annotation technique as
+  // the TOC rows above) so it's tappable back to page 2. "‹" (not a unicode
+  // arrow like →) because the standard Helvetica font's WinAnsi encoding
+  // can't render most arrow glyphs, but this one — Windows-1252 0x8B — works.
   const backFont = await merged.embedFont(StandardFonts.HelveticaBold);
-  const BACK_LABEL = "<-";
+  const pageNumFont = await merged.embedFont(StandardFonts.Helvetica);
+  const BACK_LABEL = "‹";
   const BACK_FONT_SIZE = 13;
-  const BACK_MARGIN = 20;
+  const MARGIN = 24;
   const BACK_PAD_X = 6;
   const BACK_PAD_Y = 5;
-  for (let i = 2; i < merged.getPageCount(); i++) {
+  const PAGE_NUM_FONT_SIZE = 8;
+  const totalPages = merged.getPageCount();
+  for (let i = 2; i < totalPages; i++) {
     const page = merged.getPage(i);
-    const { height } = page.getSize();
-    const x = BACK_MARGIN;
-    const y = height - BACK_MARGIN;
+    const { width } = page.getSize();
+    const x = MARGIN;
+    const y = MARGIN;
     const textWidth = backFont.widthOfTextAtSize(BACK_LABEL, BACK_FONT_SIZE);
     const box: [number, number, number, number] = [
       x - BACK_PAD_X,
@@ -147,6 +154,20 @@ export async function assembleDigestPdf(
     const pageAnnots = (page.node.Annots()?.asArray() ?? []).slice();
     pageAnnots.push(linkRef);
     page.node.set(PDFName.of("Annots"), merged.context.obj(pageAnnots));
+
+    // Each section's own PDF numbers its pages "Page N of M" relative to
+    // just that section (suppressed via RunContext.digest — see the plugin
+    // files) — this draws the one correct sequential number across the
+    // whole assembled document instead, bottom-right.
+    const pageLabel = `Page ${i + 1} of ${totalPages}`;
+    const pageLabelWidth = pageNumFont.widthOfTextAtSize(pageLabel, PAGE_NUM_FONT_SIZE);
+    page.drawText(pageLabel, {
+      x: width - MARGIN - pageLabelWidth,
+      y: MARGIN,
+      size: PAGE_NUM_FONT_SIZE,
+      font: pageNumFont,
+      color: rgb(0.53, 0.53, 0.53),
+    });
   }
 
   return {

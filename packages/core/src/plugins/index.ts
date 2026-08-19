@@ -14,6 +14,11 @@ export interface RunContext {
   config: unknown;
   /** provider -> decrypted secret value. */
   secrets: Record<string, string>;
+  /** True when this run's output is a section of a digest bundle rather than
+   *  a standalone send — lets a plugin skip its own "Page X of Y" footer
+   *  (which would only be correct relative to its own PDF) since the digest
+   *  assembly draws a single, correct page count across the whole bundle. */
+  digest?: boolean;
 }
 
 /**
