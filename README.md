@@ -7,7 +7,7 @@ Online Services for Kindle Scribe and other devices. The kindle scribe is pretty
 - [ ] Daily crossword 
 - [ ] DND 5e Campaign
 - [x] CBC News
-- [ ] [BBC News](https://www.bbc.co.uk/news/10628494)
+- [x] [BBC News](https://www.bbc.co.uk/news/10628494)
 - [ ] [RTE News](https://www.rte.ie/feeds/rss/?index=/news/&limit=100)
 - [x] Home Assistant summary 
 
