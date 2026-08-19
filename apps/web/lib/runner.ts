@@ -18,12 +18,14 @@ import { cbcNewsPlugin } from "@/lib/plugins/cbc";
 import { renderDigestCoverPdf } from "@/lib/plugins/digest-cover";
 import { haSummaryPlugin } from "@/lib/plugins/ha";
 import { kanjiPlugin } from "@/lib/plugins/kanji";
+import { rteNewsPlugin } from "@/lib/plugins/rte";
 import { DIGEST_MEMBER_SERVICES } from "@/lib/digest";
 
 // Register the available service plugins once per runtime.
 registerPlugin(nytCrosswordPlugin);
 registerPlugin(cbcNewsPlugin);
 registerPlugin(bbcNewsPlugin);
+registerPlugin(rteNewsPlugin);
 registerPlugin(haSummaryPlugin);
 registerPlugin(kanjiPlugin);
 

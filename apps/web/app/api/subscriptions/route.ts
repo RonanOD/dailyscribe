@@ -7,6 +7,7 @@ import {
   type HaSummaryConfig,
   type KanjiServiceConfig,
   type NytCrosswordConfig,
+  type RteNewsConfig,
   type ServiceId,
   type SubscriptionConfig,
 } from "@dailyscribe/core";
@@ -14,14 +15,16 @@ import { NextResponse } from "next/server";
 import { requireUserId } from "@/lib/session";
 import { ALL_BBC_FEEDS } from "@/lib/bbc-feeds";
 import { ALL_CBC_FEEDS } from "@/lib/cbc-feeds";
+import { ALL_RTE_FEEDS } from "@/lib/rte-feeds";
 
 export const runtime = "nodejs";
 
-const SERVICES: ServiceId[] = ["nyt-crossword", "cbc", "bbc", "ha-summary", "kanji", "digest"];
+const SERVICES: ServiceId[] = ["nyt-crossword", "cbc", "bbc", "rte", "ha-summary", "kanji", "digest"];
 const JLPT_LEVELS = [1, 2, 3, 4, 5] as const;
 const VERSIONS: CrosswordVersion[] = ["games", "newspaper", "big", "southpaw"];
 const CBC_FEED_KEYS = new Set(ALL_CBC_FEEDS.map((f) => f.key));
 const BBC_FEED_KEYS = new Set(ALL_BBC_FEEDS.map((f) => f.key));
+const RTE_FEED_KEYS = new Set(ALL_RTE_FEEDS.map((f) => f.key));
 
 function parseService(value: unknown): ServiceId | null {
   return SERVICES.includes(value as ServiceId) ? (value as ServiceId) : null;
@@ -89,6 +92,13 @@ export async function POST(req: Request) {
     const maxPerFeed =
       typeof body.maxPerFeed === "number" ? Math.min(Math.max(Math.floor(body.maxPerFeed), 1), 15) : 9;
     config = { ...base, feeds: requested, maxPerFeed } satisfies BbcNewsConfig;
+  } else if (service === "rte") {
+    const requested = Array.isArray(body.feeds)
+      ? body.feeds.filter((k): k is string => typeof k === "string" && RTE_FEED_KEYS.has(k))
+      : [];
+    const maxPerFeed =
+      typeof body.maxPerFeed === "number" ? Math.min(Math.max(Math.floor(body.maxPerFeed), 1), 15) : 9;
+    config = { ...base, feeds: requested, maxPerFeed } satisfies RteNewsConfig;
   } else if (service === "ha-summary") {
     config = {
       ...base,

@@ -4,9 +4,10 @@ import { useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { BBC_FEEDS } from "@/lib/bbc-feeds";
 import { CBC_FEEDS, CBC_REGIONS } from "@/lib/cbc-feeds";
+import { RTE_FEEDS } from "@/lib/rte-feeds";
 import { TabNav, type TabDef } from "./tab-nav";
 
-const TAB_KEYS = ["delivery", "cbc", "bbc", "home-assistant", "kanji"] as const;
+const TAB_KEYS = ["delivery", "rte", "cbc", "bbc", "home-assistant", "kanji"] as const;
 type TabKey = (typeof TAB_KEYS)[number];
 const DEFAULT_TAB: TabKey = "delivery";
 
@@ -26,6 +27,14 @@ interface CbcConfig {
 }
 
 interface BbcConfig {
+  feeds?: string[];
+  maxPerFeed?: number;
+  deliveryTime?: string;
+  timezone?: string;
+  kindleEmail?: string;
+}
+
+interface RteConfig {
   feeds?: string[];
   maxPerFeed?: number;
   deliveryTime?: string;
@@ -54,6 +63,7 @@ const JLPT_LEVELS = [5, 4, 3, 2, 1] as const;
 interface Props {
   cbc: { config: CbcConfig; enabled: boolean } | null;
   bbc?: { config: BbcConfig; enabled: boolean } | null;
+  rte?: { config: RteConfig; enabled: boolean } | null;
   ha?: { config: HaConfig; enabled: boolean } | null;
   kanji?: { config: KanjiConfig; enabled: boolean } | null;
   /** Whether "send all enabled services as one PDF" is on. Membership is
@@ -128,7 +138,7 @@ function DeliveryFields(props: {
   );
 }
 
-export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDigestEnabled, configured, afterFields }: Props) {
+export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initialDigestEnabled, configured, afterFields }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -146,12 +156,29 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
 
   // Initial values snapshot for dirty checking
   const initialKindleEmail =
-    cbc?.config.kindleEmail ?? bbc?.config.kindleEmail ?? ha?.config.kindleEmail ?? kanji?.config.kindleEmail ?? "";
+    cbc?.config.kindleEmail ??
+    bbc?.config.kindleEmail ??
+    rte?.config.kindleEmail ??
+    ha?.config.kindleEmail ??
+    kanji?.config.kindleEmail ??
+    "";
   const initialHaUrl = configured?.haUrl ?? "";
 
   const initialDelivery = {
-    time: cbc?.config.deliveryTime ?? bbc?.config.deliveryTime ?? ha?.config.deliveryTime ?? kanji?.config.deliveryTime ?? "08:00",
-    timezone: cbc?.config.timezone ?? bbc?.config.timezone ?? ha?.config.timezone ?? kanji?.config.timezone ?? browserTz,
+    time:
+      cbc?.config.deliveryTime ??
+      bbc?.config.deliveryTime ??
+      rte?.config.deliveryTime ??
+      ha?.config.deliveryTime ??
+      kanji?.config.deliveryTime ??
+      "08:00",
+    timezone:
+      cbc?.config.timezone ??
+      bbc?.config.timezone ??
+      rte?.config.timezone ??
+      ha?.config.timezone ??
+      kanji?.config.timezone ??
+      browserTz,
   };
 
   const savedFeeds = cbc?.config.feeds?.length ? cbc.config.feeds : null;
@@ -172,6 +199,12 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
     feeds: new Set(bbc?.config.feeds?.length ? bbc.config.feeds : BBC_FEEDS.map((f) => f.key)),
     maxPerFeed: bbc?.config.maxPerFeed ?? 9,
     enabled: bbc?.enabled ?? true,
+  };
+
+  const initialRte = {
+    feeds: new Set(rte?.config.feeds?.length ? rte.config.feeds : RTE_FEEDS.map((f) => f.key)),
+    maxPerFeed: rte?.config.maxPerFeed ?? 9,
+    enabled: rte?.enabled ?? true,
   };
 
   const initialHa = {
@@ -203,6 +236,11 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
   const [bbcMax, setBbcMax] = useState(initialBbc.maxPerFeed);
   const [bbcEnabled, setBbcEnabled] = useState(initialBbc.enabled);
 
+  // RTÉ State
+  const [rteFeeds, setRteFeeds] = useState<Set<string>>(initialRte.feeds);
+  const [rteMax, setRteMax] = useState(initialRte.maxPerFeed);
+  const [rteEnabled, setRteEnabled] = useState(initialRte.enabled);
+
   // HA State
   const [haUrl, setHaUrl] = useState(initialHaUrl);
   const [haToken, setHaToken] = useState("");
@@ -225,6 +263,7 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
   const [baseDelivery, setBaseDelivery] = useState(initialDelivery);
   const [baseCbc, setBaseCbc] = useState(initialCbc);
   const [baseBbc, setBaseBbc] = useState(initialBbc);
+  const [baseRte, setBaseRte] = useState(initialRte);
   const [baseHa, setBaseHa] = useState(initialHa);
   const [baseHaUrl, setBaseHaUrl] = useState(initialHaUrl);
   const [baseKanji, setBaseKanji] = useState(initialKanji);
@@ -249,6 +288,10 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
     bbcFeeds.size !== baseBbc.feeds.size || [...bbcFeeds].some((f) => !baseBbc.feeds.has(f));
   const isBbcDirty = bbcFeedsChanged || bbcMax !== baseBbc.maxPerFeed || bbcEnabled !== baseBbc.enabled;
 
+  const rteFeedsChanged =
+    rteFeeds.size !== baseRte.feeds.size || [...rteFeeds].some((f) => !baseRte.feeds.has(f));
+  const isRteDirty = rteFeedsChanged || rteMax !== baseRte.maxPerFeed || rteEnabled !== baseRte.enabled;
+
   const isHaCredsDirty = haUrl.trim() !== baseHaUrl.trim() || Boolean(haToken.trim());
 
   const isHaSettingsDirty =
@@ -270,6 +313,7 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
     isDeliveryDirty ||
     isCbcDirty ||
     isBbcDirty ||
+    isRteDirty ||
     isHaCredsDirty ||
     isHaSettingsDirty ||
     isKanjiDirty ||
@@ -282,6 +326,7 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
       icon: "📬",
       dirty: isKindleDirty || isDeliveryDirty || isDigestDirty,
     },
+    { key: "rte", label: "RTÉ News", icon: "📰", iconSrc: "/icons/rte.svg", dirty: isRteDirty },
     { key: "cbc", label: "CBC News", icon: "📰", iconSrc: "/icons/cbc.svg", dirty: isCbcDirty },
     { key: "bbc", label: "BBC News", icon: "📰", iconSrc: "/icons/bbc.svg", dirty: isBbcDirty },
     {
@@ -331,6 +376,15 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
     });
   }
 
+  function toggleRteFeed(key: string) {
+    setRteFeeds((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   const saveAll = () =>
     run("save-all", async () => {
       if (!kindleEmail.includes("@")) {
@@ -370,7 +424,18 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
         enabled: bbcEnabled,
       });
 
-      // 4. Save HA settings
+      // 4. Save RTÉ settings
+      await postJson("/api/subscriptions", {
+        service: "rte",
+        feeds: [...rteFeeds],
+        maxPerFeed: rteMax,
+        deliveryTime,
+        timezone: deliveryTz,
+        kindleEmail: kindleEmail.trim(),
+        enabled: rteEnabled,
+      });
+
+      // 5. Save HA settings
       await postJson("/api/subscriptions", {
         service: "ha-summary",
         weatherEntity,
@@ -381,7 +446,7 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
         enabled: haEnabled,
       });
 
-      // 5. Save Kanji settings
+      // 6. Save Kanji settings
       await postJson("/api/subscriptions", {
         service: "kanji",
         kanjiPerDay,
@@ -392,7 +457,7 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
         enabled: kanjiEnabled,
       });
 
-      // 6. Save Digest setting (bundles whichever services above are enabled)
+      // 7. Save Digest setting (bundles whichever services above are enabled)
       await postJson("/api/subscriptions", {
         service: "digest",
         deliveryTime,
@@ -415,6 +480,11 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
         feeds: new Set(bbcFeeds),
         maxPerFeed: bbcMax,
         enabled: bbcEnabled,
+      });
+      setBaseRte({
+        feeds: new Set(rteFeeds),
+        maxPerFeed: rteMax,
+        enabled: rteEnabled,
       });
       setBaseHa({
         weatherEntity,
@@ -488,6 +558,51 @@ export function DashboardForm({ cbc, bbc, ha, kanji, digestEnabled: initialDiges
               {busy === "test-digest" ? "Sending…" : "Send test now"}
             </button>
           </div>
+        )}
+      </section>
+      </div>
+
+      {/* RTÉ News Section */}
+      <div hidden={activeTab !== "rte"}>
+      <section className="section">
+        <h2>RTÉ News</h2>
+        <p className="hint">A daily PDF of RTÉ headlines and summaries. Choose your sections.</p>
+
+        <div className="field">
+          <label>Sections</label>
+          <div className="checkgrid">
+            {RTE_FEEDS.map((f) => (
+              <label key={f.key} className="check">
+                <input type="checkbox" checked={rteFeeds.has(f.key)} onChange={() => toggleRteFeed(f.key)} />
+                {f.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="field" style={{ maxWidth: 220 }}>
+          <label htmlFor="rte-max">Articles per section</label>
+          <input
+            id="rte-max"
+            type="number"
+            min={1}
+            max={15}
+            value={rteMax}
+            onChange={(e) => setRteMax(Math.min(Math.max(Number(e.target.value) || 1, 1), 15))}
+          />
+        </div>
+
+        <div className="actions">
+          <label className="toggle">
+            <input type="checkbox" checked={rteEnabled} onChange={(e) => setRteEnabled(e.target.checked)} />
+            Enabled
+          </label>
+          <button className="link" onClick={() => sendTest("rte", "test-rte")} disabled={busy !== null}>
+            {busy === "test-rte" ? "Sending…" : "Send test now"}
+          </button>
+        </div>
+        {digestEnabled && (
+          <p className="hint">Digest is on — this sends your bundled digest, not a standalone RTÉ PDF.</p>
         )}
       </section>
       </div>

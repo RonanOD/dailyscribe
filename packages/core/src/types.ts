@@ -20,7 +20,7 @@ export interface UserSecret {
 }
 
 /** Services in the catalog. */
-export type ServiceId = "nyt-crossword" | "cbc" | "bbc" | "ha-summary" | "kanji" | "digest";
+export type ServiceId = "nyt-crossword" | "cbc" | "bbc" | "rte" | "ha-summary" | "kanji" | "digest";
 
 /** NYT crossword print layouts (ported from the reference repo's CROSSWORD_VERSION). */
 export type CrosswordVersion = "games" | "newspaper" | "big" | "southpaw";
@@ -48,6 +48,13 @@ export interface CbcNewsConfig extends BaseSubscriptionConfig {
 
 export interface BbcNewsConfig extends BaseSubscriptionConfig {
   /** BBC feed keys to include; omitted/empty = a curated default set. */
+  feeds?: string[];
+  /** Max articles per feed (default 9, clamped 1–15). */
+  maxPerFeed?: number;
+}
+
+export interface RteNewsConfig extends BaseSubscriptionConfig {
+  /** RTÉ feed keys to include; omitted/empty = a curated default set. */
   feeds?: string[];
   /** Max articles per feed (default 9, clamped 1–15). */
   maxPerFeed?: number;
@@ -82,6 +89,7 @@ export type SubscriptionConfig =
   | NytCrosswordConfig
   | CbcNewsConfig
   | BbcNewsConfig
+  | RteNewsConfig
   | HaSummaryConfig
   | KanjiServiceConfig
   | DigestConfig;
