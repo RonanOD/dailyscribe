@@ -4,10 +4,10 @@ Online Services for Kindle Scribe and other devices. The kindle scribe is pretty
 - [x] Kanji a day
 - [ ] Track eating 
 - [ ] Read a classic novel
-- [ ] Daily crossword 
+- [x] Daily crossword 
 - [ ] DND 5e Campaign
 - [x] CBC News
 - [x] [BBC News](https://www.bbc.co.uk/news/10628494)
-- [ ] [RTE News](https://www.rte.ie/feeds/rss/?index=/news/&limit=100)
+- [x] [RTE News](https://www.rte.ie/feeds/rss/?index=/news/&limit=100)
 - [x] Home Assistant summary 
 
