@@ -12,6 +12,7 @@
     "@auth/mongodb-adapter": "^3.7.4",
     "@dailyscribe/core": "workspace:*",
     "@react-pdf/renderer": "^4.1.6",
+    "crossword-layout-generator": "^0.1.1",
     "fast-xml-parser": "^4.5.1",
     "mongodb": "^6.12.0",
     "next": "^15.1.4",

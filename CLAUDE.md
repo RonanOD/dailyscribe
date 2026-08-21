@@ -91,13 +91,14 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
 ## Roadmap
 
 - [x] **Phase 0 — Foundations.** Plugin interface (`ServicePlugin`) + registry, committed and
-      live. Four plugins registered: NYT crossword (pure TS, no rendering needed), CBC News,
-      Home Assistant summary, Kanji-a-day — plus a **Digest** pseudo-service (`runner.ts`) that
-      bundles whichever of a user's other services are enabled into one PDF/email, with a
-      branded cover + linked table of contents page and per-member failure isolation (one
-      service erroring drops just its section, not the whole digest). Python renderer workers
-      still deferred to the services that actually need them (none yet — CBC/HA render in pure
-      TS via `@react-pdf/renderer`).
+      live. Plugins registered: NYT crossword (pure TS, no rendering needed), CBC/BBC/RTÉ News,
+      Home Assistant summary, Kanji-a-day, and a self-generated write-in Crossword (Gemini word
+      list + `crossword-layout-generator` grid, answer key on page 2, no mail-back needed) —
+      plus a **Digest** pseudo-service (`runner.ts`) that bundles whichever of a user's other
+      services are enabled into one PDF/email, with a branded cover + linked table of contents
+      page and per-member failure isolation (one service erroring drops just its section, not
+      the whole digest). Python renderer workers still deferred to the services that actually
+      need them (none yet — every plugin renders in pure TS via `@react-pdf/renderer`).
 - [x] **Phase 1 — Multi-tenancy.** Auth.js accounts, MongoDB config (`subscriptions`), and
       encrypted per-user secrets (`userSecrets`, AES-256-GCM) replace `.env`/cookies.
 - [~] **Phase 2 — Web app.** Login + dashboard (service config, secrets, send-test-now, digest
@@ -115,9 +116,10 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       tracking).
 
 ## Service catalog (from README)
-NYT crossword · CBC News · Home Assistant summary · DnD 5e campaign · Kanji-a-day ·
-Track eating · Read a classic novel. (Digest — bundle any combination of the above into one
-PDF/email — is a delivery mode on top of these, not a catalog entry of its own.)
+NYT crossword · CBC News · BBC News · RTÉ News · Home Assistant summary · DnD 5e campaign ·
+Kanji-a-day · write-in Crossword (self-generated, answer key on page 2) · Track eating · Read
+a classic novel. (Digest — bundle any combination of the above into one PDF/email — is a
+delivery mode on top of these, not a catalog entry of its own.)
 
 ## Constraints & notes
 - Amazon Kindle requires sender email allowlisting; onboarding guides users to whitelist the

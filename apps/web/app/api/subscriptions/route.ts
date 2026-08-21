@@ -2,6 +2,7 @@ import {
   collections,
   type BbcNewsConfig,
   type CbcNewsConfig,
+  type CrosswordServiceConfig,
   type CrosswordVersion,
   type DigestConfig,
   type HaSummaryConfig,
@@ -19,7 +20,7 @@ import { ALL_RTE_FEEDS } from "@/lib/rte-feeds";
 
 export const runtime = "nodejs";
 
-const SERVICES: ServiceId[] = ["nyt-crossword", "cbc", "bbc", "rte", "ha-summary", "kanji", "digest"];
+const SERVICES: ServiceId[] = ["nyt-crossword", "cbc", "bbc", "rte", "ha-summary", "kanji", "crossword", "digest"];
 const JLPT_LEVELS = [1, 2, 3, 4, 5] as const;
 const VERSIONS: CrosswordVersion[] = ["games", "newspaper", "big", "southpaw"];
 const CBC_FEED_KEYS = new Set(ALL_CBC_FEEDS.map((f) => f.key));
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
     wasteCalendar?: string;
     kanjiPerDay?: unknown;
     maxJlptLevel?: unknown;
+    theme?: string;
     deliveryTime?: string;
     timezone?: string;
     kindleEmail?: string;
@@ -113,6 +115,9 @@ export async function POST(req: Request) {
       ? (levelNum as 1 | 2 | 3 | 4 | 5)
       : 5;
     config = { ...base, kanjiPerDay, maxJlptLevel } satisfies KanjiServiceConfig;
+  } else if (service === "crossword") {
+    const theme = typeof body.theme === "string" ? body.theme.trim().slice(0, 80) : "";
+    config = { ...base, theme } satisfies CrosswordServiceConfig;
   } else if (service === "digest") {
     config = { ...base } satisfies DigestConfig;
   } else {

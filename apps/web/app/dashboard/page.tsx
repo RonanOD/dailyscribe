@@ -36,6 +36,7 @@ export default async function DashboardPage() {
   const rteSub = await subscriptions.findOne({ userId, service: "rte" });
   const haSub = await subscriptions.findOne({ userId, service: "ha-summary" });
   const kanjiSub = await subscriptions.findOne({ userId, service: "kanji" });
+  const crosswordSub = await subscriptions.findOne({ userId, service: "crossword" });
   const digestSub = await subscriptions.findOne({ userId, service: "digest" });
   const secretDocs = await userSecrets.find({ userId }).toArray();
   const haDoc = secretDocs.find((d) => d.provider === "ha");
@@ -111,6 +112,7 @@ export default async function DashboardPage() {
         rte={rteSub ? { config: rteSub.config, enabled: rteSub.enabled } : null}
         ha={haSub ? { config: haSub.config, enabled: haSub.enabled } : null}
         kanji={kanjiSub ? { config: kanjiSub.config, enabled: kanjiSub.enabled } : null}
+        crossword={crosswordSub ? { config: crosswordSub.config, enabled: crosswordSub.enabled } : null}
         digestEnabled={digestSub?.enabled ?? false}
         configured={configured}
         afterFields={

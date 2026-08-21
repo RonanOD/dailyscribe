@@ -7,7 +7,7 @@ import { CBC_FEEDS, CBC_REGIONS } from "@/lib/cbc-feeds";
 import { RTE_FEEDS } from "@/lib/rte-feeds";
 import { TabNav, type TabDef } from "./tab-nav";
 
-const TAB_KEYS = ["delivery", "rte", "cbc", "bbc", "home-assistant", "kanji"] as const;
+const TAB_KEYS = ["delivery", "rte", "cbc", "bbc", "home-assistant", "kanji", "crossword"] as const;
 type TabKey = (typeof TAB_KEYS)[number];
 const DEFAULT_TAB: TabKey = "delivery";
 
@@ -58,6 +58,13 @@ interface KanjiConfig {
   kindleEmail?: string;
 }
 
+interface CrosswordConfig {
+  theme?: string;
+  deliveryTime?: string;
+  timezone?: string;
+  kindleEmail?: string;
+}
+
 const JLPT_LEVELS = [5, 4, 3, 2, 1] as const;
 
 interface Props {
@@ -66,6 +73,7 @@ interface Props {
   rte?: { config: RteConfig; enabled: boolean } | null;
   ha?: { config: HaConfig; enabled: boolean } | null;
   kanji?: { config: KanjiConfig; enabled: boolean } | null;
+  crossword?: { config: CrosswordConfig; enabled: boolean } | null;
   /** Whether "send all enabled services as one PDF" is on. Membership is
    *  implicit — whichever services are enabled elsewhere — so there's no
    *  separate config to pass here. */
@@ -138,7 +146,7 @@ function DeliveryFields(props: {
   );
 }
 
-export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initialDigestEnabled, configured, afterFields }: Props) {
+export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabled: initialDigestEnabled, configured, afterFields }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -161,6 +169,7 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initial
     rte?.config.kindleEmail ??
     ha?.config.kindleEmail ??
     kanji?.config.kindleEmail ??
+    crossword?.config.kindleEmail ??
     "";
   const initialHaUrl = configured?.haUrl ?? "";
 
@@ -171,6 +180,7 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initial
       rte?.config.deliveryTime ??
       ha?.config.deliveryTime ??
       kanji?.config.deliveryTime ??
+      crossword?.config.deliveryTime ??
       "08:00",
     timezone:
       cbc?.config.timezone ??
@@ -178,6 +188,7 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initial
       rte?.config.timezone ??
       ha?.config.timezone ??
       kanji?.config.timezone ??
+      crossword?.config.timezone ??
       browserTz,
   };
 
@@ -219,6 +230,11 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initial
     enabled: kanji?.enabled ?? true,
   };
 
+  const initialCrossword = {
+    theme: crossword?.config.theme ?? "",
+    enabled: crossword?.enabled ?? true,
+  };
+
   // State
   const [kindleEmail, setKindleEmail] = useState(initialKindleEmail);
   const [deliveryTime, setDeliveryTime] = useState(initialDelivery.time);
@@ -254,6 +270,10 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initial
   const [maxJlptLevel, setMaxJlptLevel] = useState(initialKanji.maxJlptLevel);
   const [kanjiEnabled, setKanjiEnabled] = useState(initialKanji.enabled);
 
+  // Crossword State
+  const [crosswordTheme, setCrosswordTheme] = useState(initialCrossword.theme);
+  const [crosswordEnabled, setCrosswordEnabled] = useState(initialCrossword.enabled);
+
   // Digest State — "send all enabled services as one PDF", using the same
   // shared delivery time/timezone/kindle email as everything else.
   const [digestEnabled, setDigestEnabled] = useState(initialDigestEnabled ?? false);
@@ -267,6 +287,7 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initial
   const [baseHa, setBaseHa] = useState(initialHa);
   const [baseHaUrl, setBaseHaUrl] = useState(initialHaUrl);
   const [baseKanji, setBaseKanji] = useState(initialKanji);
+  const [baseCrossword, setBaseCrossword] = useState(initialCrossword);
   const [baseDigestEnabled, setBaseDigestEnabled] = useState(initialDigestEnabled ?? false);
 
   const [busy, setBusy] = useState<string | null>(null);
@@ -306,6 +327,8 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initial
     maxJlptLevel !== baseKanji.maxJlptLevel ||
     kanjiEnabled !== baseKanji.enabled;
 
+  const isCrosswordDirty = crosswordTheme !== baseCrossword.theme || crosswordEnabled !== baseCrossword.enabled;
+
   const isDigestDirty = digestEnabled !== baseDigestEnabled;
 
   const isDirty =
@@ -317,6 +340,7 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initial
     isHaCredsDirty ||
     isHaSettingsDirty ||
     isKanjiDirty ||
+    isCrosswordDirty ||
     isDigestDirty;
 
   const tabs: TabDef[] = [
@@ -337,6 +361,7 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initial
       dirty: isHaCredsDirty || isHaSettingsDirty,
     },
     { key: "kanji", label: "Kanji", icon: "🈷️", dirty: isKanjiDirty },
+    { key: "crossword", label: "Crossword", icon: "🧩", dirty: isCrosswordDirty },
   ];
 
   function ok(text: string) {
@@ -457,7 +482,17 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initial
         enabled: kanjiEnabled,
       });
 
-      // 7. Save Digest setting (bundles whichever services above are enabled)
+      // 7. Save Crossword settings
+      await postJson("/api/subscriptions", {
+        service: "crossword",
+        theme: crosswordTheme,
+        deliveryTime,
+        timezone: deliveryTz,
+        kindleEmail: kindleEmail.trim(),
+        enabled: crosswordEnabled,
+      });
+
+      // 8. Save Digest setting (bundles whichever services above are enabled)
       await postJson("/api/subscriptions", {
         service: "digest",
         deliveryTime,
@@ -495,6 +530,10 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initial
         kanjiPerDay,
         maxJlptLevel,
         enabled: kanjiEnabled,
+      });
+      setBaseCrossword({
+        theme: crosswordTheme,
+        enabled: crosswordEnabled,
       });
       setBaseDigestEnabled(digestEnabled);
 
@@ -848,6 +887,45 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, digestEnabled: initial
       </section>
 
       {afterFields}
+      </div>
+
+      {/* Crossword Section */}
+      <div hidden={activeTab !== "crossword"}>
+      <section className="section">
+        <h2>Crossword</h2>
+        <p className="hint">
+          A full-size crossword you fill in by hand — grid and clues on page one, the answer
+          key on page two. Generated fresh each day; no need to mail anything back.
+        </p>
+
+        <div className="field">
+          <label htmlFor="crossword-theme">Theme (optional)</label>
+          <input
+            id="crossword-theme"
+            type="text"
+            value={crosswordTheme}
+            onChange={(e) => setCrosswordTheme(e.target.value)}
+            placeholder="Leave blank for a fresh theme each day"
+          />
+        </div>
+
+        <div className="actions">
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={crosswordEnabled}
+              onChange={(e) => setCrosswordEnabled(e.target.checked)}
+            />
+            Enabled
+          </label>
+          <button className="link" onClick={() => sendTest("crossword", "test-crossword")} disabled={busy !== null}>
+            {busy === "test-crossword" ? "Sending…" : "Send test now"}
+          </button>
+        </div>
+        {digestEnabled && (
+          <p className="hint">Digest is on — this sends your bundled digest, not a standalone Crossword PDF.</p>
+        )}
+      </section>
       </div>
 
       {/* Single Unified Save Button at bottom */}

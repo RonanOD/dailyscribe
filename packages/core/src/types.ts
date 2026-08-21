@@ -20,7 +20,7 @@ export interface UserSecret {
 }
 
 /** Services in the catalog. */
-export type ServiceId = "nyt-crossword" | "cbc" | "bbc" | "rte" | "ha-summary" | "kanji" | "digest";
+export type ServiceId = "nyt-crossword" | "cbc" | "bbc" | "rte" | "ha-summary" | "kanji" | "crossword" | "digest";
 
 /** NYT crossword print layouts (ported from the reference repo's CROSSWORD_VERSION). */
 export type CrosswordVersion = "games" | "newspaper" | "big" | "southpaw";
@@ -74,6 +74,11 @@ export interface KanjiServiceConfig extends BaseSubscriptionConfig {
   maxJlptLevel: 1 | 2 | 3 | 4 | 5;
 }
 
+export interface CrosswordServiceConfig extends BaseSubscriptionConfig {
+  /** Optional theme to steer word/clue generation; blank lets Gemini pick a fresh one daily. */
+  theme?: string;
+}
+
 /** A service that can be bundled into a digest — every real service except the digest itself. */
 export type BundleableServiceId = Exclude<ServiceId, "digest">;
 
@@ -92,6 +97,7 @@ export type SubscriptionConfig =
   | RteNewsConfig
   | HaSummaryConfig
   | KanjiServiceConfig
+  | CrosswordServiceConfig
   | DigestConfig;
 
 export interface Subscription {
@@ -173,4 +179,30 @@ export interface KanjiSubmission {
   processedAt?: Date;
   /** Set only when status === "failed" — the thrown error's message. */
   processingError?: string;
+}
+
+export interface CrosswordClue {
+  position: number;
+  orientation: "across" | "down";
+  clue: string;
+  row: number;
+  col: number;
+  length: number;
+}
+
+/** A day's generated crossword, cached per user+date so a same-day "Send test
+ *  now" or cron retry reuses it instead of burning another Gemini call and
+ *  handing the user a different puzzle mid-day. `grid` is the solved answer
+ *  grid — page 1 renders it blank (numbers only), page 2 renders the letters. */
+export interface CrosswordPuzzle {
+  _id?: ObjectId;
+  userId: string;
+  date: string; // YYYY-MM-DD, matches Delivery.puzzleDate convention
+  theme: string;
+  rows: number;
+  cols: number;
+  /** rows x cols; null = blocked/black cell, otherwise the solution letter. */
+  grid: (string | null)[][];
+  clues: CrosswordClue[];
+  createdAt: Date;
 }
