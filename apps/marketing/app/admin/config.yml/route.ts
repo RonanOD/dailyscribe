@@ -1,8 +1,15 @@
-backend:
+import { NextResponse } from "next/server";
+
+// Served dynamically (not a static public/ file) so `base_url` always matches
+// whatever origin actually loaded /admin — production, a Vercel preview
+// deployment, or localhost — instead of being hardcoded to one domain, which
+// otherwise breaks Decap's OAuth popup everywhere except that one domain.
+function configYaml(origin: string) {
+  return `backend:
   name: github
   repo: RonanOD/dailyscribe
   branch: main
-  base_url: https://dailyscribe.ca
+  base_url: ${origin}
   auth_endpoint: api/decap-oauth/auth
 
 publish_mode: simple
@@ -75,3 +82,12 @@ collections:
             fields:
               - { label: Heading, name: heading, widget: string }
               - { label: Body, name: body, widget: text }
+`;
+}
+
+export function GET(request: Request) {
+  const origin = new URL(request.url).origin;
+  return new NextResponse(configYaml(origin), {
+    headers: { "Content-Type": "text/yaml; charset=utf-8" },
+  });
+}

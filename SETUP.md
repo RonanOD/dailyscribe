@@ -35,13 +35,19 @@ A **second, separate** OAuth App — Decap's `github` backend needs `repo` (full
 write) scope to commit content edits, far more sensitive than Auth.js's
 login-only scope above, so it must not share a registration or callback URL.
 1. GitHub → Settings → Developer settings → OAuth Apps → New.
-2. Homepage `https://dailyscribe.ca`; callback
-   `https://dailyscribe.ca/api/decap-oauth/callback` (add
-   `http://localhost:3000/api/decap-oauth/callback` for local dev — note
-   `apps/marketing` runs on :3000 when run alone, or whatever port Next picks
-   when run alongside `apps/web`).
+2. Homepage `https://dailyscribe.ca`; callback `https://dailyscribe.ca/api/decap-oauth/callback`.
 3. Copy Client ID/Secret → `DECAP_OAUTH_GITHUB_CLIENT_ID` / `DECAP_OAUTH_GITHUB_CLIENT_SECRET`
    (set on the `apps/marketing` Vercel project only).
+4. GitHub OAuth Apps now support up to 10 callback URLs on one app (no need
+   to swap between environments) — to test locally, open the same app's
+   settings and add a second one: `http://localhost:3000/api/decap-oauth/callback`.
+   `/admin/config.yml` is served dynamically (its `base_url` is computed from
+   whatever origin actually requested it), so both the production and
+   localhost callbacks work against this one app without further changes.
+   **Ephemeral Vercel preview URLs are the exception**: each preview
+   deployment gets its own one-off `*.vercel.app` address, so registering
+   one doesn't help the next; don't try to fully exercise this OAuth flow on
+   a preview URL — verify it locally, or on `dailyscribe.ca` once cut over.
 
 ### Resend (delivery)
 Daily Scribe sends all email itself from **one address: `Daily Scribe <my@dailyscribe.ca>`**.
