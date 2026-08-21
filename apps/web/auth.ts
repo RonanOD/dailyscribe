@@ -11,7 +11,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: MongoDBAdapter(getMongoClientPromise, {
     databaseName: process.env.MONGODB_DB ?? "dailyscribe",
   }),
-  providers: [GitHub],
+  providers: [
+    // GitHub started sending an "iss" parameter on its OAuth callback (RFC 9207).
+    // This next-auth version doesn't know GitHub's issuer by default and falls
+    // back to comparing against its own placeholder ("https://authjs.dev"),
+    // which fails validation — set it explicitly so that check passes.
+    GitHub({ issuer: "https://github.com/login/oauth" }),
+  ],
   callbacks: {
     async signIn({ user }) {
       // Signups paused during development: only accounts already in the
