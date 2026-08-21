@@ -31,9 +31,14 @@ This repo is now a **pnpm + Turborepo monorepo**. The first milestone — NYT cr
 emailed to the owner's Kindle, on multi-tenant-ready foundations — is built and verified
 (install, unit tests, typecheck, production build).
 
-- **Frontend + backend:** **Next.js (App Router)** in `apps/web` — React UI + TypeScript API
-  routes in one Vercel deployable. Deployed to the **existing dailyscribe.ca Vercel project**
-  (Root Directory = `apps/web`), replacing the old static `index.html` placeholder.
+- **Frontend + backend:** **Next.js (App Router)**, split across **two apps in one monorepo,
+  two Vercel projects**: `apps/web` — the dashboard/auth/API, deployed to the existing
+  `dailyscribe` Vercel project (Root Directory = `apps/web`), now serving **`my.dailyscribe.ca`**
+  (chosen to echo `my@dailyscribe.ca`, the mail-back address users already know) — and
+  `apps/marketing` — the public promotional site, its own Vercel project (Root Directory =
+  `apps/marketing`), serving the apex **`dailyscribe.ca`** + `www` (replacing the old static
+  `index.html` placeholder). The two are decoupled deliberately: marketing content/copy edits
+  redeploy independently of the dashboard/API code.
 - **Database:** **MongoDB Atlas** — a dedicated DailyScribe project / free M0 cluster, fully
   isolated. Accessed only via `MONGODB_URI`; db name `dailyscribe`.
 - **Auth:** **Auth.js (NextAuth v5)** with the MongoDB adapter + GitHub OAuth.
@@ -47,7 +52,14 @@ emailed to the owner's Kindle, on multi-tenant-ready foundations — is built an
   need Kindle whitelisting, so per-service inbound stays open.
 - **Shared code:** `packages/core` (framework-free TS) — Mongo client, AES-256-GCM secret
   crypto, the `ServicePlugin` interface + registry, the NYT plugin, and the `Deliverer`
-  abstraction (Resend-only; the Kindle round trip is verified end-to-end).
+  abstraction (Resend-only; the Kindle round trip is verified end-to-end). `packages/theme` —
+  the CSS palette (cream/ink/red-accent, oklch) and shared `next/font` config (Playfair Display
+  + PT Serif) both `apps/web` and `apps/marketing` import, so the product and the marketing
+  site read as one brand.
+- **Content editing:** `apps/marketing` ships a **Decap CMS** admin at `/admin` — git-based,
+  no database; edits to the landing page's copy/images commit straight to this repo
+  (`apps/marketing/content/landing.yml` + `public/uploads`) and Vercel redeploys on push. See
+  `SETUP.md`'s "Decap CMS" section for the (separate, `repo`-scope) GitHub OAuth app it needs.
 - **Renderers:** **NYT needs no rendering** (NYT serves a ready-made PDF) and **CBC renders in
   pure TS** (`@react-pdf/renderer` in `apps/web`). Truly render-heavy services (e.g. HA) may
   arrive as **Python renderer workers** in `workers/`, behind the same `ServicePlugin.run()`
@@ -102,9 +114,10 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
 - [x] **Phase 1 — Multi-tenancy.** Auth.js accounts, MongoDB config (`subscriptions`), and
       encrypted per-user secrets (`userSecrets`, AES-256-GCM) replace `.env`/cookies.
 - [~] **Phase 2 — Web app.** Login + dashboard (service config, secrets, send-test-now, digest
-      checkbox) shipped. Still to do: public signup/marketing polish, full service-catalog
-      picker (>1 service) for new sign-ups — DnD 5e, classic novels, and eating tracking remain
-      unbuilt.
+      checkbox) shipped. A separate `apps/marketing` promotional site (broadsheet-newspaper
+      aesthetic, `dailyscribe.ca`/`www`) with a Decap CMS admin for its copy/images has also
+      landed. Still to do: full service-catalog picker (>1 service) for new sign-ups — DnD 5e,
+      classic novels, and eating tracking remain unbuilt.
 - [~] **Phase 3 — Scheduling at scale.** Vercel Cron + timezone-aware, idempotent dispatch
       shipped for the solo case. Still to do: retries, failure notifications, sub-daily cron
       coverage across many timezones (Vercel Pro).

@@ -4,8 +4,9 @@ import { fontDisplay, fontBody } from "@dailyscribe/theme/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Daily Scribe",
-  description: "Daily crosswords and more, delivered to your Kindle.",
+  title: "The Daily Scribe",
+  description:
+    "One inbox. One PDF. Everything worth reading before breakfast — delivered daily to your Kindle Scribe or your inbox.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

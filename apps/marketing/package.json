@@ -1,5 +1,5 @@
 {
-  "name": "@dailyscribe/web",
+  "name": "@dailyscribe/marketing",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -9,21 +9,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@auth/mongodb-adapter": "^3.7.4",
-    "@dailyscribe/core": "workspace:*",
     "@dailyscribe/theme": "workspace:*",
-    "@react-pdf/renderer": "^4.1.6",
-    "crossword-layout-generator": "^0.1.1",
-    "fast-xml-parser": "^4.5.1",
-    "mongodb": "^6.12.0",
+    "js-yaml": "^4.1.0",
     "next": "^15.1.4",
-    "next-auth": "5.0.0-beta.25",
-    "pdfjs-serverless": "^1.3.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "resend": "^6.18.1"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
