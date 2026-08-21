@@ -361,7 +361,7 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
       dirty: isHaCredsDirty || isHaSettingsDirty,
     },
     { key: "kanji", label: "Kanji", icon: "🈷️", dirty: isKanjiDirty },
-    { key: "crossword", label: "Crossword", icon: "🧩", dirty: isCrosswordDirty },
+    { key: "crossword", label: "Crossword", icon: "🧩", iconSrc: "/icons/crossword.svg", dirty: isCrosswordDirty },
   ];
 
   function ok(text: string) {
