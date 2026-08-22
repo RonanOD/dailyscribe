@@ -73,6 +73,26 @@ export async function GET(request: Request) {
     );
   }
 
+  // Anyone can complete the GitHub OAuth handshake itself — GitHub doesn't
+  // restrict who's allowed to authorize an app. Restrict actual CMS access
+  // here instead: only someone with push (write) access to this repo may
+  // proceed, which covers the repo owner and any future collaborators
+  // without hardcoding a username.
+  const repoResponse = await fetch("https://api.github.com/repos/RonanOD/dailyscribe", {
+    headers: {
+      Authorization: `Bearer ${tokenData.access_token}`,
+      Accept: "application/vnd.github+json",
+    },
+  });
+  const repoData = (await repoResponse.json()) as { permissions?: { push?: boolean } };
+  if (!repoData.permissions?.push) {
+    return resultPage(
+      `authorization:github:error:${JSON.stringify({
+        message: "Your GitHub account doesn't have write access to RonanOD/dailyscribe.",
+      })}`,
+    );
+  }
+
   const response = resultPage(
     `authorization:github:success:${JSON.stringify({ token: tokenData.access_token, provider: "github" })}`,
   );

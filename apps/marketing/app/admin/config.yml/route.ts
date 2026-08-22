@@ -13,14 +13,14 @@ function configYaml(origin: string) {
   auth_endpoint: api/decap-oauth/auth
 
 publish_mode: simple
-media_folder: "public/uploads"
+media_folder: "apps/marketing/public/uploads"
 public_folder: "/uploads"
 
 collections:
   - name: landing
     label: "Landing Page"
     files:
-      - file: "content/landing.yml"
+      - file: "apps/marketing/content/landing.yml"
         label: "Landing Page"
         name: landing
         fields:
