@@ -1,9 +1,6 @@
+import ReactMarkdown from "react-markdown";
 import { getLandingContent } from "@/lib/content";
 import { Masthead, SIGN_IN_URL } from "./_components/Masthead";
-import { HeroIllustration } from "./_components/HeroIllustration";
-import { FeatureArt } from "./_components/FeatureArt";
-import { EnvelopeIllustration } from "./_components/EnvelopeIllustration";
-import { VignetteIllustration } from "./_components/VignetteIllustration";
 
 export default function HomePage() {
   const content = getLandingContent();
@@ -29,7 +26,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="hero-art">
-              <HeroIllustration />
+              <img src={content.hero_image} alt={content.hero_image_alt} width={420} height={460} />
             </div>
           </div>
         </section>
@@ -75,13 +72,13 @@ export default function HomePage() {
                 <>
                   <FeatureBody feature={feature} />
                   <div className="feature-art">
-                    <FeatureArt id={feature.id} />
+                    <img src={feature.image} alt={feature.image_alt} width={220} height={220} />
                   </div>
                 </>
               ) : (
                 <>
                   <div className="feature-art">
-                    <FeatureArt id={feature.id} />
+                    <img src={feature.image} alt={feature.image_alt} width={220} height={220} />
                   </div>
                   <FeatureBody feature={feature} />
                 </>
@@ -116,7 +113,12 @@ export default function HomePage() {
       <section className="plainmail">
         <div className="container plainmail-grid">
           <div className="plainmail-art">
-            <EnvelopeIllustration />
+            <img
+              src={content.plain_email_note.image}
+              alt={content.plain_email_note.image_alt}
+              width={220}
+              height={160}
+            />
           </div>
           <div>
             <h2 className="plainmail-headline">{content.plain_email_note.heading}</h2>
@@ -130,9 +132,9 @@ export default function HomePage() {
           <h2 className="readers-title">Built for people who still like paper</h2>
           <p className="readers-sub">A few of the mornings Daily Scribe was made for.</p>
           <div className="readers-grid">
-            {content.vignettes.map((vignette, index) => (
+            {content.vignettes.map((vignette) => (
               <div className="readers-card" key={vignette.caption}>
-                <VignetteIllustration index={index} />
+                <img src={vignette.image} alt={vignette.image_alt} width={92} height={92} />
                 <p>{vignette.caption}</p>
               </div>
             ))}
@@ -195,7 +197,9 @@ function FeatureBody({
     <div>
       <p className="kicker">{feature.kicker}</p>
       <h2 className="feature-headline">{feature.title}</h2>
-      <p className="feature-body">{feature.body}</p>
+      <ReactMarkdown components={{ p: (props) => <p className="feature-body" {...props} /> }}>
+        {feature.body}
+      </ReactMarkdown>
       <p className="feature-note">
         {feature.coming_soon && <span className="stamp">Coming Soon</span>} {feature.note}
       </p>

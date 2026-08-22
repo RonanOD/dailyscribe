@@ -27,6 +27,8 @@ collections:
           - { label: "Dateline (small label above the headline)", name: dateline, widget: string }
           - { label: "Hero Heading", name: hero_heading, widget: string }
           - { label: "Hero Subheading", name: hero_subheading, widget: text }
+          - { label: "Hero Image", name: hero_image, widget: image }
+          - { label: "Hero Image Alt Text", name: hero_image_alt, widget: string }
           - label: "Teaser Columns"
             name: teasers
             widget: list
@@ -53,6 +55,8 @@ collections:
               - { label: "Note (small italic line under the body)", name: note, widget: string }
               - { label: "Coming soon", name: coming_soon, widget: boolean, default: false }
               - { label: "Image on the right", name: media_right, widget: boolean, default: false }
+              - { label: Image, name: image, widget: image }
+              - { label: "Image Alt Text", name: image_alt, widget: string }
           - label: "Premium Bundle Callout"
             name: premium_callout
             widget: object
@@ -71,11 +75,15 @@ collections:
             fields:
               - { label: Heading, name: heading, widget: string }
               - { label: Body, name: body, widget: text }
+              - { label: Image, name: image, widget: image }
+              - { label: "Image Alt Text", name: image_alt, widget: string }
           - label: "Social Proof Vignettes"
             name: vignettes
             widget: list
             fields:
               - { label: Caption, name: caption, widget: text }
+              - { label: Image, name: image, widget: image }
+              - { label: "Image Alt Text", name: image_alt, widget: string }
           - label: "Final Call to Action"
             name: final_cta
             widget: object

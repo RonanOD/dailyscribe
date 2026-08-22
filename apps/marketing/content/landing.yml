@@ -4,6 +4,8 @@ hero_subheading: >-
   Daily Scribe gathers the news, puzzles, and practice you actually care about,
   binds it into one polished PDF, and delivers it to your Kindle — or just your
   inbox — before you've poured your coffee.
+hero_image: "/uploads/hero.svg"
+hero_image_alt: "Illustration of a tablet, stylus, and a steaming cup of coffee"
 
 teasers:
   - kicker: "Practice"
@@ -54,6 +56,8 @@ features:
     note: "Your streak and accuracy carry over automatically, day to day."
     coming_soon: false
     media_right: true
+    image: "/uploads/feature-practice.svg"
+    image_alt: "Illustration of a notebook page with corrected kanji strokes and a checkmark"
   - id: play
     kicker: "Play"
     title: "Puzzles worth waking up for."
@@ -65,6 +69,8 @@ features:
     note: "Dungeons & Dragons 5e campaign pages"
     coming_soon: true
     media_right: false
+    image: "/uploads/feature-play.svg"
+    image_alt: "Illustration of a crossword grid"
   - id: read
     kicker: "Read"
     title: "The front page, curated."
@@ -76,6 +82,8 @@ features:
     note: "Serialized classic novels, one chapter per edition"
     coming_soon: true
     media_right: true
+    image: "/uploads/feature-read.svg"
+    image_alt: "Illustration of a stack of newspaper clippings"
   - id: live
     kicker: "Live"
     title: "Your home, every morning."
@@ -87,6 +95,8 @@ features:
     note: "Works with the Home Assistant instance you already run."
     coming_soon: false
     media_right: false
+    image: "/uploads/feature-live.svg"
+    image_alt: "Illustration of a house with a smart-home signal icon"
   - id: health
     kicker: "Track"
     title: "What you ate. What you drank."
@@ -97,6 +107,8 @@ features:
     note: "Eating & drinking tracker with health app export"
     coming_soon: true
     media_right: true
+    image: "/uploads/feature-health.svg"
+    image_alt: "Illustration of a fork, knife, and glass"
 
 premium_callout:
   heading: "The Sunday edition — every section, one PDF."
@@ -118,11 +130,19 @@ plain_email_note:
     Everything above works exactly the same delivered as a PDF to your
     everyday inbox — no e-reader, no setup beyond an email address you
     already check every morning.
+  image: "/uploads/envelope.svg"
+  image_alt: "Illustration of an envelope"
 
 vignettes:
   - caption: "The puzzle solver who wants ink under the pen, not glare on a screen."
+    image: "/uploads/vignette-reading.svg"
+    image_alt: "Illustration of a person reading in an armchair"
   - caption: "The kanji student who finally gets corrected homework back the next morning."
+    image: "/uploads/vignette-corrected.svg"
+    image_alt: "Illustration of a corrected homework page"
   - caption: "The early riser who reads the news over coffee before anyone else is awake."
+    image: "/uploads/vignette-coffee.svg"
+    image_alt: "Illustration of a steaming cup of coffee"
 
 final_cta:
   heading: "Start your subscription."

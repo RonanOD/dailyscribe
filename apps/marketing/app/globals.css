@@ -234,7 +234,7 @@ h3 {
   display: flex;
   justify-content: center;
 }
-.hero-art svg {
+.hero-art img {
   width: 100%;
   max-width: 380px;
   height: auto;
@@ -337,7 +337,7 @@ h3 {
   display: flex;
   justify-content: center;
 }
-.feature-art svg {
+.feature-art img {
   width: 100%;
   max-width: 220px;
   height: auto;
@@ -420,7 +420,7 @@ h3 {
   display: flex;
   justify-content: center;
 }
-.plainmail-art svg {
+.plainmail-art img {
   width: 100%;
   max-width: 150px;
   height: auto;
@@ -461,7 +461,7 @@ h3 {
 .readers-card {
   padding: 0 12px;
 }
-.readers-card svg {
+.readers-card img {
   width: 92px;
   height: 92px;
   margin-bottom: 16px;
@@ -554,8 +554,8 @@ h3 {
   .feature--media-right .feature-art {
     order: 0;
   }
-  .feature-art svg,
-  .hero-art svg {
+  .feature-art img,
+  .hero-art img {
     max-width: 240px;
   }
   .teaser-grid {

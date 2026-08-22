@@ -23,6 +23,8 @@ export interface Feature {
   note: string;
   coming_soon: boolean;
   media_right: boolean;
+  image: string;
+  image_alt: string;
 }
 
 export interface PremiumPoint {
@@ -32,12 +34,16 @@ export interface PremiumPoint {
 
 export interface Vignette {
   caption: string;
+  image: string;
+  image_alt: string;
 }
 
 export interface LandingContent {
   dateline: string;
   hero_heading: string;
   hero_subheading: string;
+  hero_image: string;
+  hero_image_alt: string;
   teasers: Teaser[];
   how_it_works: HowItWorksStep[];
   features: Feature[];
@@ -49,6 +55,8 @@ export interface LandingContent {
   plain_email_note: {
     heading: string;
     body: string;
+    image: string;
+    image_alt: string;
   };
   vignettes: Vignette[];
   final_cta: {
