@@ -1,149 +1,136 @@
-dateline: "Morning Edition"
-hero_heading: "Your morning edition, written for your Kindle Scribe."
-hero_subheading: >-
-  Daily Scribe gathers the news, puzzles, and practice you actually care about,
-  binds it into one polished PDF, and delivers it to your Kindle — or just your
-  inbox — before you've poured your coffee.
-hero_image: "/uploads/hero.svg"
-hero_image_alt: "Illustration of a tablet, stylus, and a steaming cup of coffee"
-
+dateline: Morning Edition
+hero_heading: Your morning edition, written for your Kindle Scribe.
+hero_subheading: Daily Scribe gathers the news, puzzles, and practice you
+  actually care about, binds it into one polished PDF, and delivers it to your
+  Kindle — or just your inbox — before you've poured your coffee.
+hero_image: /uploads/hero_new.jpeg
+hero_image_alt: Illustration of a tablet, stylus, and a steaming cup of coffee
 teasers:
-  - kicker: "Practice"
-    title: "Kanji, corrected."
-    body: >-
-      Write your answers by hand, mail the page back, and Daily Scribe grades
-      it — tracking your progress day over day.
+  - kicker: Practice
+    title: Kanji, corrected.
+    body: Write your answers by hand, mail the page back, and Daily Scribe grades it
+      — tracking your progress day over day.
     anchor: practice
-  - kicker: "Play"
-    title: "Crosswords today. Dungeons tomorrow."
-    body: >-
-      A fresh write-in crossword lands with every edition. A Dungeons &
-      Dragons companion is next up the page.
+  - kicker: Play
+    title: Crosswords today. Dungeons tomorrow.
+    body: A fresh write-in crossword lands with every edition. A Dungeons & Dragons
+      companion is next up the page.
     anchor: play
-  - kicker: "Read"
-    title: "The news, bound like a newspaper."
-    body: >-
-      RTÉ, BBC, and CBC headlines curated into one quiet read — no feed, no
+  - kicker: Read
+    title: The news, bound like a newspaper.
+    body: RTÉ, BBC, and CBC headlines curated into one quiet read — no feed, no
       scroll. Classic novels arrive next.
     anchor: read
-  - kicker: "Live"
-    title: "Your house, summarized."
-    body: >-
-      A morning briefing pulled straight from your Home Assistant setup —
-      what happened overnight, what needs you today.
+  - kicker: Live
+    title: Your house, summarized.
+    body: A morning briefing pulled straight from your Home Assistant setup — what
+      happened overnight, what needs you today.
     anchor: live
-
 how_it_works:
-  - numeral: "I"
-    title: "Pick your sections"
-    body: "Choose from news, puzzles, practice, and your smart home — add or drop sections whenever you like."
-  - numeral: "II"
-    title: "We set your edition"
-    body: "Each section is fetched, rendered, and bound into a single PDF, timed to arrive with your morning."
-  - numeral: "III"
-    title: "It arrives before your coffee does"
-    body: "Emailed straight to your Kindle Scribe, another e-reader, or just the inbox you already check."
-
+  - numeral: I
+    title: Pick your sections
+    body: Choose from news, puzzles, practice, and your smart home — add or drop
+      sections whenever you like.
+  - numeral: II
+    title: We set your edition
+    body: Each section is fetched, rendered, and bound into a single PDF, timed to
+      arrive with your morning.
+  - numeral: III
+    title: It arrives before your coffee does
+    body: Emailed straight to your Kindle Scribe, another e-reader, or just the
+      inbox you already check.
 features:
-  - id: practice
-    kicker: "Practice"
-    title: "Learn by hand, not by tap."
-    body: >-
-      Every edition can include a page of kanji to write out longhand — the
-      way the Scribe was built to be used. Mail the finished page back and
-      Daily Scribe reads your handwriting, grades it, and remembers where
-      you're strong and where you need another pass.
-    note: "Your streak and accuracy carry over automatically, day to day."
+  - media_right: true
+    body: Every edition can include a page of kanji to write out longhand — the way
+      the Scribe was built to be used. Mail the finished page back and Daily
+      Scribe reads your handwriting, grades it, and remembers where you're
+      strong and where you need another pass.
+    image_alt: Illustration of a notebook page with corrected kanji strokes and a
+      checkmark
+    note: Your streak and accuracy carry over automatically, day to day.
+    kicker: Practice
+    title: Learn by hand, not by tap.
     coming_soon: false
-    media_right: true
-    image: "/uploads/feature-practice.svg"
-    image_alt: "Illustration of a notebook page with corrected kanji strokes and a checkmark"
-  - id: play
-    kicker: "Play"
-    title: "Puzzles worth waking up for."
-    body: >-
-      A brand-new write-in crossword arrives every day, answer key tucked on
-      the second page so no one spoils it early. Next up: a Dungeons &
-      Dragons campaign companion, delivered chapter by chapter alongside your
-      party's next session.
-    note: "Dungeons & Dragons 5e campaign pages"
+    id: practice
+    image: /uploads/feature-practice.svg
+  - media_right: false
+    body: "A brand-new write-in crossword arrives every day, answer key tucked on
+      the second page so no one spoils it early. Next up: a Dungeons & Dragons
+      campaign companion, delivered chapter by chapter alongside your party's
+      next session."
+    image_alt: Illustration of a crossword grid
+    note: Dungeons & Dragons 5e campaign pages
+    kicker: Play
+    title: Puzzles worth waking up for.
     coming_soon: true
-    media_right: false
-    image: "/uploads/feature-play.svg"
-    image_alt: "Illustration of a crossword grid"
-  - id: read
-    kicker: "Read"
-    title: "The front page, curated."
-    body: >-
-      Daily Scribe pulls the day's stories from RTÉ News, BBC, and CBC and
-      sets them like a real newspaper — headlines and bodies you choose by
-      section, nothing chasing your attention. Prefer fiction to current
-      events? A classic novel will arrive one chapter at a time.
-    note: "Serialized classic novels, one chapter per edition"
+    id: play
+    image: /uploads/feature-play.svg
+  - media_right: true
+    body: Daily Scribe pulls the day's stories from RTÉ News, BBC, and CBC and sets
+      them like a real newspaper — headlines and bodies you choose by section,
+      nothing chasing your attention. Prefer fiction to current events? A
+      classic novel will arrive one chapter at a time.
+    image_alt: Illustration of a stack of newspaper clippings
+    note: Serialized classic novels, one chapter per edition
+    kicker: Read
+    title: The front page, curated.
     coming_soon: true
-    media_right: true
-    image: "/uploads/feature-read.svg"
-    image_alt: "Illustration of a stack of newspaper clippings"
-  - id: live
-    kicker: "Live"
-    title: "Your home, every morning."
-    body: >-
-      Daily Scribe checks in with your Home Assistant setup overnight and
-      writes it up in plain language — what happened while you slept, what
-      needs your attention today — so you catch up on your house the same
-      way you catch up on the news.
-    note: "Works with the Home Assistant instance you already run."
+    id: read
+    image: /uploads/feature-read.svg
+  - media_right: false
+    body: Daily Scribe checks in with your Home Assistant setup overnight and writes
+      it up in plain language — what happened while you slept, what needs your
+      attention today — so you catch up on your house the same way you catch up
+      on the news.
+    image_alt: Illustration of a house with a smart-home signal icon
+    note: Works with the Home Assistant instance you already run.
+    kicker: Live
+    title: Your home, every morning.
     coming_soon: false
-    media_right: false
-    image: "/uploads/feature-live.svg"
-    image_alt: "Illustration of a house with a smart-home signal icon"
-  - id: health
-    kicker: "Track"
-    title: "What you ate. What you drank."
-    body: >-
-      Log meals and drinks straight from the page you're already reading,
-      then export the running record to your phone's health app — no
-      separate app to open, no separate habit to build.
-    note: "Eating & drinking tracker with health app export"
+    id: live
+    image: /uploads/feature-live.svg
+  - media_right: true
+    body: Log meals and drinks straight from the page you're already reading, then
+      export the running record to your phone's health app — no separate app to
+      open, no separate habit to build.
+    image_alt: Illustration of a fork, knife, and glass
+    note: Eating & drinking tracker with health app export
+    kicker: Track
+    title: What you ate. What you drank.
     coming_soon: true
-    media_right: true
-    image: "/uploads/feature-health.svg"
-    image_alt: "Illustration of a fork, knife, and glass"
-
+    id: health
+    image: /uploads/feature-health.svg
 premium_callout:
-  heading: "The Sunday edition — every section, one PDF."
-  body: >-
-    Bundle every service you subscribe to into a single branded edition,
-    complete with a cover page and a linked table of contents. One email,
-    one download, everything you asked for — nothing you didn't.
+  heading: The Sunday edition — every section, one PDF.
+  body: Bundle every service you subscribe to into a single branded edition,
+    complete with a cover page and a linked table of contents. One email, one
+    download, everything you asked for — nothing you didn't.
   points:
-    - heading: "One cover, one edition."
-      body: "All your sections bound together."
-    - heading: "Linked table of contents."
-      body: "Jump straight to what you want."
-    - heading: "Nothing lost."
-      body: "One section failing never takes down the rest."
-
+    - heading: One cover, one edition.
+      body: All your sections bound together.
+    - heading: Linked table of contents.
+      body: Jump straight to what you want.
+    - heading: Nothing lost.
+      body: One section failing never takes down the rest.
 plain_email_note:
-  heading: "No Kindle? No problem."
-  body: >-
-    Everything above works exactly the same delivered as a PDF to your
-    everyday inbox — no e-reader, no setup beyond an email address you
-    already check every morning.
-  image: "/uploads/envelope.svg"
-  image_alt: "Illustration of an envelope"
-
+  heading: No Kindle? No problem.
+  body: Everything above works exactly the same delivered as a PDF to your
+    everyday inbox — no e-reader, no setup beyond an email address you already
+    check every morning.
+  image: /uploads/envelope.svg
+  image_alt: Illustration of an envelope
 vignettes:
-  - caption: "The puzzle solver who wants ink under the pen, not glare on a screen."
-    image: "/uploads/vignette-reading.svg"
-    image_alt: "Illustration of a person reading in an armchair"
-  - caption: "The kanji student who finally gets corrected homework back the next morning."
-    image: "/uploads/vignette-corrected.svg"
-    image_alt: "Illustration of a corrected homework page"
-  - caption: "The early riser who reads the news over coffee before anyone else is awake."
-    image: "/uploads/vignette-coffee.svg"
-    image_alt: "Illustration of a steaming cup of coffee"
-
+  - caption: The puzzle solver who wants ink under the pen, not glare on a screen.
+    image: /uploads/vignette-reading.svg
+    image_alt: Illustration of a person reading in an armchair
+  - caption: The kanji student who finally gets corrected homework back the next
+      morning.
+    image: /uploads/vignette-corrected.svg
+    image_alt: Illustration of a corrected homework page
+  - caption: The early riser who reads the news over coffee before anyone else is awake.
+    image: /uploads/vignette-coffee.svg
+    image_alt: Illustration of a steaming cup of coffee
 final_cta:
-  heading: "Start your subscription."
-  body: "Pick your sections, whitelist one sender address, and your first edition arrives tomorrow morning."
+  heading: Start your subscription.
+  body: Pick your sections, whitelist one sender address, and your first edition
+    arrives tomorrow morning.
