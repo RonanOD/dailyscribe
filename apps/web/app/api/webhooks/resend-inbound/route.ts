@@ -161,7 +161,10 @@ async function extractInboundRef(
       const page = await doc.getPage(i);
       const content = await page.getTextContent();
       const pageText = content.items.map((it) => ("str" in it ? it.str : "")).join(" ");
-      const match = pageText.match(SUBJECT_RE);
+      // A hyphenated line-wrap can split the ref token itself (e.g. "dai-\nlyscribe:kanji:…"),
+      // which the plain join above renders as "dai- lyscribe:kanji:…" — defeat that by also
+      // trying a hyphen-unwrapped variant before giving up on a page.
+      const match = pageText.match(SUBJECT_RE) ?? pageText.replace(/-\s+/g, "").match(SUBJECT_RE);
       if (!match) continue;
       if (!ref) ref = { service: match[1], token: match[2] };
       if (match[1] === ref.service && match[2] === ref.token) pageIndices.push(i - 1); // 0-based, for pdf-lib

@@ -51,7 +51,8 @@ const styles = StyleSheet.create({
   exampleRow: { fontSize: 9.5, color: "#222222", marginTop: 4 },
   practiceLabel: { fontSize: 8, color: "#888888", marginBottom: 4 },
   practiceRow: { flexDirection: "row" },
-  footer: { position: "absolute", bottom: 20, left: 48, right: 48, fontSize: 7.5, color: "#888888", textAlign: "center" },
+  footer: { position: "absolute", bottom: 22, left: 48, right: 48, fontSize: 7.5, color: "#888888", textAlign: "center" },
+  footerRef: { position: "absolute", bottom: 10, left: 48, right: 48, fontSize: 7.5, color: "#888888", textAlign: "center" },
 });
 
 /** The full character rendered from its KanjiVG stroke paths, as a static outline. */
@@ -177,10 +178,18 @@ export function KanjiDocument({
           style={styles.footer}
           render={({ pageNumber, totalPages }) => {
             const pageInfo = digest ? "" : ` · Page ${pageNumber} of ${totalPages}`;
-            return `Delivered by Daily Scribe${pageInfo} · Kanji data: KANJIDIC2/EDRDG (CC BY-SA 4.0). Stroke diagrams: KanjiVG, © Ulrich Apel (CC BY-SA 3.0). · Ref: dailyscribe:kanji:${inboundToken}`;
+            return `Delivered by Daily Scribe${pageInfo} · Kanji data: KANJIDIC2/EDRDG (CC BY-SA 4.0). Stroke diagrams: KanjiVG, © Ulrich Apel (CC BY-SA 3.0).`;
           }}
           fixed
         />
+        {/* Its own line, never sharing space with the attribution text above:
+         *  that line's length varies (digest vs. standalone, retry notes),
+         *  and once it wrapped, react-pdf hyphenated across "dailyscribe:kanji:…"
+         *  itself — splitting the literal token the inbound webhook regex
+         *  matches on, so a real mailed-back digest went unrecognized. */}
+        <Text style={styles.footerRef} fixed>
+          {`Ref: dailyscribe:kanji:${inboundToken}`}
+        </Text>
       </Page>
     </Document>
   );
