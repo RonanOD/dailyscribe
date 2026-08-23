@@ -100,7 +100,7 @@ features:
     title: What you ate. What you drank.
     coming_soon: true
     id: health
-    image: /uploads/feature-health.svg
+    image: /uploads/health.png
 premium_callout:
   heading: The Sunday edition — every section, one PDF.
   body: Bundle every service you subscribe to into a single branded edition,
