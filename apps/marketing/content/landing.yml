@@ -123,11 +123,10 @@ plain_email_note:
 vignettes:
   - caption: The puzzle solver who likes to solve using a pen, not glare on a screen.
     image: /uploads/vignette-reading.png
-    image_alt: Illustration of a person reading in an armchair
-  - caption: The kanji student who finally gets corrected homework back the next
-      morning.
-    image: /uploads/vignette-corrected.svg
-    image_alt: Illustration of a corrected homework page
+    image_alt: Illustration of a tablet stylus
+  - caption: "The kanji student who likes to learn the traditional way "
+    image: /uploads/vignette-kanji.png
+    image_alt: Illustration of a kanji
   - caption: The early riser who reads the news over coffee before anyone else is awake.
     image: /uploads/vignette-coffee.svg
     image_alt: Illustration of a steaming cup of coffee
