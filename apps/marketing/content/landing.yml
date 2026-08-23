@@ -121,8 +121,8 @@ plain_email_note:
   image: /uploads/envelope.svg
   image_alt: Illustration of an envelope
 vignettes:
-  - caption: The puzzle solver who wants ink under the pen, not glare on a screen.
-    image: /uploads/vignette-reading.svg
+  - caption: The puzzle solver who likes to solve using a pen, not glare on a screen.
+    image: /uploads/vignette-reading.png
     image_alt: Illustration of a person reading in an armchair
   - caption: The kanji student who finally gets corrected homework back the next
       morning.
