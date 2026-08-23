@@ -1,19 +1,16 @@
 import type { Asset } from "@dailyscribe/core";
 import {
-  Circle,
   Document,
-  G,
-  Line,
+  Image,
   Link,
   Page,
-  Path,
-  Rect,
   StyleSheet,
-  Svg,
   Text,
   View,
   renderToBuffer,
 } from "@react-pdf/renderer";
+
+import { heroCoverArtBase64 } from "./digest-cover-art";
 
 // A4 in PDF points (pdfkit's own PAGE_SIZES constant) — needed here (not
 // just passed to <Page size="A4">) because tocRowRect must compute each
@@ -36,6 +33,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  coverArt: { width: 146, height: 160 },
   coverTitle: { fontSize: 30, fontWeight: "bold", marginTop: 24, textAlign: "center" },
   coverDate: { fontSize: 13, color: "#444444", marginTop: 8, textAlign: "center" },
   coverTagline: { fontSize: 10, color: "#888888", marginTop: 16, textAlign: "center" },
@@ -55,30 +53,6 @@ const styles = StyleSheet.create({
   legal: { position: "absolute", bottom: 40, left: MARGIN_X, right: MARGIN_X, fontSize: 8, color: "#888888", textAlign: "center" },
   legalLink: { color: "#6ea8fe" },
 });
-
-/** tablet-stylus.svg (apps/web/public), hand-translated to react-pdf's own
- *  SVG primitives — react-pdf's <Image> only rasterizes PNG/JPG, it can't
- *  load an .svg file directly (same reason kanji.tsx's GlyphSvg hand-draws
- *  stroke paths instead of embedding an image). Re-stroked from the
- *  source's pale #e7e9ee (styled for a dark web background) to #111111 so
- *  it reads on a printed/white page. */
-function CoverArt({ size }: { size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 640 800">
-      <G fill="none" stroke="#111111" strokeWidth={6} strokeLinecap="round" strokeLinejoin="round">
-        <Rect x={120} y={70} width={300} height={470} rx={26} />
-        <Rect x={144} y={100} width={252} height={392} rx={10} strokeWidth={4} />
-        <Circle cx={270} cy={520} r={6} strokeWidth={4} />
-        <Line x1={170} y1={170} x2={370} y2={170} strokeWidth={3} />
-        <Line x1={170} y1={210} x2={370} y2={210} strokeWidth={3} />
-        <Line x1={170} y1={250} x2={330} y2={250} strokeWidth={3} />
-        <Rect x={480} y={100} width={28} height={360} rx={14} />
-        <Line x1={480} y1={440} x2={508} y2={440} strokeWidth={4} />
-        <Path d="M480 460 L508 460 L494 496 Z" />
-      </G>
-    </Svg>
-  );
-}
 
 /** A TOC row's clickable rectangle in PDF points (bottom-left origin) —
  *  must exactly match tocRow's layout (fixed heading block + fixed-height,
@@ -107,7 +81,7 @@ function DigestCoverDocument({ sections, dateFormatted }: { sections: DigestCove
   return (
     <Document title="Daily Scribe Digest" author="Daily Scribe">
       <Page size="A4" style={styles.coverPage}>
-        <CoverArt size={160} />
+        <Image style={styles.coverArt} src={`data:image/png;base64,${heroCoverArtBase64}`} />
         <Text style={styles.coverTitle}>Daily Scribe</Text>
         <Text style={styles.coverDate}>{dateFormatted}</Text>
         <Text style={styles.coverTagline}>Your daily services, bundled into one PDF.</Text>

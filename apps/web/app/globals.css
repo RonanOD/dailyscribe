@@ -23,18 +23,17 @@ h3 {
   font-family: var(--font-display), Georgia, serif;
 }
 
-/* Faint generic tablet-and-stylus motif behind all content. */
+/* Faint tablet-and-coffee illustration (shared with the marketing site's hero) behind all content. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: url("/tablet-stylus.svg");
-  /* Tile the motif horizontally, anchored to the left. */
-  background-repeat: repeat-x;
-  background-position: left center;
-  background-size: min(38vmin, 300px);
+  background-image: url("/hero-bg.png");
+  background-repeat: no-repeat;
+  background-position: bottom right;
+  background-size: min(48vmin, 420px);
   opacity: 0.07;
 }
 
