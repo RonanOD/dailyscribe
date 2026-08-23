@@ -78,8 +78,9 @@ features:
     id: read
     image: /uploads/feature-read.svg
   - media_right: false
-    body: Daily Scribe checks in with your Home Assistant setup overnight and writes
-      it up in plain language — what happened while you slept, what needs your
+    body: Daily Scribe checks in with your [Home
+      Assistant](https://www.home-assistant.io/) setup overnight and writes it
+      up in plain language — what happened while you slept, what needs your
       attention today — so you catch up on your house the same way you catch up
       on the news.
     image_alt: Illustration of a house with a smart-home signal icon
@@ -88,7 +89,7 @@ features:
     title: Your home, every morning.
     coming_soon: false
     id: live
-    image: /uploads/feature-live.svg
+    image: /uploads/ha.png
   - media_right: true
     body: Log meals and drinks straight from the page you're already reading, then
       export the running record to your phone's health app — no separate app to
