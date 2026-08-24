@@ -31,9 +31,9 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background-image: url("/hero-bg.png");
-  background-repeat: no-repeat;
-  background-position: bottom right;
-  background-size: min(48vmin, 420px);
+  background-repeat: repeat;
+  background-position: top left;
+  background-size: min(38vmin, 320px);
   opacity: 0.07;
 }
 
