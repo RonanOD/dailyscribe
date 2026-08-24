@@ -12,7 +12,11 @@ export default async function DashboardPage() {
     return (
       <main className="landing">
         <section className="card">
-          <h1>Daily Scribe</h1>
+          <h1>
+            <a className="heading-link" href="https://dailyscribe.ca/">
+              Daily Scribe
+            </a>
+          </h1>
           <p className="muted">Sign in to configure your daily delivery.</p>
           <form
             action={async () => {
@@ -89,7 +93,11 @@ export default async function DashboardPage() {
   return (
     <main className="dashboard">
       <header className="topbar">
-        <h1>Daily Scribe</h1>
+        <h1>
+          <a className="heading-link" href="https://dailyscribe.ca/">
+            Daily Scribe
+          </a>
+        </h1>
         <div className="who">
           <span>{session.user.email ?? session.user.name}</span>
           <form

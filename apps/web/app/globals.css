@@ -41,6 +41,11 @@ a {
   color: var(--accent);
 }
 
+.heading-link {
+  color: inherit;
+  text-decoration: none;
+}
+
 /* Landing */
 .landing {
   min-height: 100vh;
