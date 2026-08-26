@@ -6,4 +6,11 @@ import type { BundleableServiceId } from "@dailyscribe/core";
  *  runner (which services to look up) and the subscriptions API route. */
 // Order matches the dashboard's tab order, since it also drives the digest
 // cover's table-of-contents listing order.
-export const DIGEST_MEMBER_SERVICES: BundleableServiceId[] = ["rte", "cbc", "bbc", "ha-summary", "kanji", "crossword"];
+export const DIGEST_MEMBER_SERVICES: BundleableServiceId[] = [
+  "rte",
+  "cbc",
+  "bbc",
+  "ha-summary",
+  "kanji",
+  "universal-crossword",
+];

@@ -15,11 +15,11 @@ import {
 } from "@dailyscribe/core";
 import { bbcNewsPlugin } from "@/lib/plugins/bbc";
 import { cbcNewsPlugin } from "@/lib/plugins/cbc";
-import { crosswordPlugin } from "@/lib/plugins/crossword";
 import { renderDigestCoverPdf } from "@/lib/plugins/digest-cover";
 import { haSummaryPlugin } from "@/lib/plugins/ha";
 import { kanjiPlugin } from "@/lib/plugins/kanji";
 import { rteNewsPlugin } from "@/lib/plugins/rte";
+import { universalCrosswordPlugin } from "@/lib/plugins/universal-crossword";
 import { DIGEST_MEMBER_SERVICES } from "@/lib/digest";
 
 // Register the available service plugins once per runtime.
@@ -29,7 +29,7 @@ registerPlugin(bbcNewsPlugin);
 registerPlugin(rteNewsPlugin);
 registerPlugin(haSummaryPlugin);
 registerPlugin(kanjiPlugin);
-registerPlugin(crosswordPlugin);
+registerPlugin(universalCrosswordPlugin);
 
 /**
  * App-wide deliverer: Resend, sending from Daily Scribe's single verified address.

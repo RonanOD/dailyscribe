@@ -69,9 +69,6 @@ importers:
       '@react-pdf/renderer':
         specifier: ^4.1.6
         version: 4.5.1(react@19.2.7)
-      crossword-layout-generator:
-        specifier: ^0.1.1
-        version: 0.1.1
       fast-xml-parser:
         specifier: ^4.5.1
         version: 4.5.6
@@ -970,9 +967,6 @@ packages:
   cookie@0.7.1:
     resolution: {integrity: sha512-6DnInpx7SJ2AK3+CTUE/ZM0vWTUboZCegxhC2xiIydHR9jNuTAASBrfEpHhiGOZw/nX51bHt6YQl8jsGo4y/0w==}
     engines: {node: '>= 0.6'}
-
-  crossword-layout-generator@0.1.1:
-    resolution: {integrity: sha512-wunaTcpzDc1UL7iC77ckh4mMEjFuBDMYIKhJn3yq6b7jvHu5zcxe17cGh4Pv1VbLu1BfC6kgDV0IowfqDUm2sg==}
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
@@ -2463,8 +2457,6 @@ snapshots:
   comma-separated-tokens@2.0.3: {}
 
   cookie@0.7.1: {}
-
-  crossword-layout-generator@0.1.1: {}
 
   csstype@3.2.3: {}
 

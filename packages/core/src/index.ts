@@ -9,4 +9,4 @@ export * from "./delivery/merge";
 export * from "./data/kanji";
 export * from "./kanji-progress";
 export * from "./kanji-check";
-export * from "./crossword-generate";
+export * from "./crossword-sources/universal";

@@ -7,7 +7,7 @@ import { CBC_FEEDS, CBC_REGIONS } from "@/lib/cbc-feeds";
 import { RTE_FEEDS } from "@/lib/rte-feeds";
 import { TabNav, type TabDef } from "./tab-nav";
 
-const TAB_KEYS = ["delivery", "rte", "cbc", "bbc", "home-assistant", "kanji", "crossword"] as const;
+const TAB_KEYS = ["delivery", "rte", "cbc", "bbc", "home-assistant", "kanji", "universal-crossword"] as const;
 type TabKey = (typeof TAB_KEYS)[number];
 const DEFAULT_TAB: TabKey = "delivery";
 
@@ -59,7 +59,6 @@ interface KanjiConfig {
 }
 
 interface CrosswordConfig {
-  theme?: string;
   deliveryTime?: string;
   timezone?: string;
   kindleEmail?: string;
@@ -231,7 +230,6 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
   };
 
   const initialCrossword = {
-    theme: crossword?.config.theme ?? "",
     enabled: crossword?.enabled ?? true,
   };
 
@@ -271,7 +269,6 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
   const [kanjiEnabled, setKanjiEnabled] = useState(initialKanji.enabled);
 
   // Crossword State
-  const [crosswordTheme, setCrosswordTheme] = useState(initialCrossword.theme);
   const [crosswordEnabled, setCrosswordEnabled] = useState(initialCrossword.enabled);
 
   // Digest State — "send all enabled services as one PDF", using the same
@@ -327,7 +324,7 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
     maxJlptLevel !== baseKanji.maxJlptLevel ||
     kanjiEnabled !== baseKanji.enabled;
 
-  const isCrosswordDirty = crosswordTheme !== baseCrossword.theme || crosswordEnabled !== baseCrossword.enabled;
+  const isCrosswordDirty = crosswordEnabled !== baseCrossword.enabled;
 
   const isDigestDirty = digestEnabled !== baseDigestEnabled;
 
@@ -361,7 +358,13 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
       dirty: isHaCredsDirty || isHaSettingsDirty,
     },
     { key: "kanji", label: "Kanji", icon: "🈷️", dirty: isKanjiDirty },
-    { key: "crossword", label: "Crossword", icon: "🧩", iconSrc: "/icons/crossword.svg", dirty: isCrosswordDirty },
+    {
+      key: "universal-crossword",
+      label: "Universal Crossword",
+      icon: "🧩",
+      iconSrc: "/icons/crossword.svg",
+      dirty: isCrosswordDirty,
+    },
   ];
 
   function ok(text: string) {
@@ -484,8 +487,7 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
 
       // 7. Save Crossword settings
       await postJson("/api/subscriptions", {
-        service: "crossword",
-        theme: crosswordTheme,
+        service: "universal-crossword",
         deliveryTime,
         timezone: deliveryTz,
         kindleEmail: kindleEmail.trim(),
@@ -532,7 +534,6 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
         enabled: kanjiEnabled,
       });
       setBaseCrossword({
-        theme: crosswordTheme,
         enabled: crosswordEnabled,
       });
       setBaseDigestEnabled(digestEnabled);
@@ -890,24 +891,13 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
       </div>
 
       {/* Crossword Section */}
-      <div hidden={activeTab !== "crossword"}>
+      <div hidden={activeTab !== "universal-crossword"}>
       <section className="section">
-        <h2>Crossword</h2>
+        <h2>Universal Crossword</h2>
         <p className="hint">
-          A full-size crossword you fill in by hand — grid and clues on page one, the answer
-          key on page two. Generated fresh each day; no need to mail anything back.
+          The real daily Universal Crossword — a full-size grid and clues on page one, the
+          answer key on page two. No need to mail anything back.
         </p>
-
-        <div className="field">
-          <label htmlFor="crossword-theme">Theme (optional)</label>
-          <input
-            id="crossword-theme"
-            type="text"
-            value={crosswordTheme}
-            onChange={(e) => setCrosswordTheme(e.target.value)}
-            placeholder="Leave blank for a fresh theme each day"
-          />
-        </div>
 
         <div className="actions">
           <label className="toggle">
@@ -918,7 +908,11 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
             />
             Enabled
           </label>
-          <button className="link" onClick={() => sendTest("crossword", "test-crossword")} disabled={busy !== null}>
+          <button
+            className="link"
+            onClick={() => sendTest("universal-crossword", "test-crossword")}
+            disabled={busy !== null}
+          >
             {busy === "test-crossword" ? "Sending…" : "Send test now"}
           </button>
         </div>

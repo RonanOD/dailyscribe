@@ -40,7 +40,7 @@ export default async function DashboardPage() {
   const rteSub = await subscriptions.findOne({ userId, service: "rte" });
   const haSub = await subscriptions.findOne({ userId, service: "ha-summary" });
   const kanjiSub = await subscriptions.findOne({ userId, service: "kanji" });
-  const crosswordSub = await subscriptions.findOne({ userId, service: "crossword" });
+  const crosswordSub = await subscriptions.findOne({ userId, service: "universal-crossword" });
   const digestSub = await subscriptions.findOne({ userId, service: "digest" });
   const secretDocs = await userSecrets.find({ userId }).toArray();
   const haDoc = secretDocs.find((d) => d.provider === "ha");
