@@ -9,14 +9,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@auth/mongodb-adapter": "^3.7.4",
+    "@auth/mongodb-adapter": "^3.11.3",
     "@dailyscribe/core": "workspace:*",
     "@dailyscribe/theme": "workspace:*",
     "@react-pdf/renderer": "^4.1.6",
     "fast-xml-parser": "^4.5.1",
     "mongodb": "^6.12.0",
     "next": "^15.1.4",
-    "next-auth": "5.0.0-beta.25",
+    "next-auth": "5.0.0-beta.32",
     "pdfjs-serverless": "^1.3.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
