@@ -1,4 +1,4 @@
-import { collections, decryptSecret, encryptSecret } from "@dailyscribe/core";
+import { assertPublicHttpUrl, collections, decryptSecret, encryptSecret } from "@dailyscribe/core";
 import { NextResponse } from "next/server";
 import { requireUserId } from "@/lib/session";
 
@@ -67,8 +67,16 @@ export async function POST(req: Request) {
     if (!url || !token) {
       return NextResponse.json({ error: "Home Assistant URL and Access Token are required" }, { status: 400 });
     }
-    if (!/^https?:\/\//i.test(url)) {
-      return NextResponse.json({ error: "Home Assistant URL must start with http:// or https://" }, { status: 400 });
+    // The server fetches this URL on every run — reject anything that resolves
+    // into loopback / private / link-local space (SSRF guard).
+    try {
+      const parsed = await assertPublicHttpUrl(url);
+      url = parsed.toString();
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Invalid Home Assistant URL" },
+        { status: 400 },
+      );
     }
     secretText = JSON.stringify({ url, token });
   } else {

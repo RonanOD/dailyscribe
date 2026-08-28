@@ -114,7 +114,31 @@ export interface Subscription {
   service: ServiceId;
   config: SubscriptionConfig;
   enabled: boolean;
+  /** Set when the system auto-disabled this row — e.g. a hard bounce or spam
+   *  complaint on the Kindle address (see the resend-events webhook). Surfaced
+   *  in the dashboard so the user can fix the address and re-enable. */
+  disabledReason?: string;
   createdAt: Date;
+}
+
+export type DeliveryEventType = "email.delivered" | "email.bounced" | "email.complained";
+
+/** A Resend delivery-status webhook we've recorded (bounce / complaint /
+ *  delivered) for the shared sender. Feeds sender-reputation monitoring and
+ *  the auto-disable on hard bounce / complaint. */
+export interface DeliveryEvent {
+  _id?: ObjectId;
+  /** Resend email id — with `type`, the idempotency key. */
+  emailId: string;
+  type: DeliveryEventType;
+  to: string[];
+  subject?: string;
+  /** Present on bounces. */
+  bounce?: { type: string; subType: string; message: string };
+  /** Resend's event timestamp. */
+  createdAt: Date;
+  /** Our receipt time. */
+  recordedAt: Date;
 }
 
 export type DeliveryStatus = "success" | "failed";
@@ -187,6 +211,34 @@ export interface KanjiSubmission {
   processedAt?: Date;
   /** Set only when status === "failed" — the thrown error's message. */
   processingError?: string;
+}
+
+export type WaitlistStatus = "pending" | "approved" | "declined";
+
+/** A prospective user who asked for access from the marketing site. Approval
+ *  (see apps/web/scripts/approve-waitlist.mjs) seeds their email into the
+ *  `users` collection, which is what the auth signIn gate checks. */
+export interface WaitlistEntry {
+  _id?: ObjectId;
+  email: string;
+  /** Attribution slug from the marketing CTA, e.g. "reddit-kindlescribe". */
+  ref?: string;
+  /** Optional free-text the visitor left ("which sections?", device, etc.). */
+  note?: string;
+  status: WaitlistStatus;
+  createdAt: Date;
+  approvedAt?: Date;
+}
+
+/** One fixed-window counter for the Mongo-backed rate limiter. A TTL index on
+ *  `expiresAt` sweeps stale windows. */
+export interface RateLimitBucket {
+  _id?: ObjectId;
+  /** e.g. "deliver-now:<userId>". */
+  key: string;
+  windowStart: Date;
+  count: number;
+  expiresAt: Date;
 }
 
 export interface CrosswordClue {

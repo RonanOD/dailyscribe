@@ -46,6 +46,14 @@ export interface SampleEdition {
   file: string;
 }
 
+export interface WaitlistBlock {
+  heading: string;
+  body: string;
+  button_label: string;
+  placeholder: string;
+  success_message: string;
+}
+
 export interface LandingContent {
   dateline: string;
   hero_heading: string;
@@ -55,6 +63,7 @@ export interface LandingContent {
   teasers: Teaser[];
   how_it_works: HowItWorksStep[];
   sample_edition: SampleEdition;
+  waitlist: WaitlistBlock;
   features: Feature[];
   premium_callout: {
     heading: string;

@@ -11,7 +11,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${fontDisplay.variable} ${fontBody.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Vercel Web Analytics — no dependency; served automatically for
+            projects with Web Analytics enabled in the Vercel dashboard. */}
+        <script defer src="/_vercel/insights/script.js" />
+      </body>
     </html>
   );
 }

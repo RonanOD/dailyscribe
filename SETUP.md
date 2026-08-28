@@ -30,6 +30,22 @@ pnpm dev         # run both apps locally (apps/web on :3000, apps/marketing on
    (add `http://localhost:3000/api/auth/callback/github` for local dev).
 3. Copy Client ID/Secret → `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET`.
 
+### Google OAuth client (Auth.js)
+Most Kindle users don't have GitHub — Google + email magic-link are the primary
+sign-in methods.
+1. Google Cloud Console → **APIs & Services → OAuth consent screen**: type
+   **External**, add scopes `email` and `profile`, publish (or keep in Testing
+   and add test users for the beta).
+2. **APIs & Services → Credentials → Create credentials → OAuth client ID**,
+   type **Web application**. Authorized redirect URIs:
+   `https://my.dailyscribe.ca/api/auth/callback/google` (add
+   `http://localhost:3000/api/auth/callback/google` for dev).
+3. Copy Client ID/Secret → `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`.
+
+### Email magic-link (Auth.js)
+No extra setup — the Auth.js Resend provider reuses `RESEND_API_KEY` and
+`MAIL_FROM_DEFAULT`. Sign-in links are sent from `my@dailyscribe.ca`.
+
 ### GitHub OAuth app (Decap CMS)
 A **second, separate** OAuth App — Decap's `github` backend needs `repo` (full
 write) scope to commit content edits, far more sensitive than Auth.js's
@@ -88,6 +104,16 @@ since it's superseded by real webhook processing.
 4. Set `RESEND_INBOUND_DOMAIN=dailyscribe.ca` and `RESEND_INBOUND_WEBHOOK_SECRET`
    (below).
 
+### Resend delivery-status webhook (bounces / complaints)
+A **second webhook**, separate from the inbound one above.
+1. In Resend, create a webhook subscribed to `email.bounced`,
+   `email.complained`, and `email.delivered`, pointed at
+   `https://my.dailyscribe.ca/api/webhooks/resend-events`.
+2. Copy its signing secret → `RESEND_EVENTS_WEBHOOK_SECRET`.
+A hard bounce or spam complaint auto-disables every subscription pointed at that
+Kindle address (recorded in `deliveryEvents`); the user sees a banner explaining
+why and re-enables after fixing the address / approved-sender list.
+
 ## 3. Environment variables
 
 Copy `.env.example` → `apps/web/.env.local` for dev, and set the same in Vercel for prod.
@@ -99,11 +125,14 @@ Copy `.env.example` → `apps/web/.env.local` for dev, and set the same in Verce
 | `SECRETS_ENCRYPTION_KEY` | base64 32-byte AES-256-GCM key for per-user secrets |
 | `AUTH_SECRET` | Auth.js session secret |
 | `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | GitHub OAuth app |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth client |
+| `ALLOW_NEW_SIGNUPS` | `"false"` = invite-only (waitlist approval seeds `users`); `"true"` = open |
 | `CRON_SECRET` | Bearer token Vercel Cron must present to `/api/cron/dispatch` |
-| `RESEND_API_KEY` | Resend API key (app-wide outbound email) |
+| `RESEND_API_KEY` | Resend API key (app-wide outbound email + magic-link sign-in) |
 | `MAIL_FROM_DEFAULT` | From address, `Daily Scribe <my@dailyscribe.ca>` (also the code default) |
 | `RESEND_INBOUND_DOMAIN` | The Resend domain with Receiving enabled — `dailyscribe.ca` (the apex domain; independent of which Vercel project/hostname actually serves the webhook) |
 | `RESEND_INBOUND_WEBHOOK_SECRET` | Signing secret for the `email.received` webhook |
+| `RESEND_EVENTS_WEBHOOK_SECRET` | Signing secret for the bounce/complaint/delivered webhook |
 | `DECAP_OAUTH_GITHUB_CLIENT_ID` / `DECAP_OAUTH_GITHUB_CLIENT_SECRET` | Decap CMS's own GitHub OAuth app (apps/marketing only — see below) |
 | `GEMINI_API_KEY` | Google Gemini key for the Kanji handwriting check |
 | `GEMINI_MODEL` | Optional Gemini model override (defaults to `gemini-flash-lite-latest`) |
@@ -170,9 +199,36 @@ env vars on the `apps/marketing` project. No database — edits commit straight
 to this repo's `main` branch, and Vercel's normal git integration redeploys
 the site.
 
+### Waitlist & invite-only access
+
+The marketing site's CTA is a **waitlist form** (`WaitlistForm`), which POSTs
+cross-origin to `apps/web`'s `POST /api/waitlist` (rows land in the `waitlist`
+collection). Sign-in stays gated by `apps/web/auth.ts` — only emails already in
+`users` can sign in while `ALLOW_NEW_SIGNUPS="false"`.
+
+Approve people in batches (run from `apps/web`, needs `.env.local`):
+```bash
+npx tsx scripts/approve-waitlist.mjs --list          # show pending
+npx tsx scripts/approve-waitlist.mjs --batch 5       # approve 5 oldest, email invites
+npx tsx scripts/approve-waitlist.mjs a@x.com --no-email
+```
+It seeds each email into `users` and marks the `waitlist` row `approved`.
+
+`NEXT_PUBLIC_WEB_APP_URL` on the marketing project overrides where the form
+POSTs (defaults to `https://my.dailyscribe.ca`).
+
+### Analytics
+
+Both apps load `/_vercel/insights/script.js` from their layout — enable **Web
+Analytics** on each Vercel project for it to collect. Campaign links use
+`?ref=<slug>` (e.g. `dailyscribe.ca/?ref=reddit-kindlescribe`); the waitlist
+form forwards that slug and the approval script copies it onto the `users` row.
+
 ## 5. End-to-end verification (you as customer #1)
 
-1. `pnpm dev`, open `http://localhost:3000`, **Sign in with GitHub**.
+1. `pnpm dev`, open `http://localhost:3000`. Sign in — **email link**, **Google**,
+   or **GitHub**. A brand-new address is rejected until approved (seed it with
+   `approve-waitlist.mjs`, or set `ALLOW_NEW_SIGNUPS="true"` for dev).
 2. Whitelist `my@dailyscribe.ca` in Amazon's **Personal Document Settings** (one-time).
 3. In the dashboard:
    - Paste your nytimes.com cookie (must include `NYT-S`) → **Save NYT cookie** (crossword only).
