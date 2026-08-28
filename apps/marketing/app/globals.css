@@ -361,6 +361,35 @@ h3 {
   margin: 0;
 }
 
+/* ---------- Sample edition ---------- */
+.sample {
+  padding: 56px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.sample-box {
+  border: 2px solid var(--text);
+  padding: 44px 48px;
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr;
+  gap: 36px;
+  align-items: center;
+}
+.sample-headline {
+  font-size: clamp(1.6rem, 2.6vw, 2.3rem);
+  margin-bottom: 14px;
+}
+.sample-body {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text-soft);
+  margin: 0;
+  max-width: 52ch;
+}
+.sample-box .btn {
+  justify-self: start;
+  white-space: nowrap;
+}
+
 /* ---------- Premium callout ---------- */
 .premium {
   padding: 56px 0;
@@ -547,6 +576,7 @@ h3 {
   .hero-grid,
   .feature-grid,
   .feature--media-right .feature-grid,
+  .sample-box,
   .premium-box,
   .plainmail-grid {
     grid-template-columns: 1fr;

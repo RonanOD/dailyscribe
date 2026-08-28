@@ -38,6 +38,14 @@ export interface Vignette {
   image_alt: string;
 }
 
+export interface SampleEdition {
+  kicker: string;
+  heading: string;
+  body: string;
+  button_label: string;
+  file: string;
+}
+
 export interface LandingContent {
   dateline: string;
   hero_heading: string;
@@ -46,6 +54,7 @@ export interface LandingContent {
   hero_image_alt: string;
   teasers: Teaser[];
   how_it_works: HowItWorksStep[];
+  sample_edition: SampleEdition;
   features: Feature[];
   premium_callout: {
     heading: string;

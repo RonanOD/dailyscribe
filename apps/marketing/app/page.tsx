@@ -23,6 +23,9 @@ export default function HomePage() {
                 <a className="btn btn--text" href="#inside">
                   See what&rsquo;s inside &#8595;
                 </a>
+                <a className="btn" href={content.sample_edition.file} download>
+                  {content.sample_edition.button_label}
+                </a>
               </div>
             </div>
             <div className="hero-art">
@@ -57,6 +60,21 @@ export default function HomePage() {
                   <p>{step.body}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="sample" id="sample">
+          <div className="container">
+            <div className="sample-box">
+              <div>
+                <p className="kicker">{content.sample_edition.kicker}</p>
+                <h2 className="sample-headline">{content.sample_edition.heading}</h2>
+                <p className="sample-body">{content.sample_edition.body}</p>
+              </div>
+              <a className="btn btn--primary" href={content.sample_edition.file} download>
+                {content.sample_edition.button_label}
+              </a>
             </div>
           </div>
         </section>

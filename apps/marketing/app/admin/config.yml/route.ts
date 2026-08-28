@@ -44,6 +44,15 @@ collections:
               - { label: Numeral, name: numeral, widget: string }
               - { label: Title, name: title, widget: string }
               - { label: Body, name: body, widget: text }
+          - label: "Sample Edition Download"
+            name: sample_edition
+            widget: object
+            fields:
+              - { label: Kicker, name: kicker, widget: string }
+              - { label: Heading, name: heading, widget: string }
+              - { label: Body, name: body, widget: text }
+              - { label: "Button Label", name: button_label, widget: string }
+              - { label: "PDF File", name: file, widget: file }
           - label: "Feature Deep-Dives"
             name: features
             widget: list
