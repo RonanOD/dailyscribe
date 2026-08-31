@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildResendEmail, type DeliverOptions } from "./email";
+import { assertDeliverable, buildResendEmail, MAX_TOTAL_ATTACHMENT_BYTES, type DeliverOptions } from "./email";
 
 const DEFAULT_FROM = "Daily Scribe <documents@dailyscribe.ca>";
 
@@ -38,6 +38,16 @@ describe("buildResendEmail", () => {
     expect(payload.attachments).toEqual([
       { filename: "a.pdf", content: bytes, contentType: "application/pdf" },
     ]);
+  });
+
+  it("passes small attachments through assertDeliverable", () => {
+    expect(() => assertDeliverable(opts().assets)).not.toThrow();
+  });
+
+  it("rejects attachments whose total exceeds the cap", () => {
+    const big = { filename: "huge.pdf", contentType: "application/pdf", bytes: Buffer.alloc(MAX_TOTAL_ATTACHMENT_BYTES + 1) };
+    expect(() => assertDeliverable([big])).toThrow(/over the \d+ MB limit/);
+    expect(() => assertDeliverable([big])).toThrow(/huge\.pdf/);
   });
 
   it("handles multiple attachments", () => {

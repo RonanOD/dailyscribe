@@ -1,5 +1,15 @@
 import { MongoClient, type Db } from "mongodb";
-import type { CrosswordPuzzle, Delivery, KanjiProgress, KanjiSubmission, Subscription, UserSecret } from "./types";
+import type {
+  CrosswordPuzzle,
+  Delivery,
+  DeliveryEvent,
+  KanjiProgress,
+  KanjiSubmission,
+  RateLimitBucket,
+  Subscription,
+  UserSecret,
+  WaitlistEntry,
+} from "./types";
 
 // Cache the client across hot-reloads / serverless invocations.
 const globalForMongo = globalThis as unknown as {
@@ -36,5 +46,39 @@ export async function collections() {
     kanjiProgress: db.collection<KanjiProgress>("kanjiProgress"),
     kanjiSubmissions: db.collection<KanjiSubmission>("kanjiSubmissions"),
     crosswordPuzzles: db.collection<CrosswordPuzzle>("crosswordPuzzles"),
+    waitlist: db.collection<WaitlistEntry>("waitlist"),
+    rateLimits: db.collection<RateLimitBucket>("rateLimits"),
+    deliveryEvents: db.collection<DeliveryEvent>("deliveryEvents"),
   };
+}
+
+// Memoise so a request path can call ensureIndexes() freely; a failure clears
+// the memo so the next call retries.
+let indexesEnsured: Promise<void> | undefined;
+
+/**
+ * Create the unique / supporting / TTL indexes the app relies on for
+ * idempotency and cleanup. Idempotent — MongoDB ignores a createIndex whose
+ * spec already exists. Call once at startup (or lazily from a route).
+ */
+export function ensureIndexes(): Promise<void> {
+  if (!indexesEnsured) {
+    indexesEnsured = (async () => {
+      const c = await collections();
+      await Promise.all([
+        c.userSecrets.createIndex({ userId: 1, provider: 1 }, { unique: true }),
+        c.subscriptions.createIndex({ userId: 1, service: 1 }, { unique: true }),
+        c.deliveries.createIndex({ userId: 1, service: 1, puzzleDate: 1 }),
+        c.kanjiSubmissions.createIndex({ resendEmailId: 1 }, { unique: true }),
+        c.waitlist.createIndex({ email: 1 }, { unique: true }),
+        c.rateLimits.createIndex({ key: 1, windowStart: 1 }, { unique: true }),
+        c.rateLimits.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+        c.deliveryEvents.createIndex({ emailId: 1, type: 1 }, { unique: true }),
+      ]);
+    })().catch((err) => {
+      indexesEnsured = undefined;
+      throw err;
+    });
+  }
+  return indexesEnsured;
 }

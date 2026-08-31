@@ -31,6 +31,33 @@ export interface ResendEmailPayload {
   attachments: { filename: string; content: Buffer; contentType: string }[];
 }
 
+/**
+ * Ceiling for the summed size of a message's attachments. Resend rejects
+ * messages over 40 MB and Kindle "Send to Kindle" tops out around 50 MB; stay
+ * well under so a large multi-service digest fails loudly here (recorded as a
+ * failed delivery) instead of being silently dropped by Resend.
+ */
+export const MAX_TOTAL_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+
+export function totalAttachmentBytes(assets: Asset[]): number {
+  return assets.reduce((sum, a) => sum + a.bytes.byteLength, 0);
+}
+
+/** Throw a user-safe Error if the attachments are too large to deliver. */
+export function assertDeliverable(assets: Asset[]): void {
+  const total = totalAttachmentBytes(assets);
+  if (total > MAX_TOTAL_ATTACHMENT_BYTES) {
+    const mb = (total / (1024 * 1024)).toFixed(1);
+    const cap = Math.round(MAX_TOTAL_ATTACHMENT_BYTES / (1024 * 1024));
+    const biggest = [...assets].sort((a, b) => b.bytes.byteLength - a.bytes.byteLength)[0];
+    throw new Error(
+      `Attachments total ${mb} MB, over the ${cap} MB limit` +
+        (biggest ? ` (largest: ${biggest.filename})` : "") +
+        ". Lower your article counts or split the digest.",
+    );
+  }
+}
+
 /** Build the Resend send payload from generic DeliverOptions. Pure — no side effects. */
 export function buildResendEmail(opts: DeliverOptions, defaultFrom: string): ResendEmailPayload {
   return {
@@ -55,6 +82,7 @@ export function createResendDeliverer(config: ResendConfig): Deliverer {
   const resend = new Resend(config.apiKey);
   return {
     async deliver(opts: DeliverOptions): Promise<void> {
+      assertDeliverable(opts.assets);
       const { error } = await resend.emails.send(buildResendEmail(opts, config.from));
       if (error) {
         throw new Error(`Resend delivery failed: ${error.name} — ${error.message}`);

@@ -78,6 +78,11 @@ interface Props {
    *  separate config to pass here. */
   digestEnabled?: boolean;
   configured?: { ha: boolean; haUrl?: string };
+  /** Set when delivery to this user's Kindle address bounced hard or was marked
+   *  as spam and the system auto-disabled their services (see the
+   *  resend-events webhook). Shown as a banner so they can fix the address /
+   *  approved-sender list and re-enable. */
+  deliveryAlert?: string;
   /** Server-rendered content (e.g. the Kanji check-in status) shown above the
    *  Save button, so the button stays the last element on the page. */
   afterFields?: ReactNode;
@@ -145,7 +150,7 @@ function DeliveryFields(props: {
   );
 }
 
-export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabled: initialDigestEnabled, configured, afterFields }: Props) {
+export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabled: initialDigestEnabled, configured, deliveryAlert, afterFields }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -430,8 +435,9 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
         setBaseHaUrl(haUrl.trim());
       }
 
-      // 2. Save CBC settings
-      await postJson("/api/subscriptions", {
+      // 2. Save CBC settings (its response carries any Kindle-address warning —
+      //    the shared kindleEmail is identical across every service call below).
+      const firstSave = await postJson("/api/subscriptions", {
         service: "cbc",
         feeds: [...cbcFeeds, ...(regionOn ? [regionKey] : [])],
         maxPerFeed: cbcMax,
@@ -538,7 +544,8 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
       });
       setBaseDigestEnabled(digestEnabled);
 
-      ok("All settings saved successfully.");
+      const warning = firstSave.kindleEmailWarning as string | undefined;
+      ok(warning ? `Settings saved. ${warning}` : "All settings saved successfully.");
     });
 
   const sendTest = (service: string, key: string) =>
@@ -552,6 +559,12 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
   return (
     <>
       <TabNav tabs={tabs} active={activeTab} onChange={setTab} />
+
+      {deliveryAlert && (
+        <div className="alert" role="alert">
+          {deliveryAlert}
+        </div>
+      )}
 
       {/* Delivery Setup Section */}
       <div hidden={activeTab !== "delivery"}>

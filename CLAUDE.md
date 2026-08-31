@@ -41,7 +41,13 @@ emailed to the owner's Kindle, on multi-tenant-ready foundations — is built an
   redeploy independently of the dashboard/API code.
 - **Database:** **MongoDB Atlas** — a dedicated DailyScribe project / free M0 cluster, fully
   isolated. Accessed only via `MONGODB_URI`; db name `dailyscribe`.
-- **Auth:** **Auth.js (NextAuth v5)** with the MongoDB adapter + GitHub OAuth.
+- **Auth:** **Auth.js (NextAuth v5)** with the MongoDB adapter — **email magic-link (Resend),
+  Google OAuth, and GitHub OAuth**. Access is **invite-only**: the `signIn` gate rejects any
+  email not already in `users` unless `ALLOW_NEW_SIGNUPS="true"`. The marketing site's CTA is a
+  waitlist form (`POST /api/waitlist` → `waitlist` collection); `apps/web/scripts/approve-waitlist.mjs`
+  seeds approved emails into `users` in batches and emails invites. All three providers set
+  `allowDangerousEmailAccountLinking` (each verifies the address) so a seeded stub / second
+  method attaches cleanly.
 - **Scheduling:** **Vercel Cron** → `GET /api/cron/dispatch` (guarded by `CRON_SECRET`),
   timezone-aware, idempotent per day. (Note: Vercel Hobby limits cron frequency; hourly needs Pro.)
 - **Email delivery:** **Resend**, sending from the single verified address
@@ -116,11 +122,17 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
 - [~] **Phase 2 — Web app.** Login + dashboard (service config, secrets, send-test-now, digest
       checkbox) shipped. A separate `apps/marketing` promotional site (broadsheet-newspaper
       aesthetic, `dailyscribe.ca`/`www`) with a Decap CMS admin for its copy/images has also
-      landed. Still to do: full service-catalog picker (>1 service) for new sign-ups — DnD 5e,
-      classic novels, and eating tracking remain unbuilt.
+      landed. **Open-to-more-users groundwork (Aug 2026):** email + Google sign-in, waitlist
+      form + `approve-waitlist.mjs`, Mongo-backed rate limiting (`lib/rate-limit.ts`) on
+      send-test-now, SSRF guard on the HA URL (`assertPublicHttpUrl`), Kindle-email validation,
+      Vercel Web Analytics on both apps, `ensureIndexes()` for the idempotency/uniqueness
+      indexes. Still to do: full service-catalog picker (>1 service) for new sign-ups — DnD 5e,
+      classic novels, and eating tracking remain unbuilt; guided first-run onboarding.
 - [~] **Phase 3 — Scheduling at scale.** Vercel Cron + timezone-aware, idempotent dispatch
-      shipped for the solo case. Still to do: retries, failure notifications, sub-daily cron
-      coverage across many timezones (Vercel Pro).
+      shipped for the solo case. Bounce/complaint visibility landed (`/api/webhooks/resend-events`
+      → `deliveryEvents`, auto-disables subscriptions on hard bounce / spam complaint,
+      dashboard banner) and outbound attachment-size guard (`assertDeliverable`). Still to do:
+      retries, failure notifications, sub-daily cron coverage across many timezones (Vercel Pro).
 - [ ] **Phase 4 — Billing.** Subscription tiers (e.g. free single-service vs. paid bundles).
 - [~] **Phase 5 — Handwriting return path.** Live for Kanji: `/api/webhooks/resend-inbound`
       routes a mailed-back PDF by an embedded page ref, trims it to just that service's own

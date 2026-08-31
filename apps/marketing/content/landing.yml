@@ -138,6 +138,13 @@ vignettes:
   - caption: The early riser who reads the news over coffee before anyone else is awake.
     image: /uploads/vignette-coffee.png
     image_alt: Illustration of a steaming cup of coffee
+waitlist:
+  heading: Request an invitation
+  body: Daily Scribe is in a small private beta while we get delivery right for
+    every Kindle. Leave your email and we'll send an invite as spots open.
+  button_label: Join the waitlist
+  placeholder: you@example.com
+  success_message: You're on the list — watch your inbox for an invite.
 final_cta:
   heading: Start your subscription.
   body: Pick your sections, whitelist one sender address, and your first edition

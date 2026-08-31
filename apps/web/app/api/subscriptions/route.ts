@@ -1,5 +1,7 @@
 import {
   collections,
+  isEmailShaped,
+  isKindleAddress,
   type BbcNewsConfig,
   type CbcNewsConfig,
   type CrosswordVersion,
@@ -81,9 +83,12 @@ export async function POST(req: Request) {
     : "08:00";
   const timezone = (body.timezone || "America/Toronto").trim();
   const kindleEmail = (body.kindleEmail ?? "").trim();
-  if (!kindleEmail.includes("@")) {
+  if (!isEmailShaped(kindleEmail)) {
     return NextResponse.json({ error: "A valid Kindle email is required" }, { status: 400 });
   }
+  const kindleEmailWarning = isKindleAddress(kindleEmail)
+    ? undefined
+    : "That doesn't look like a Kindle address — it usually ends in @kindle.com.";
   const base = { deliveryTime, timezone, kindleEmail };
 
   // Service-specific config.
@@ -139,9 +144,12 @@ export async function POST(req: Request) {
     { userId, service },
     {
       $set: { config, enabled: body.enabled ?? true },
+      // The user is actively reconfiguring — clear any system auto-disable note
+      // (e.g. from a past bounce) so a fixed address gets a clean slate.
+      $unset: { disabledReason: "" },
       $setOnInsert: { userId, service, createdAt: new Date() },
     },
     { upsert: true },
   );
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, kindleEmailWarning });
 }

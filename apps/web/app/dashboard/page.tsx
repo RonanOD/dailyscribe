@@ -18,16 +18,56 @@ export default async function DashboardPage() {
             </a>
           </h1>
           <p className="muted">Sign in to configure your daily delivery.</p>
+
           <form
-            action={async () => {
+            className="signin-email"
+            action={async (formData: FormData) => {
               "use server";
-              await signIn("github", { redirectTo: "/dashboard" });
+              const email = String(formData.get("email") ?? "").trim();
+              await signIn("resend", { email, redirectTo: "/dashboard" });
             }}
           >
+            <input
+              type="email"
+              name="email"
+              required
+              autoComplete="email"
+              placeholder="you@example.com"
+              aria-label="Email address"
+            />
             <button className="button" type="submit">
-              Sign in with GitHub
+              Email me a sign-in link
             </button>
           </form>
+
+          <div className="signin-oauth">
+            <form
+              action={async () => {
+                "use server";
+                await signIn("google", { redirectTo: "/dashboard" });
+              }}
+            >
+              <button className="button button--secondary" type="submit">
+                Continue with Google
+              </button>
+            </form>
+            <form
+              action={async () => {
+                "use server";
+                await signIn("github", { redirectTo: "/dashboard" });
+              }}
+            >
+              <button className="button button--secondary" type="submit">
+                Continue with GitHub
+              </button>
+            </form>
+          </div>
+
+          <p className="muted signin-note">
+            New here?{" "}
+            <a href="https://dailyscribe.ca/#get-started">Request an invitation</a> — access is
+            invite-only during the beta. Use the same method each time you sign in.
+          </p>
         </section>
       </main>
     );
@@ -42,6 +82,7 @@ export default async function DashboardPage() {
   const kanjiSub = await subscriptions.findOne({ userId, service: "kanji" });
   const crosswordSub = await subscriptions.findOne({ userId, service: "universal-crossword" });
   const digestSub = await subscriptions.findOne({ userId, service: "digest" });
+  const disabledSub = await subscriptions.findOne({ userId, disabledReason: { $exists: true } });
   const secretDocs = await userSecrets.find({ userId }).toArray();
   const haDoc = secretDocs.find((d) => d.provider === "ha");
   let haUrl: string | undefined = undefined;
@@ -123,6 +164,7 @@ export default async function DashboardPage() {
         crossword={crosswordSub ? { config: crosswordSub.config, enabled: crosswordSub.enabled } : null}
         digestEnabled={digestSub?.enabled ?? false}
         configured={configured}
+        deliveryAlert={disabledSub?.disabledReason ?? undefined}
         afterFields={
           kanjiSub && (
             <section className="section">

@@ -1,6 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import { getLandingContent } from "@/lib/content";
 import { Masthead, SIGN_IN_URL } from "./_components/Masthead";
+import { WaitlistForm } from "./_components/WaitlistForm";
 
 export default function HomePage() {
   const content = getLandingContent();
@@ -16,10 +17,8 @@ export default function HomePage() {
               <span className="dateline">{content.dateline}</span>
               <h2 className="hero-headline">{content.hero_heading}</h2>
               <p className="hero-dek">{content.hero_subheading}</p>
+              <WaitlistForm copy={content.waitlist} source="site-hero" compact />
               <div className="hero-actions">
-                <a className="btn btn--primary" href={SIGN_IN_URL}>
-                  Start Reading Free
-                </a>
                 <a className="btn btn--text" href="#inside">
                   See what&rsquo;s inside &#8595;
                 </a>
@@ -162,11 +161,12 @@ export default function HomePage() {
 
       <section className="final-cta" id="get-started">
         <div className="container">
-          <h2>{content.final_cta.heading}</h2>
-          <p>{content.final_cta.body}</p>
-          <a className="btn btn--primary" href={SIGN_IN_URL}>
-            Sign In To Get Started
-          </a>
+          <h2>{content.waitlist.heading}</h2>
+          <p>{content.waitlist.body}</p>
+          <WaitlistForm copy={content.waitlist} source="site-footer" />
+          <p className="final-cta-signin">
+            Already invited? <a href={SIGN_IN_URL}>Sign in</a>
+          </p>
         </div>
       </section>
 
