@@ -631,6 +631,52 @@ h3 {
   gap: 8px;
 }
 
+/* ---------- Legal pages (Privacy / Terms) ---------- */
+.legal-masthead {
+  border-bottom: 1px solid var(--rule);
+  padding: 20px 0;
+  margin-bottom: 8px;
+}
+.legal-wordmark {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.4rem;
+  color: var(--text);
+}
+.legal-wordmark:hover {
+  text-decoration: none;
+  color: var(--accent);
+}
+.legal {
+  padding: 32px 0 64px;
+  max-width: 720px;
+}
+.legal h1 {
+  font-size: 2.2rem;
+  margin-bottom: 6px;
+}
+.legal-updated {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0 0 32px;
+}
+.legal h2 {
+  font-size: 1.25rem;
+  margin: 32px 0 10px;
+}
+.legal p,
+.legal li {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--text-soft);
+}
+.legal ul {
+  padding-left: 22px;
+  margin: 12px 0;
+}
+.legal li {
+  margin-bottom: 8px;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .hero-grid,

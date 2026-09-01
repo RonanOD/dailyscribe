@@ -48,6 +48,18 @@ const BROWSER_HEADERS: Record<string, string> = {
 };
 const LINK_FETCH_ATTEMPTS = 3;
 
+// The domain MX points every address at Resend inbound, so plain human mail
+// (privacy@, contact@, …) lands on this same webhook. Anything addressed to
+// one of these mailboxes is forwarded on to CONTACT_FORWARD_TO and does not
+// enter the submission pipeline below.
+const CONTACT_MAILBOXES = new Set(["privacy", "contact", "hello", "support", "abuse"]);
+
+function addressLocalPart(addr: string): string {
+  const angle = addr.match(/<([^>]+)>/);
+  const email = (angle ? angle[1] : addr).trim().toLowerCase();
+  return email.split("@")[0] ?? "";
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -218,6 +230,37 @@ export async function POST(req: Request) {
 
   if (event.type !== "email.received") {
     return NextResponse.json({ ok: true, skipped: "not email.received" });
+  }
+
+  // Plain mail to a contact mailbox (privacy@ etc.) — forward it to a real
+  // inbox and stop; it is not a mailed-back submission.
+  const recipients = [
+    ...(event.data.to ?? []),
+    ...(event.data.cc ?? []),
+    ...(event.data.received_for ?? []),
+  ];
+  if (recipients.some((r) => CONTACT_MAILBOXES.has(addressLocalPart(r)))) {
+    const forwardTo = process.env.CONTACT_FORWARD_TO;
+    if (!forwardTo) {
+      console.warn("resend-inbound: contact mail received but CONTACT_FORWARD_TO is not set");
+      return NextResponse.json({ ok: true, skipped: "contact mail, no forward configured" });
+    }
+    try {
+      const { error } = await resend.emails.receiving.forward({
+        emailId: event.data.email_id,
+        to: forwardTo,
+        from: process.env.MAIL_FROM_DEFAULT ?? "Daily Scribe <my@dailyscribe.ca>",
+        passthrough: true,
+      });
+      if (error) {
+        console.error("resend-inbound: contact forward failed:", error);
+        return NextResponse.json({ ok: true, skipped: "contact forward failed" });
+      }
+    } catch (err) {
+      console.error("resend-inbound: contact forward threw:", err instanceof Error ? err.message : err);
+      return NextResponse.json({ ok: true, skipped: "contact forward threw" });
+    }
+    return NextResponse.json({ ok: true, forwarded: true });
   }
 
   const { email_id: resendEmailId, attachments } = event.data;

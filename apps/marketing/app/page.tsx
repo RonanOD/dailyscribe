@@ -2,6 +2,7 @@ import ReactMarkdown from "react-markdown";
 import { getLandingContent } from "@/lib/content";
 import { Masthead, SIGN_IN_URL } from "./_components/Masthead";
 import { WaitlistForm } from "./_components/WaitlistForm";
+import { SiteFooter } from "./_components/SiteFooter";
 
 export default function HomePage() {
   const content = getLandingContent();
@@ -22,7 +23,12 @@ export default function HomePage() {
                 <a className="btn btn--text" href="#inside">
                   See what&rsquo;s inside &#8595;
                 </a>
-                <a className="btn" href={content.sample_edition.file} download>
+                <a
+                  className="btn"
+                  href={content.sample_edition.file}
+                  target="_blank"
+                  rel="noopener"
+                >
                   {content.sample_edition.button_label}
                 </a>
               </div>
@@ -71,7 +77,12 @@ export default function HomePage() {
                 <h2 className="sample-headline">{content.sample_edition.heading}</h2>
                 <p className="sample-body">{content.sample_edition.body}</p>
               </div>
-              <a className="btn btn--primary" href={content.sample_edition.file} download>
+              <a
+                className="btn btn--primary"
+                href={content.sample_edition.file}
+                target="_blank"
+                rel="noopener"
+              >
                 {content.sample_edition.button_label}
               </a>
             </div>
@@ -170,38 +181,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="site-footer">
-        <div className="container footer-grid">
-          <div className="footer-brand">
-            <h2>The Daily Scribe</h2>
-            <p>One inbox. One PDF. Every morning.</p>
-          </div>
-          <div className="footer-links">
-            <div className="footer-col">
-              <h4>Sections</h4>
-              <a href="#practice">Practice</a>
-              <a href="#play">Play</a>
-              <a href="#read">Read</a>
-              <a href="#live">Live</a>
-            </div>
-            <div className="footer-col">
-              <h4>Coming Soon</h4>
-              <a href="#play">Dungeons &amp; Dragons</a>
-              <a href="#read">Classic Novels</a>
-              <a href="#health">Eating &amp; Drinking</a>
-            </div>
-            <div className="footer-col">
-              <h4>Account</h4>
-              <a href="#premium">Premium</a>
-              <a href={SIGN_IN_URL}>Sign In</a>
-            </div>
-          </div>
-        </div>
-        <div className="container footer-legal">
-          <span>&copy; {new Date().getFullYear()} The Daily Scribe</span>
-          <span>dailyscribe.ca</span>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
