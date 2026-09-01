@@ -11,3 +11,6 @@ Online Services for Kindle Scribe and other devices. The kindle scribe is pretty
 - [x] [RTE News](https://www.rte.ie/feeds/rss/?index=/news/&limit=100)
 - [x] Home Assistant summary 
 
+## Goal
+Have a functioning SaaS that people a minimal amount for. The cost of the service 
+should about cover the operational expenses.

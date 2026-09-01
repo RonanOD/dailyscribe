@@ -9,7 +9,7 @@ export const SIGN_IN_URL = "https://my.dailyscribe.ca";
 
 // Used in the Terms "governing law" clause. Confirm/adjust to your actual
 // jurisdiction of residence.
-export const GOVERNING_LAW = "the Province of Ontario, Canada";
+export const GOVERNING_LAW = "the Province of Nova Scotia, Canada";
 
 // Bump when the legal copy changes materially.
 export const LEGAL_EFFECTIVE_DATE = "September 1, 2026";
