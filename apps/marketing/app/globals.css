@@ -687,6 +687,15 @@ h3 {
   .plainmail-grid {
     grid-template-columns: 1fr;
   }
+  .sample-box,
+  .premium-box {
+    padding: 28px 22px;
+  }
+  .sample-box .btn {
+    justify-self: stretch;
+    text-align: center;
+    white-space: normal;
+  }
   .feature--media-right .feature-art {
     order: 0;
   }
