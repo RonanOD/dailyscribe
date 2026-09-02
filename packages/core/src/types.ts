@@ -19,6 +19,21 @@ export interface UserSecret {
   updatedAt: Date;
 }
 
+/** The Auth.js MongoDB adapter owns the `users` collection and its core fields
+ *  (`name`, `email`, `emailVerified`, `image`). These are the extra fields the
+ *  app reads or writes on top of it. */
+export interface AppUser {
+  _id: ObjectId;
+  email?: string;
+  emailVerified?: Date | null;
+  name?: string;
+  image?: string;
+  /** Attribution slug carried over from the waitlist entry (approve-waitlist.mjs). */
+  ref?: string;
+  /** Set when the user finishes the /onboarding flow; gates the first-run redirect. */
+  onboardedAt?: Date;
+}
+
 /** Services in the catalog. */
 export type ServiceId =
   | "nyt-crossword"

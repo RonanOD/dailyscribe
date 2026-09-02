@@ -5,18 +5,29 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { BBC_FEEDS } from "@/lib/bbc-feeds";
 import { CBC_FEEDS, CBC_REGIONS } from "@/lib/cbc-feeds";
 import { RTE_FEEDS } from "@/lib/rte-feeds";
+import { SERVICE_CATALOG, getCatalogEntry } from "@/lib/service-catalog";
+import { KindleSetupGuide } from "../onboarding/kindle-setup-guide";
+import { DeliveryFields } from "./delivery-fields";
 import { TabNav, type TabDef } from "./tab-nav";
 
-const TAB_KEYS = ["delivery", "rte", "cbc", "bbc", "home-assistant", "kanji", "universal-crossword"] as const;
+// The dashboard's HA tab key predates the "ha-summary" service id; keep the key
+// stable (existing ?tab=home-assistant links, styling) while the tab list is
+// otherwise derived from the catalog. Each service here still needs its own
+// hand-written config <section> below.
+const TAB_KEY_BY_SERVICE: Record<string, string> = { "ha-summary": "home-assistant" };
+const tabKeyFor = (serviceId: string) => TAB_KEY_BY_SERVICE[serviceId] ?? serviceId;
+const SERVICE_TAB_KEYS = SERVICE_CATALOG.filter((s) => !s.comingSoon).map((s) => tabKeyFor(s.id));
+const TAB_KEYS = ["delivery", ...SERVICE_TAB_KEYS] as const;
 type TabKey = (typeof TAB_KEYS)[number];
 const DEFAULT_TAB: TabKey = "delivery";
 
-const REGION_KEYS = new Set(CBC_REGIONS.map((f) => f.key));
+/** Presentational fields for a service tab, from the single catalog source. */
+function tabMeta(serviceId: string): Pick<TabDef, "label" | "icon" | "iconSrc"> {
+  const e = getCatalogEntry(serviceId);
+  return { label: e?.label ?? serviceId, icon: e?.icon ?? "📄", iconSrc: e?.iconSrc };
+}
 
-const IANA_TIMEZONES: string[] =
-  typeof Intl !== "undefined" && typeof Intl.supportedValuesOf === "function"
-    ? Intl.supportedValuesOf("timeZone")
-    : [];
+const REGION_KEYS = new Set(CBC_REGIONS.map((f) => f.key));
 
 interface CbcConfig {
   feeds?: string[];
@@ -103,51 +114,6 @@ async function postJson(url: string, body: unknown): Promise<Record<string, unkn
     throw new Error(errorMsg);
   }
   return data;
-}
-
-/** Shared delivery-time & timezone inputs, used once for all services. */
-function DeliveryFields(props: {
-  idPrefix: string;
-  time: string;
-  setTime: (v: string) => void;
-  tz: string;
-  setTz: (v: string) => void;
-}) {
-  const { idPrefix } = props;
-  return (
-    <div className="row">
-      <div className="field">
-        <label htmlFor={`${idPrefix}-time`}>Delivery time</label>
-        <input
-          id={`${idPrefix}-time`}
-          type="time"
-          value={props.time}
-          onChange={(e) => props.setTime(e.target.value)}
-        />
-      </div>
-      <div className="field">
-        <label htmlFor={`${idPrefix}-tz`}>Timezone (IANA)</label>
-        {IANA_TIMEZONES.length > 0 ? (
-          <select id={`${idPrefix}-tz`} value={props.tz} onChange={(e) => props.setTz(e.target.value)}>
-            {!IANA_TIMEZONES.includes(props.tz) && <option value={props.tz}>{props.tz}</option>}
-            {IANA_TIMEZONES.map((tz) => (
-              <option key={tz} value={tz}>
-                {tz}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            id={`${idPrefix}-tz`}
-            type="text"
-            value={props.tz}
-            onChange={(e) => props.setTz(e.target.value)}
-            placeholder="America/Toronto"
-          />
-        )}
-      </div>
-    </div>
-  );
 }
 
 export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabled: initialDigestEnabled, configured, deliveryAlert, afterFields }: Props) {
@@ -352,24 +318,12 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
       icon: "📬",
       dirty: isKindleDirty || isDeliveryDirty || isDigestDirty,
     },
-    { key: "rte", label: "RTÉ News", icon: "📰", iconSrc: "/icons/rte.svg", dirty: isRteDirty },
-    { key: "cbc", label: "CBC News", icon: "📰", iconSrc: "/icons/cbc.svg", dirty: isCbcDirty },
-    { key: "bbc", label: "BBC News", icon: "📰", iconSrc: "/icons/bbc.svg", dirty: isBbcDirty },
-    {
-      key: "home-assistant",
-      label: "Home Assistant",
-      icon: "🏠",
-      iconSrc: "/icons/home-assistant.svg",
-      dirty: isHaCredsDirty || isHaSettingsDirty,
-    },
-    { key: "kanji", label: "Kanji", icon: "🈷️", dirty: isKanjiDirty },
-    {
-      key: "universal-crossword",
-      label: "Universal Crossword",
-      icon: "🧩",
-      iconSrc: "/icons/crossword.svg",
-      dirty: isCrosswordDirty,
-    },
+    { key: "rte", ...tabMeta("rte"), dirty: isRteDirty },
+    { key: "cbc", ...tabMeta("cbc"), dirty: isCbcDirty },
+    { key: "bbc", ...tabMeta("bbc"), dirty: isBbcDirty },
+    { key: "home-assistant", ...tabMeta("ha-summary"), dirty: isHaCredsDirty || isHaSettingsDirty },
+    { key: "kanji", ...tabMeta("kanji"), dirty: isKanjiDirty },
+    { key: "universal-crossword", ...tabMeta("universal-crossword"), dirty: isCrosswordDirty },
   ];
 
   function ok(text: string) {
@@ -570,11 +524,7 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
       <div hidden={activeTab !== "delivery"}>
       <section className="section">
         <h2>Delivery setup</h2>
-        <p className="hint">
-          Daily Scribe sends everything from one address. Add <code>my@dailyscribe.ca</code> to your
-          Kindle&apos;s “Approved Personal Document E-mail List” — once — under Amazon&apos;s{" "}
-          <em>Manage Your Content &amp; Devices → Preferences → Personal Document Settings</em>.
-        </p>
+        <KindleSetupGuide />
         <div className="field">
           <label htmlFor="global-kindle-email">Send-to-Kindle email</label>
           <input

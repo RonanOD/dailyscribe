@@ -22,9 +22,10 @@ export interface RunContext {
 }
 
 /**
- * A daily service. NYT renders in-process; future render-heavy services (CBC, HA)
- * will implement run() by POSTing to a Python renderer worker and wrapping the
- * returned PDF as an Asset — the dispatcher/delivery code never changes.
+ * A daily service. Every plugin today renders in-process (pure TS via
+ * @react-pdf/renderer); a render-heavy service could instead implement run() by
+ * calling out to a worker and wrapping the returned PDF as an Asset, with no
+ * change to the dispatcher/delivery code.
  */
 export interface ServicePlugin {
   id: string;

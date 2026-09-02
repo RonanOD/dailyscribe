@@ -383,3 +383,138 @@ a {
 .message.err {
   color: var(--err);
 }
+
+/* Onboarding */
+.onboarding {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.onboard-progress {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.onboard-progress li {
+  flex: 1;
+  text-align: center;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--border);
+}
+
+.onboard-progress li.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.onboard-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.onboard-nav .button {
+  margin-top: 0;
+}
+
+.service-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.service-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.service-card.selected {
+  border-color: var(--accent);
+  background: color-mix(in oklch, var(--accent) 6%, transparent);
+}
+
+.service-card:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.service-card-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.service-card-title {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.service-card-blurb {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.ha-creds {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.ha-creds h3 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+/* Kindle setup guide (onboarding step 1 + dashboard Delivery tab) */
+.kindle-guide-steps {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.kindle-guide-steps li {
+  margin-bottom: 6px;
+}
+
+.kindle-guide-shots {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+.kindle-guide-shot {
+  margin: 0;
+}
+
+.kindle-guide-shot img {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.kindle-guide-shot figcaption {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
