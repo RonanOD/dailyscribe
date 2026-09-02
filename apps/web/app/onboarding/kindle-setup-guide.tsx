@@ -41,23 +41,24 @@ const MARKETPLACES: { host: string; label: string }[] = [
 const DEFAULT_HOST = MARKETPLACES[0].host;
 const VALID_HOSTS = new Set(MARKETPLACES.map((m) => m.host));
 
-const GUIDE_IMAGES: { src: string; alt: string; caption: string }[] = [
-  {
-    src: "/onboarding/amazon-approved-list.png",
-    alt: "Amazon Manage Your Content and Devices, Preferences tab, Personal Document Settings expanded to show the approved e-mail list",
-    caption: "Preferences → Personal Document Settings → “Add a new approved e-mail address”.",
-  },
-  {
-    src: "/onboarding/amazon-add-address.png",
-    alt: `Amazon dialog for adding an approved e-mail address, with ${SENDER} entered`,
-    caption: `Enter ${SENDER} and save.`,
-  },
-  {
-    src: "/onboarding/amazon-send-to-kindle.png",
-    alt: "Amazon Send-to-Kindle e-mail settings list, showing a device's address ending in @kindle.com",
-    caption: "Your own Send-to-Kindle address (it ends in @kindle.com) is on the same page.",
-  },
-];
+/** One screenshot. Self-hides if the asset is missing, so the guide still reads
+ *  fine without it. */
+function GuideShot({ src, alt }: { src: string; alt: string }) {
+  return (
+    <figure className="kindle-guide-shot">
+      {/* eslint-disable-next-line @next/next/no-img-element -- static asset, no optimization needed */}
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        onError={(e) => {
+          const fig = e.currentTarget.closest("figure");
+          if (fig) fig.hidden = true;
+        }}
+      />
+    </figure>
+  );
+}
 
 export function KindleSetupGuide() {
   const [host, setHost] = useState(DEFAULT_HOST);
@@ -115,27 +116,25 @@ export function KindleSetupGuide() {
           <em>Add a new approved e-mail address</em>.
         </li>
         <li>
-          Enter <code>{SENDER}</code> and save.
+          Enter <code>{SENDER}</code> and save. It should then appear in the list:
         </li>
       </ol>
 
-      <div className="kindle-guide-shots">
-        {GUIDE_IMAGES.map((img) => (
-          <figure key={img.src} className="kindle-guide-shot">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static asset, no optimization needed */}
-            <img
-              src={img.src}
-              alt={img.alt}
-              loading="lazy"
-              onError={(e) => {
-                const fig = e.currentTarget.closest("figure");
-                if (fig) fig.hidden = true;
-              }}
-            />
-            <figcaption>{img.caption}</figcaption>
-          </figure>
-        ))}
-      </div>
+      <GuideShot
+        src="/onboarding/amazon-approved-list.png"
+        alt={`Amazon "Approved Personal Document E-mail List" showing ${SENDER} added`}
+      />
+
+      <p className="hint">
+        Find your device&apos;s <em>Send-to-Kindle Email</em> in the section titled{" "}
+        <em>Send-to-Kindle E-Mail Settings</em>. Copy the email address that we can send your Daily
+        Scribe to and paste it into the text box below.
+      </p>
+
+      <GuideShot
+        src="/onboarding/amazon-send-to-kindle.png"
+        alt='Amazon "Send-to-Kindle E-Mail Settings" section listing each device and its address'
+      />
     </div>
   );
 }

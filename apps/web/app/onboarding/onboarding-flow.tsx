@@ -156,7 +156,11 @@ export function OnboardingFlow({
               checked={whitelisted}
               onChange={(e) => setWhitelisted(e.target.checked)}
             />
-            I&apos;ve added <code>my@dailyscribe.ca</code> to my Approved list
+            {/* Wrap in a span so the nested <code> doesn't become its own flex
+                item inside .check (which would eat the spaces around it). */}
+            <span>
+              I&apos;ve added <code>my@dailyscribe.ca</code> to my Approved list
+            </span>
           </label>
         </section>
       )}

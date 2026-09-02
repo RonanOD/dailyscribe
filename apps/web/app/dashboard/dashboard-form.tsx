@@ -116,7 +116,18 @@ async function postJson(url: string, body: unknown): Promise<Record<string, unkn
   return data;
 }
 
-export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabled: initialDigestEnabled, configured, deliveryAlert, afterFields }: Props) {
+export function DashboardForm({
+  cbc,
+  bbc,
+  rte,
+  ha,
+  kanji,
+  crossword,
+  digestEnabled: initialDigestEnabled,
+  configured,
+  deliveryAlert,
+  afterFields,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -130,7 +141,9 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
   }
 
   const browserTz =
-    typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "America/Toronto";
+    typeof Intl !== "undefined"
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+      : "America/Toronto";
 
   // Initial values snapshot for dirty checking
   const initialKindleEmail =
@@ -168,40 +181,42 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
     : CBC_FEEDS.map((f) => f.key);
   const initialRegion = savedFeeds?.find((k) => REGION_KEYS.has(k));
 
+  // `enabled` defaults to false when there's no subscription row yet: a service
+  // the user didn't choose (in onboarding or here) shows as off, not on.
   const initialCbc = {
     feeds: new Set(initialGeneral),
     regionOn: Boolean(initialRegion),
     regionKey: initialRegion ?? "canada-novascotia",
     maxPerFeed: cbc?.config.maxPerFeed ?? 9,
-    enabled: cbc?.enabled ?? true,
+    enabled: cbc?.enabled ?? false,
   };
 
   const initialBbc = {
     feeds: new Set(bbc?.config.feeds?.length ? bbc.config.feeds : BBC_FEEDS.map((f) => f.key)),
     maxPerFeed: bbc?.config.maxPerFeed ?? 9,
-    enabled: bbc?.enabled ?? true,
+    enabled: bbc?.enabled ?? false,
   };
 
   const initialRte = {
     feeds: new Set(rte?.config.feeds?.length ? rte.config.feeds : RTE_FEEDS.map((f) => f.key)),
     maxPerFeed: rte?.config.maxPerFeed ?? 9,
-    enabled: rte?.enabled ?? true,
+    enabled: rte?.enabled ?? false,
   };
 
   const initialHa = {
     weatherEntity: ha?.config.weatherEntity ?? "weather.forecast_home",
     wasteCalendar: ha?.config.wasteCalendar ?? "calendar.halifax_ns",
-    enabled: ha?.enabled ?? true,
+    enabled: ha?.enabled ?? false,
   };
 
   const initialKanji = {
     kanjiPerDay: kanji?.config.kanjiPerDay ?? 3,
     maxJlptLevel: kanji?.config.maxJlptLevel ?? 5,
-    enabled: kanji?.enabled ?? true,
+    enabled: kanji?.enabled ?? false,
   };
 
   const initialCrossword = {
-    enabled: crossword?.enabled ?? true,
+    enabled: crossword?.enabled ?? false,
   };
 
   // State
@@ -262,7 +277,8 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   // Dirty checking
-  const isDeliveryDirty = deliveryTime !== baseDelivery.time || deliveryTz !== baseDelivery.timezone;
+  const isDeliveryDirty =
+    deliveryTime !== baseDelivery.time || deliveryTz !== baseDelivery.timezone;
 
   const cbcFeedsChanged =
     cbcFeeds.size !== baseCbc.feeds.size || [...cbcFeeds].some((f) => !baseCbc.feeds.has(f));
@@ -275,11 +291,13 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
 
   const bbcFeedsChanged =
     bbcFeeds.size !== baseBbc.feeds.size || [...bbcFeeds].some((f) => !baseBbc.feeds.has(f));
-  const isBbcDirty = bbcFeedsChanged || bbcMax !== baseBbc.maxPerFeed || bbcEnabled !== baseBbc.enabled;
+  const isBbcDirty =
+    bbcFeedsChanged || bbcMax !== baseBbc.maxPerFeed || bbcEnabled !== baseBbc.enabled;
 
   const rteFeedsChanged =
     rteFeeds.size !== baseRte.feeds.size || [...rteFeeds].some((f) => !baseRte.feeds.has(f));
-  const isRteDirty = rteFeedsChanged || rteMax !== baseRte.maxPerFeed || rteEnabled !== baseRte.enabled;
+  const isRteDirty =
+    rteFeedsChanged || rteMax !== baseRte.maxPerFeed || rteEnabled !== baseRte.enabled;
 
   const isHaCredsDirty = haUrl.trim() !== baseHaUrl.trim() || Boolean(haToken.trim());
 
@@ -522,367 +540,450 @@ export function DashboardForm({ cbc, bbc, rte, ha, kanji, crossword, digestEnabl
 
       {/* Delivery Setup Section */}
       <div hidden={activeTab !== "delivery"}>
-      <section className="section">
-        <h2>Delivery setup</h2>
-        <KindleSetupGuide />
-        <div className="field">
-          <label htmlFor="global-kindle-email">Send-to-Kindle email</label>
-          <input
-            id="global-kindle-email"
-            type="email"
-            value={kindleEmail}
-            onChange={(e) => setKindleEmail(e.target.value)}
-            placeholder="you@kindle.com"
-          />
-        </div>
-
-        <DeliveryFields
-          idPrefix="delivery"
-          time={deliveryTime}
-          setTime={setDeliveryTime}
-          tz={deliveryTz}
-          setTz={setDeliveryTz}
-        />
-
-        <div className="field">
-          <label className="check">
+        <section className="section">
+          <h2>Delivery setup</h2>
+          <KindleSetupGuide />
+          <div className="field">
+            <label htmlFor="global-kindle-email">Send-to-Kindle email</label>
             <input
-              type="checkbox"
-              checked={digestEnabled}
-              onChange={(e) => setDigestEnabled(e.target.checked)}
+              id="global-kindle-email"
+              type="email"
+              value={kindleEmail}
+              onChange={(e) => setKindleEmail(e.target.value)}
+              placeholder="you@kindle.com"
             />
-            Send all selected Daily Scribe services as a single PDF
-          </label>
-        </div>
-
-        {digestEnabled && (
-          <div className="actions">
-            <button className="link" onClick={() => sendTest("digest", "test-digest")} disabled={busy !== null}>
-              {busy === "test-digest" ? "Sending…" : "Send test now"}
-            </button>
           </div>
-        )}
-      </section>
+
+          <DeliveryFields
+            idPrefix="delivery"
+            time={deliveryTime}
+            setTime={setDeliveryTime}
+            tz={deliveryTz}
+            setTz={setDeliveryTz}
+          />
+
+          <div className="field">
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={digestEnabled}
+                onChange={(e) => setDigestEnabled(e.target.checked)}
+              />
+              Send all selected Daily Scribe services as a single PDF
+            </label>
+          </div>
+
+          {digestEnabled && (
+            <div className="actions">
+              <button
+                className="link"
+                onClick={() => sendTest("digest", "test-digest")}
+                disabled={busy !== null}
+              >
+                {busy === "test-digest" ? "Sending…" : "Send test now"}
+              </button>
+            </div>
+          )}
+        </section>
       </div>
 
       {/* RTÉ News Section */}
       <div hidden={activeTab !== "rte"}>
-      <section className="section">
-        <h2>RTÉ News</h2>
-        <p className="hint">A daily PDF of RTÉ headlines and summaries. Choose your sections.</p>
+        <section className="section">
+          <h2>RTÉ News</h2>
+          <p className="hint">A daily PDF of RTÉ headlines and summaries. Choose your sections.</p>
 
-        <div className="field">
-          <label>Sections</label>
-          <div className="checkgrid">
-            {RTE_FEEDS.map((f) => (
-              <label key={f.key} className="check">
-                <input type="checkbox" checked={rteFeeds.has(f.key)} onChange={() => toggleRteFeed(f.key)} />
-                {f.label}
-              </label>
-            ))}
+          <div className="field">
+            <label>Sections</label>
+            <div className="checkgrid">
+              {RTE_FEEDS.map((f) => (
+                <label key={f.key} className="check">
+                  <input
+                    type="checkbox"
+                    checked={rteFeeds.has(f.key)}
+                    onChange={() => toggleRteFeed(f.key)}
+                  />
+                  {f.label}
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="field" style={{ maxWidth: 220 }}>
-          <label htmlFor="rte-max">Articles per section</label>
-          <input
-            id="rte-max"
-            type="number"
-            min={1}
-            max={15}
-            value={rteMax}
-            onChange={(e) => setRteMax(Math.min(Math.max(Number(e.target.value) || 1, 1), 15))}
-          />
-        </div>
+          <div className="field" style={{ maxWidth: 220 }}>
+            <label htmlFor="rte-max">Articles per section</label>
+            <input
+              id="rte-max"
+              type="number"
+              min={1}
+              max={15}
+              value={rteMax}
+              onChange={(e) => setRteMax(Math.min(Math.max(Number(e.target.value) || 1, 1), 15))}
+            />
+          </div>
 
-        <div className="actions">
-          <label className="toggle">
-            <input type="checkbox" checked={rteEnabled} onChange={(e) => setRteEnabled(e.target.checked)} />
-            Enabled
-          </label>
-          <button className="link" onClick={() => sendTest("rte", "test-rte")} disabled={busy !== null}>
-            {busy === "test-rte" ? "Sending…" : "Send test now"}
-          </button>
-        </div>
-        {digestEnabled && (
-          <p className="hint">Digest is on — this sends your bundled digest, not a standalone RTÉ PDF.</p>
-        )}
-      </section>
+          <div className="actions">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={rteEnabled}
+                onChange={(e) => setRteEnabled(e.target.checked)}
+              />
+              Enabled
+            </label>
+            <button
+              className="link"
+              onClick={() => sendTest("rte", "test-rte")}
+              disabled={busy !== null}
+            >
+              {busy === "test-rte" ? "Sending…" : "Send test now"}
+            </button>
+          </div>
+          {digestEnabled && (
+            <p className="hint">
+              Digest is on — this sends your bundled digest, not a standalone RTÉ PDF.
+            </p>
+          )}
+        </section>
       </div>
 
       {/* CBC News Section */}
       <div hidden={activeTab !== "cbc"}>
-      <section className="section">
-        <h2>CBC News</h2>
-        <p className="hint">A daily PDF of CBC headlines and summaries. Choose your sections.</p>
+        <section className="section">
+          <h2>CBC News</h2>
+          <p className="hint">A daily PDF of CBC headlines and summaries. Choose your sections.</p>
 
-        <div className="field">
-          <label>Sections</label>
-          <div className="checkgrid">
-            {CBC_FEEDS.map((f) => (
-              <label key={f.key} className="check">
-                <input type="checkbox" checked={cbcFeeds.has(f.key)} onChange={() => toggleFeed(f.key)} />
-                {f.label}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="field">
-          <label htmlFor="cbc-region">Regional news</label>
-          <div className="regionrow">
-            <label className="check">
-              <input type="checkbox" checked={regionOn} onChange={(e) => setRegionOn(e.target.checked)} />
-              Include a region
-            </label>
-            <select
-              id="cbc-region"
-              value={regionKey}
-              onChange={(e) => setRegionKey(e.target.value)}
-              disabled={!regionOn}
-            >
-              {CBC_REGIONS.map((r) => (
-                <option key={r.key} value={r.key}>
-                  {r.label}
-                </option>
+          <div className="field">
+            <label>Sections</label>
+            <div className="checkgrid">
+              {CBC_FEEDS.map((f) => (
+                <label key={f.key} className="check">
+                  <input
+                    type="checkbox"
+                    checked={cbcFeeds.has(f.key)}
+                    onChange={() => toggleFeed(f.key)}
+                  />
+                  {f.label}
+                </label>
               ))}
-            </select>
+            </div>
           </div>
-        </div>
 
-        <div className="field" style={{ maxWidth: 220 }}>
-          <label htmlFor="cbc-max">Articles per section</label>
-          <input
-            id="cbc-max"
-            type="number"
-            min={1}
-            max={15}
-            value={cbcMax}
-            onChange={(e) => setCbcMax(Math.min(Math.max(Number(e.target.value) || 1, 1), 15))}
-          />
-        </div>
+          <div className="field">
+            <label htmlFor="cbc-region">Regional news</label>
+            <div className="regionrow">
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={regionOn}
+                  onChange={(e) => setRegionOn(e.target.checked)}
+                />
+                Include a region
+              </label>
+              <select
+                id="cbc-region"
+                value={regionKey}
+                onChange={(e) => setRegionKey(e.target.value)}
+                disabled={!regionOn}
+              >
+                {CBC_REGIONS.map((r) => (
+                  <option key={r.key} value={r.key}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-        <div className="actions">
-          <label className="toggle">
-            <input type="checkbox" checked={cbcEnabled} onChange={(e) => setCbcEnabled(e.target.checked)} />
-            Enabled
-          </label>
-          <button className="link" onClick={() => sendTest("cbc", "test-cbc")} disabled={busy !== null}>
-            {busy === "test-cbc" ? "Sending…" : "Send test now"}
-          </button>
-        </div>
-        {digestEnabled && (
-          <p className="hint">Digest is on — this sends your bundled digest, not a standalone CBC PDF.</p>
-        )}
-      </section>
+          <div className="field" style={{ maxWidth: 220 }}>
+            <label htmlFor="cbc-max">Articles per section</label>
+            <input
+              id="cbc-max"
+              type="number"
+              min={1}
+              max={15}
+              value={cbcMax}
+              onChange={(e) => setCbcMax(Math.min(Math.max(Number(e.target.value) || 1, 1), 15))}
+            />
+          </div>
+
+          <div className="actions">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={cbcEnabled}
+                onChange={(e) => setCbcEnabled(e.target.checked)}
+              />
+              Enabled
+            </label>
+            <button
+              className="link"
+              onClick={() => sendTest("cbc", "test-cbc")}
+              disabled={busy !== null}
+            >
+              {busy === "test-cbc" ? "Sending…" : "Send test now"}
+            </button>
+          </div>
+          {digestEnabled && (
+            <p className="hint">
+              Digest is on — this sends your bundled digest, not a standalone CBC PDF.
+            </p>
+          )}
+        </section>
       </div>
 
       {/* BBC News Section */}
       <div hidden={activeTab !== "bbc"}>
-      <section className="section">
-        <h2>BBC News</h2>
-        <p className="hint">A daily PDF of BBC headlines and summaries. Choose your sections.</p>
+        <section className="section">
+          <h2>BBC News</h2>
+          <p className="hint">A daily PDF of BBC headlines and summaries. Choose your sections.</p>
 
-        <div className="field">
-          <label>Sections</label>
-          <div className="checkgrid">
-            {BBC_FEEDS.map((f) => (
-              <label key={f.key} className="check">
-                <input type="checkbox" checked={bbcFeeds.has(f.key)} onChange={() => toggleBbcFeed(f.key)} />
-                {f.label}
-              </label>
-            ))}
+          <div className="field">
+            <label>Sections</label>
+            <div className="checkgrid">
+              {BBC_FEEDS.map((f) => (
+                <label key={f.key} className="check">
+                  <input
+                    type="checkbox"
+                    checked={bbcFeeds.has(f.key)}
+                    onChange={() => toggleBbcFeed(f.key)}
+                  />
+                  {f.label}
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="field" style={{ maxWidth: 220 }}>
-          <label htmlFor="bbc-max">Articles per section</label>
-          <input
-            id="bbc-max"
-            type="number"
-            min={1}
-            max={15}
-            value={bbcMax}
-            onChange={(e) => setBbcMax(Math.min(Math.max(Number(e.target.value) || 1, 1), 15))}
-          />
-        </div>
+          <div className="field" style={{ maxWidth: 220 }}>
+            <label htmlFor="bbc-max">Articles per section</label>
+            <input
+              id="bbc-max"
+              type="number"
+              min={1}
+              max={15}
+              value={bbcMax}
+              onChange={(e) => setBbcMax(Math.min(Math.max(Number(e.target.value) || 1, 1), 15))}
+            />
+          </div>
 
-        <div className="actions">
-          <label className="toggle">
-            <input type="checkbox" checked={bbcEnabled} onChange={(e) => setBbcEnabled(e.target.checked)} />
-            Enabled
-          </label>
-          <button className="link" onClick={() => sendTest("bbc", "test-bbc")} disabled={busy !== null}>
-            {busy === "test-bbc" ? "Sending…" : "Send test now"}
-          </button>
-        </div>
-        {digestEnabled && (
-          <p className="hint">Digest is on — this sends your bundled digest, not a standalone BBC PDF.</p>
-        )}
-      </section>
+          <div className="actions">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={bbcEnabled}
+                onChange={(e) => setBbcEnabled(e.target.checked)}
+              />
+              Enabled
+            </label>
+            <button
+              className="link"
+              onClick={() => sendTest("bbc", "test-bbc")}
+              disabled={busy !== null}
+            >
+              {busy === "test-bbc" ? "Sending…" : "Send test now"}
+            </button>
+          </div>
+          {digestEnabled && (
+            <p className="hint">
+              Digest is on — this sends your bundled digest, not a standalone BBC PDF.
+            </p>
+          )}
+        </section>
       </div>
 
       {/* Home Assistant Credentials Section */}
       <div hidden={activeTab !== "home-assistant"}>
-      <section className="section">
-        <h2>
-          Home Assistant credentials{" "}
-          <span className={`badge${haSaved ? " on" : ""}`}>{haSaved ? "stored" : "not set"}</span>
-        </h2>
-        <p className="hint">
-          Connect to your Home Assistant instance using your URL and a Long-Lived Access Token. Credentials are stored encrypted at rest.
-        </p>
+        <section className="section">
+          <h2>
+            Home Assistant credentials{" "}
+            <span className={`badge${haSaved ? " on" : ""}`}>{haSaved ? "stored" : "not set"}</span>
+          </h2>
+          <p className="hint">
+            Connect to your Home Assistant instance using your URL and a Long-Lived Access Token.
+            Credentials are stored encrypted at rest.
+          </p>
 
-        <div className="field">
-          <label htmlFor="ha-url">Home Assistant Base URL</label>
-          <input
-            id="ha-url"
-            type="url"
-            value={haUrl}
-            onChange={(e) => setHaUrl(e.target.value)}
-            placeholder="http://192.168.68.104:8123 or https://your-ha.nabu.casa"
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="ha-token">Long-Lived Access Token</label>
-          <input
-            id="ha-token"
-            type="password"
-            value={haToken}
-            onChange={(e) => setHaToken(e.target.value)}
-            placeholder={haSaved ? "******************************" : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}
-          />
-        </div>
-      </section>
-
-      {/* Home Assistant Summary Section */}
-      <section className="section">
-        <h2>Home Assistant Summary</h2>
-        <p className="hint">Daily morning PDF briefing of your home status, 12h weather forecast, climate, and security alerts.</p>
-
-        <div className="row">
           <div className="field">
-            <label htmlFor="weather-entity">Weather Entity</label>
+            <label htmlFor="ha-url">Home Assistant Base URL</label>
             <input
-              id="weather-entity"
-              type="text"
-              value={weatherEntity}
-              onChange={(e) => setWeatherEntity(e.target.value)}
-              placeholder="weather.forecast_home"
+              id="ha-url"
+              type="url"
+              value={haUrl}
+              onChange={(e) => setHaUrl(e.target.value)}
+              placeholder="http://192.168.68.104:8123 or https://your-ha.nabu.casa"
             />
           </div>
+
           <div className="field">
-            <label htmlFor="waste-calendar">Waste Calendar Entity</label>
+            <label htmlFor="ha-token">Long-Lived Access Token</label>
             <input
-              id="waste-calendar"
-              type="text"
-              value={wasteCalendar}
-              onChange={(e) => setWasteCalendar(e.target.value)}
-              placeholder="calendar.halifax_ns"
+              id="ha-token"
+              type="password"
+              value={haToken}
+              onChange={(e) => setHaToken(e.target.value)}
+              placeholder={
+                haSaved
+                  ? "******************************"
+                  : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              }
             />
           </div>
-        </div>
+        </section>
 
-        <div className="actions">
-          <label className="toggle">
-            <input type="checkbox" checked={haEnabled} onChange={(e) => setHaEnabled(e.target.checked)} />
-            Enabled
-          </label>
-          <button className="link" onClick={() => sendTest("ha-summary", "test-ha")} disabled={busy !== null}>
-            {busy === "test-ha" ? "Sending…" : "Send test now"}
-          </button>
-        </div>
-        {digestEnabled && (
-          <p className="hint">Digest is on — this sends your bundled digest, not a standalone Home Assistant PDF.</p>
-        )}
-      </section>
+        {/* Home Assistant Summary Section */}
+        <section className="section">
+          <h2>Home Assistant Summary</h2>
+          <p className="hint">
+            Daily morning PDF briefing of your home status, 12h weather forecast, climate, and
+            security alerts.
+          </p>
+
+          <div className="row">
+            <div className="field">
+              <label htmlFor="weather-entity">Weather Entity</label>
+              <input
+                id="weather-entity"
+                type="text"
+                value={weatherEntity}
+                onChange={(e) => setWeatherEntity(e.target.value)}
+                placeholder="weather.forecast_home"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="waste-calendar">Waste Calendar Entity</label>
+              <input
+                id="waste-calendar"
+                type="text"
+                value={wasteCalendar}
+                onChange={(e) => setWasteCalendar(e.target.value)}
+                placeholder="calendar.halifax_ns"
+              />
+            </div>
+          </div>
+
+          <div className="actions">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={haEnabled}
+                onChange={(e) => setHaEnabled(e.target.checked)}
+              />
+              Enabled
+            </label>
+            <button
+              className="link"
+              onClick={() => sendTest("ha-summary", "test-ha")}
+              disabled={busy !== null}
+            >
+              {busy === "test-ha" ? "Sending…" : "Send test now"}
+            </button>
+          </div>
+          {digestEnabled && (
+            <p className="hint">
+              Digest is on — this sends your bundled digest, not a standalone Home Assistant PDF.
+            </p>
+          )}
+        </section>
       </div>
 
       {/* Kanji A Day Section */}
       <div hidden={activeTab !== "kanji"}>
-      <section className="section">
-        <h2>Kanji A Day</h2>
-        <p className="hint">
-          A daily kanji practice sheet — stroke order, readings, an example word, and a writing
-          grid. Each day introduces new kanji; nothing repeats until you reach the end of the level.
-        </p>
+        <section className="section">
+          <h2>Kanji A Day</h2>
+          <p className="hint">
+            A daily kanji practice sheet — stroke order, readings, an example word, and a writing
+            grid. Each day introduces new kanji; nothing repeats until you reach the end of the
+            level.
+          </p>
 
-        <div className="row">
-          <div className="field" style={{ maxWidth: 220 }}>
-            <label htmlFor="kanji-per-day">New kanji per day</label>
-            <input
-              id="kanji-per-day"
-              type="number"
-              min={1}
-              max={10}
-              value={kanjiPerDay}
-              onChange={(e) => setKanjiPerDay(Math.min(Math.max(Number(e.target.value) || 1, 1), 10))}
-            />
+          <div className="row">
+            <div className="field" style={{ maxWidth: 220 }}>
+              <label htmlFor="kanji-per-day">New kanji per day</label>
+              <input
+                id="kanji-per-day"
+                type="number"
+                min={1}
+                max={10}
+                value={kanjiPerDay}
+                onChange={(e) =>
+                  setKanjiPerDay(Math.min(Math.max(Number(e.target.value) || 1, 1), 10))
+                }
+              />
+            </div>
+            <div className="field" style={{ maxWidth: 220 }}>
+              <label htmlFor="kanji-level">Study up to</label>
+              <select
+                id="kanji-level"
+                value={maxJlptLevel}
+                onChange={(e) => setMaxJlptLevel(Number(e.target.value))}
+              >
+                {JLPT_LEVELS.map((lvl) => (
+                  <option key={lvl} value={lvl}>
+                    JLPT N{lvl}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="field" style={{ maxWidth: 220 }}>
-            <label htmlFor="kanji-level">Study up to</label>
-            <select
-              id="kanji-level"
-              value={maxJlptLevel}
-              onChange={(e) => setMaxJlptLevel(Number(e.target.value))}
+
+          <div className="actions">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={kanjiEnabled}
+                onChange={(e) => setKanjiEnabled(e.target.checked)}
+              />
+              Enabled
+            </label>
+            <button
+              className="link"
+              onClick={() => sendTest("kanji", "test-kanji")}
+              disabled={busy !== null}
             >
-              {JLPT_LEVELS.map((lvl) => (
-                <option key={lvl} value={lvl}>
-                  JLPT N{lvl}
-                </option>
-              ))}
-            </select>
+              {busy === "test-kanji" ? "Sending…" : "Send test now"}
+            </button>
           </div>
-        </div>
+          {digestEnabled && (
+            <p className="hint">
+              Digest is on — this sends your bundled digest, not a standalone Kanji PDF.
+            </p>
+          )}
+        </section>
 
-        <div className="actions">
-          <label className="toggle">
-            <input type="checkbox" checked={kanjiEnabled} onChange={(e) => setKanjiEnabled(e.target.checked)} />
-            Enabled
-          </label>
-          <button className="link" onClick={() => sendTest("kanji", "test-kanji")} disabled={busy !== null}>
-            {busy === "test-kanji" ? "Sending…" : "Send test now"}
-          </button>
-        </div>
-        {digestEnabled && (
-          <p className="hint">Digest is on — this sends your bundled digest, not a standalone Kanji PDF.</p>
-        )}
-      </section>
-
-      {afterFields}
+        {afterFields}
       </div>
 
       {/* Crossword Section */}
       <div hidden={activeTab !== "universal-crossword"}>
-      <section className="section">
-        <h2>Universal Crossword</h2>
-        <p className="hint">
-          The real daily Universal Crossword — a full-size grid and clues on page one, the
-          answer key on page two. No need to mail anything back.
-        </p>
+        <section className="section">
+          <h2>Universal Crossword</h2>
+          <p className="hint">
+            The real daily Universal Crossword — a full-size grid and clues on page one, the answer
+            key on page two. No need to mail anything back.
+          </p>
 
-        <div className="actions">
-          <label className="toggle">
-            <input
-              type="checkbox"
-              checked={crosswordEnabled}
-              onChange={(e) => setCrosswordEnabled(e.target.checked)}
-            />
-            Enabled
-          </label>
-          <button
-            className="link"
-            onClick={() => sendTest("universal-crossword", "test-crossword")}
-            disabled={busy !== null}
-          >
-            {busy === "test-crossword" ? "Sending…" : "Send test now"}
-          </button>
-        </div>
-        {digestEnabled && (
-          <p className="hint">Digest is on — this sends your bundled digest, not a standalone Crossword PDF.</p>
-        )}
-      </section>
+          <div className="actions">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={crosswordEnabled}
+                onChange={(e) => setCrosswordEnabled(e.target.checked)}
+              />
+              Enabled
+            </label>
+            <button
+              className="link"
+              onClick={() => sendTest("universal-crossword", "test-crossword")}
+              disabled={busy !== null}
+            >
+              {busy === "test-crossword" ? "Sending…" : "Send test now"}
+            </button>
+          </div>
+          {digestEnabled && (
+            <p className="hint">
+              Digest is on — this sends your bundled digest, not a standalone Crossword PDF.
+            </p>
+          )}
+        </section>
       </div>
 
       {/* Single Unified Save Button at bottom */}
