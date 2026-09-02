@@ -126,8 +126,15 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       form + `approve-waitlist.mjs`, Mongo-backed rate limiting (`lib/rate-limit.ts`) on
       send-test-now, SSRF guard on the HA URL (`assertPublicHttpUrl`), Kindle-email validation,
       Vercel Web Analytics on both apps, `ensureIndexes()` for the idempotency/uniqueness
-      indexes. Still to do: full service-catalog picker (>1 service) for new sign-ups — DnD 5e,
-      classic novels, and eating tracking remain unbuilt; guided first-run onboarding.
+      indexes. **Onboarding (Sep 2026):** a dedicated `/onboarding` flow (Kindle setup with an
+      annotated Amazon-whitelist guide → pick services → schedule) that new users are redirected
+      into from `/dashboard` (gated on `users.onboardedAt` + zero subscriptions); a framework-free
+      `apps/web/lib/service-catalog.ts` metadata module (id/label/icon/blurb/needsSecret/
+      onboarding flag) now drives the dashboard tab list, the onboarding picker, the
+      subscriptions-route whitelist, and `DIGEST_MEMBER_SERVICES`. The per-service config
+      `<section>`s in `dashboard-form.tsx` stay hand-written. Still to do: build the deferred
+      catalog services (DnD 5e, classic novels, eating tracking); capture the three Amazon
+      screenshots for `apps/web/public/onboarding/` (flow works without them).
 - [~] **Phase 3 — Scheduling at scale.** Vercel Cron + timezone-aware, idempotent dispatch
       shipped for the solo case. Bounce/complaint visibility landed (`/api/webhooks/resend-events`
       → `deliveryEvents`, auto-disables subscriptions on hard bounce / spam complaint,

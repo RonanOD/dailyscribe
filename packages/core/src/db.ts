@@ -1,5 +1,6 @@
 import { MongoClient, type Db } from "mongodb";
 import type {
+  AppUser,
   CrosswordPuzzle,
   Delivery,
   DeliveryEvent,
@@ -40,6 +41,8 @@ export async function getDb(): Promise<Db> {
 export async function collections() {
   const db = await getDb();
   return {
+    // Owned by the Auth.js adapter; the app only reads it and sets `onboardedAt`.
+    users: db.collection<AppUser>("users"),
     userSecrets: db.collection<UserSecret>("userSecrets"),
     subscriptions: db.collection<Subscription>("subscriptions"),
     deliveries: db.collection<Delivery>("deliveries"),

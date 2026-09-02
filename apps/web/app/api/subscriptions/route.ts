@@ -19,19 +19,13 @@ import { requireUserId } from "@/lib/session";
 import { ALL_BBC_FEEDS } from "@/lib/bbc-feeds";
 import { ALL_CBC_FEEDS } from "@/lib/cbc-feeds";
 import { ALL_RTE_FEEDS } from "@/lib/rte-feeds";
+import { SERVICE_CATALOG } from "@/lib/service-catalog";
 
 export const runtime = "nodejs";
 
-const SERVICES: ServiceId[] = [
-  "nyt-crossword",
-  "cbc",
-  "bbc",
-  "rte",
-  "ha-summary",
-  "kanji",
-  "universal-crossword",
-  "digest",
-];
+// The catalog services, plus "digest" (a delivery mode, not a catalog entry)
+// and "nyt-crossword" (paused plugin, still accepted for back-compat).
+const SERVICES: ServiceId[] = [...SERVICE_CATALOG.map((s) => s.id), "digest", "nyt-crossword"];
 const JLPT_LEVELS = [1, 2, 3, 4, 5] as const;
 const VERSIONS: CrosswordVersion[] = ["games", "newspaper", "big", "southpaw"];
 const CBC_FEED_KEYS = new Set(ALL_CBC_FEEDS.map((f) => f.key));

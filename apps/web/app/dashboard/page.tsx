@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { ObjectId } from "mongodb";
 import { collections, decryptSecret, type KanjiSubmission } from "@dailyscribe/core";
 import { auth, signIn, signOut } from "@/auth";
 import { DashboardForm } from "./dashboard-form";
@@ -74,15 +76,29 @@ export default async function DashboardPage() {
   }
 
   const userId = session.user.id;
-  const { subscriptions, userSecrets } = await collections();
-  const cbcSub = await subscriptions.findOne({ userId, service: "cbc" });
-  const bbcSub = await subscriptions.findOne({ userId, service: "bbc" });
-  const rteSub = await subscriptions.findOne({ userId, service: "rte" });
-  const haSub = await subscriptions.findOne({ userId, service: "ha-summary" });
-  const kanjiSub = await subscriptions.findOne({ userId, service: "kanji" });
-  const crosswordSub = await subscriptions.findOne({ userId, service: "universal-crossword" });
-  const digestSub = await subscriptions.findOne({ userId, service: "digest" });
-  const disabledSub = await subscriptions.findOne({ userId, disabledReason: { $exists: true } });
+  const { users, subscriptions, userSecrets } = await collections();
+
+  const allSubs = await subscriptions.find({ userId }).toArray();
+
+  // First-run: a user with no subscriptions who hasn't finished onboarding is
+  // sent to the guided flow. The subscription-count guard means a user who
+  // configured services some other way is never redirected.
+  if (allSubs.length === 0) {
+    const user = ObjectId.isValid(userId)
+      ? await users.findOne({ _id: new ObjectId(userId) })
+      : null;
+    if (!user?.onboardedAt) redirect("/onboarding");
+  }
+
+  const subByService = new Map(allSubs.map((s) => [s.service, s]));
+  const cbcSub = subByService.get("cbc") ?? null;
+  const bbcSub = subByService.get("bbc") ?? null;
+  const rteSub = subByService.get("rte") ?? null;
+  const haSub = subByService.get("ha-summary") ?? null;
+  const kanjiSub = subByService.get("kanji") ?? null;
+  const crosswordSub = subByService.get("universal-crossword") ?? null;
+  const digestSub = subByService.get("digest") ?? null;
+  const disabledSub = allSubs.find((s) => s.disabledReason) ?? null;
   const secretDocs = await userSecrets.find({ userId }).toArray();
   const haDoc = secretDocs.find((d) => d.provider === "ha");
   let haUrl: string | undefined = undefined;
