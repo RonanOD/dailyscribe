@@ -485,6 +485,10 @@ a {
 }
 
 /* Kindle setup guide (onboarding step 1 + dashboard Delivery tab) */
+.kindle-guide-market {
+  max-width: 280px;
+}
+
 .kindle-guide-steps {
   margin: 0 0 16px;
   padding-left: 20px;
