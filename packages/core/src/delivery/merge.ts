@@ -100,30 +100,33 @@ export async function assembleDigestPdf(
   }
   tocPage.node.set(PDFName.of("Annots"), merged.context.obj(annots));
 
-  // A small back-to-contents arrow, bottom-left, on every page except the
-  // cover (index 0, no reason to jump anywhere from it) and the TOC page
-  // itself (index 1, already there). Top-left was tried first, but on a
-  // Kindle Scribe a tap that high on the screen opens the device's own
-  // reading toolbar before it ever reaches the PDF's link annotation —
-  // bottom-left doesn't collide with that. Drawn glyph for the visible
-  // arrow, plus a Link annotation over it (same raw-annotation technique as
-  // the TOC rows above) so it's tappable back to page 2. "‹" (not a unicode
-  // arrow like →) because the standard Helvetica font's WinAnsi encoding
-  // can't render most arrow glyphs, but this one — Windows-1252 0x8B — works.
+  // A back-to-contents button, bottom-left, on every page except the cover
+  // (index 0, no reason to jump anywhere from it) and the TOC page itself
+  // (index 1, already there). Top-left was tried first, but on a Kindle Scribe
+  // a tap that high on the screen opens the device's own reading toolbar
+  // before it ever reaches the PDF's link annotation — bottom-left doesn't
+  // collide with that. A drawn label + a Link annotation over it (same
+  // raw-annotation technique as the TOC rows above) so it's tappable back to
+  // page 2. Sized as a proper labelled button (not a lone glyph) and inset
+  // well off the corner — a bare "‹" at the trim edge read as too small and
+  // too easy to miss on-device. "‹" (Windows-1252 0x8B) rather than a unicode
+  // arrow like → because the standard Helvetica WinAnsi encoding can't render
+  // most arrow glyphs but does have this one; "Contents" is plain ASCII.
   const backFont = await merged.embedFont(StandardFonts.HelveticaBold);
   const pageNumFont = await merged.embedFont(StandardFonts.Helvetica);
-  const BACK_LABEL = "‹";
-  const BACK_FONT_SIZE = 13;
-  const MARGIN = 24;
-  const BACK_PAD_X = 6;
-  const BACK_PAD_Y = 5;
+  const BACK_LABEL = "‹  Contents";
+  const BACK_FONT_SIZE = 14;
+  const MARGIN = 24; // bottom-right page-number label
+  const BACK_INSET = 50; // back button — further off the corner than MARGIN
+  const BACK_PAD_X = 14;
+  const BACK_PAD_Y = 10;
   const PAGE_NUM_FONT_SIZE = 8;
   const totalPages = merged.getPageCount();
   for (let i = 2; i < totalPages; i++) {
     const page = merged.getPage(i);
     const { width } = page.getSize();
-    const x = MARGIN;
-    const y = MARGIN;
+    const x = BACK_INSET;
+    const y = BACK_INSET;
     const textWidth = backFont.widthOfTextAtSize(BACK_LABEL, BACK_FONT_SIZE);
     const box: [number, number, number, number] = [
       x - BACK_PAD_X,

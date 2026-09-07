@@ -127,7 +127,8 @@ Copy `.env.example` → `apps/web/.env.local` for dev, and set the same in Verce
 | `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | GitHub OAuth app |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth client |
 | `ALLOW_NEW_SIGNUPS` | `"false"` = invite-only (waitlist approval seeds `users`); `"true"` = open |
-| `CRON_SECRET` | Bearer token Vercel Cron must present to `/api/cron/dispatch` |
+| `CRON_SECRET` | Bearer token cron callers must present to `/api/cron/*` (Vercel Cron + the `.github/workflows/` dispatch + signup-report workflows) |
+| `ADMIN_EMAIL` | Operator inbox for the daily new-signups digest (`/api/cron/signup-report`); unset disables that email |
 | `RESEND_API_KEY` | Resend API key (app-wide outbound email + magic-link sign-in) |
 | `MAIL_FROM_DEFAULT` | From address, `Daily Scribe <my@dailyscribe.ca>` (also the code default) |
 | `RESEND_INBOUND_DOMAIN` | The Resend domain with Receiving enabled — `dailyscribe.ca` (the apex domain; independent of which Vercel project/hostname actually serves the webhook) |
@@ -160,10 +161,16 @@ Directory and its own custom domain(s):
    `apps/marketing` below.
 3. Add all env vars above (Production + Preview) except the two
    `DECAP_OAUTH_GITHUB_*` ones, which belong on the marketing project only.
-4. The cron in `apps/web/vercel.json` calls `/api/cron/dispatch` daily at 11:00 UTC
-   (08:00 ADT; Vercel cron is UTC-only — no DST handling). Vercel attaches
-   `Authorization: Bearer $CRON_SECRET` automatically. **Vercel Hobby limits cron frequency**
-   (≈once/day) — hourly, timezone-aware coverage needs Pro.
+4. Delivery dispatch is driven by **`.github/workflows/dispatch.yml`**, which hits
+   `/api/cron/dispatch` every ~10 min (Vercel Hobby cron is once/day — too coarse to
+   honour per-subscriber delivery times across timezones). The daily cron in
+   `apps/web/vercel.json` stays as a fallback; Vercel attaches
+   `Authorization: Bearer $CRON_SECRET` automatically, and the workflows send it from
+   the `CRON_SECRET` **GitHub Actions repo secret** (set it to the same value). A
+   second workflow, `signup-report.yml`, hits `/api/cron/signup-report` daily at 08:00
+   UTC to email `ADMIN_EMAIL` about new waitlist signups. To move dispatch back onto
+   native cron, upgrade to Vercel Pro, set the `vercel.json` schedule to `0 * * * *`,
+   and delete `dispatch.yml`.
 5. **Migrating from the old single-domain setup?** Do it in this order so
    nothing is unreachable mid-cutover: (1) create the `apps/marketing` project
    and confirm it builds on its `*.vercel.app` preview URL; (2) add

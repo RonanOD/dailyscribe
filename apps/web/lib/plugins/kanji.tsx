@@ -40,6 +40,8 @@ const styles = StyleSheet.create({
   masthead: { fontSize: 24, fontWeight: "bold", marginBottom: 2 },
   date: { fontSize: 11, color: "#444444", marginBottom: 14 },
   completedNote: { fontSize: 9.5, color: "#666666", marginBottom: 14 },
+  mailBack: { fontSize: 9.5, color: "#555555", marginBottom: 14 },
+  mailBackAddr: { fontWeight: "bold", color: "#222222" },
   card: { marginBottom: 22, paddingBottom: 16, borderBottom: "0.5pt solid #dddddd" },
   cardHeader: { flexDirection: "row", marginBottom: 8 },
   glyphCol: { width: 100, alignItems: "center" },
@@ -161,6 +163,13 @@ export function KanjiDocument({
       <Page size="A4" style={styles.page} wrap>
         <Text style={styles.masthead}>Kanji A Day</Text>
         <Text style={styles.date}>{dateFormatted}</Text>
+        {/* The address is the literal users whitelist in Amazon and see in
+         *  onboarding; the actual inbound routing address is my@${RESEND_INBOUND_DOMAIN}. */}
+        <Text style={styles.mailBack}>
+          Write your answers in the boxes, then email this page to{" "}
+          <Text style={styles.mailBackAddr}>my@dailyscribe.ca</Text>
+          {" "}— Daily Scribe reads your handwriting, grades it, and tracks your progress.
+        </Text>
         {batch.isRetry && (
           <Text style={styles.completedNote}>
             A few of these didn&apos;t come through clearly last time — here they are again for more practice.
