@@ -1,8 +1,9 @@
 dateline: Morning Edition
 hero_heading: Your morning edition, written for your Kindle Scribe.
-hero_subheading: Daily Scribe gathers the news, puzzles, and practice you
-  actually care about, binds it into one polished PDF, and delivers it to your
-  Kindle — or just your inbox — before you've poured your coffee.
+hero_subheading: Daily Scribe binds the news, a fresh write-in crossword, Kanji
+  practice, and your Home Assistant briefing into one polished PDF and delivers it
+  to your Kindle — or just your inbox — before you've poured your coffee. Write
+  your answers back by hand and it marks them.
 hero_image: /uploads/hero.png
 hero_image_alt: Illustration of a tablet, stylus, and a steaming cup of coffee
 teasers:
@@ -141,7 +142,7 @@ vignettes:
 waitlist:
   heading: Request an invitation
   body: Daily Scribe is in a small private beta while we get delivery right for
-    every Kindle. Leave your email and we'll send an invite as spots open.
+    every Kindle. Leave your email and we'll send an invite — usually within a day.
   button_label: Join the waitlist
   placeholder: you@example.com
   success_message: You're on the list — watch your inbox for an invite.

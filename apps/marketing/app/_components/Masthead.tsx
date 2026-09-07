@@ -27,8 +27,8 @@ export function Masthead() {
           <a href="#read">Read</a>
           <a href="#live">Live</a>
           <a href="#premium">Premium</a>
-          <a className="sectionnav-cta" href={SIGN_IN_URL}>
-            Get Started
+          <a className="sectionnav-cta" href="#get-started">
+            Join the Waitlist
           </a>
         </div>
       </nav>

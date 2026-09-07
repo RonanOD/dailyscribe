@@ -3,7 +3,7 @@ import { LegalPage } from "../_components/LegalPage";
 import { CONTACT_EMAIL, GOVERNING_LAW, OWNER_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Terms of Use — The Daily Scribe",
+  title: "Terms of Use",
   description: "The terms you agree to when you use Daily Scribe.",
 };
 
