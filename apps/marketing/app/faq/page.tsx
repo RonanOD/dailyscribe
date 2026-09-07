@@ -29,11 +29,11 @@ export default function FaqPage() {
         It&rsquo;s a one-time step, and it&rsquo;s the only address you ever need to allow.
       </p>
 
-      <h2>Do I need a New York Times subscription?</h2>
+      <h2>Do I need any other accounts or subscriptions?</h2>
       <p>
         No. The services available today &mdash; the RT&Eacute;&nbsp;/&nbsp;BBC&nbsp;/&nbsp;CBC
         news digest, the daily write-in crossword, Kanji&nbsp;A&nbsp;Day, and the Home&nbsp;Assistant
-        briefing &mdash; need no outside accounts. The NYT crossword is not part of the beta.
+        briefing &mdash; need no outside accounts or logins.
       </p>
 
       <h2>What is a &ldquo;write-in&rdquo; crossword?</h2>
@@ -77,7 +77,7 @@ export default function FaqPage() {
         <a href="/privacy">Privacy Policy</a> for details.
       </p>
 
-      <h2>Are you affiliated with Amazon, Kindle, or the NYT?</h2>
+      <h2>Are you affiliated with Amazon or Kindle?</h2>
       <p>
         No. Daily Scribe is an independent project. &ldquo;Kindle&rdquo; and &ldquo;Kindle
         Scribe&rdquo; are trademarks of Amazon; other names belong to their respective owners.
