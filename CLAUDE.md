@@ -48,8 +48,12 @@ emailed to the owner's Kindle, on multi-tenant-ready foundations — is built an
   seeds approved emails into `users` in batches and emails invites. All three providers set
   `allowDangerousEmailAccountLinking` (each verifies the address) so a seeded stub / second
   method attaches cleanly.
-- **Scheduling:** **Vercel Cron** → `GET /api/cron/dispatch` (guarded by `CRON_SECRET`),
-  timezone-aware, idempotent per day. (Note: Vercel Hobby limits cron frequency; hourly needs Pro.)
+- **Scheduling:** a **GitHub Actions workflow** (`.github/workflows/dispatch.yml`) polls
+  `GET /api/cron/dispatch` (guarded by `CRON_SECRET`) every ~10 min — timezone-aware,
+  exactly-once per day via a `deliveries` marker row. A once-daily **Vercel Cron**
+  (`apps/web/vercel.json`) is the fallback. (Vercel Hobby cron alone only fires daily,
+  too coarse to honour per-subscriber delivery times across timezones; native hourly
+  Vercel Cron on Pro would replace the workflow.)
 - **Email delivery:** **Resend**, sending from the single verified address
   `Daily Scribe <my@dailyscribe.ca>` (users whitelist it once in their Kindle settings; service
   identity lives in the subject line). One app-wide `RESEND_API_KEY` — **no per-user email
@@ -135,11 +139,14 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       `<section>`s in `dashboard-form.tsx` stay hand-written. Still to do: build the deferred
       catalog services (DnD 5e, classic novels, eating tracking); capture the three Amazon
       screenshots for `apps/web/public/onboarding/` (flow works without them).
-- [~] **Phase 3 — Scheduling at scale.** Vercel Cron + timezone-aware, idempotent dispatch
-      shipped for the solo case. Bounce/complaint visibility landed (`/api/webhooks/resend-events`
-      → `deliveryEvents`, auto-disables subscriptions on hard bounce / spam complaint,
-      dashboard banner) and outbound attachment-size guard (`assertDeliverable`). Still to do:
-      retries, failure notifications, sub-daily cron coverage across many timezones (Vercel Pro).
+- [~] **Phase 3 — Scheduling at scale.** Timezone-aware, idempotent dispatch, driven every
+      ~10 min by a GitHub Actions workflow hitting `/api/cron/dispatch` (Sep 2026 — replaced
+      the daily-only Vercel Hobby cron, which couldn't honour per-subscriber delivery times
+      outside the owner's timezone; the daily Vercel Cron stays as a fallback).
+      Bounce/complaint visibility landed (`/api/webhooks/resend-events` → `deliveryEvents`,
+      auto-disables subscriptions on hard bounce / spam complaint, dashboard banner) and
+      outbound attachment-size guard (`assertDeliverable`). Still to do: retries, failure
+      notifications, and moving dispatch back onto native cron (hourly Vercel Cron on Pro).
 - [ ] **Phase 4 — Billing.** Subscription tiers (e.g. free single-service vs. paid bundles).
 - [~] **Phase 5 — Handwriting return path.** Live for Kanji: `/api/webhooks/resend-inbound`
       routes a mailed-back PDF by an embedded page ref, trims it to just that service's own
