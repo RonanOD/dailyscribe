@@ -39,6 +39,56 @@ export default function HomePage() {
           </div>
         </section>
 
+        <section className="demo" id="watch">
+          <div className="container demo-grid">
+            <div className="demo-main">
+              <p className="kicker">Watch it work</p>
+              <h2 className="demo-title">Two minutes, one real edition.</h2>
+              <p className="demo-dek">
+                Opening the day&rsquo;s PDF on a Kindle Scribe &mdash; the news sections, the
+                Home&nbsp;Assistant briefing, Kanji practice, and the write-in crossword.
+              </p>
+              {/* YouTube video ID ajOA1lpTtQI — see the marketing brief. nocookie + lazy. */}
+              <div className="demo-embed">
+                <iframe
+                  src="https://www.youtube-nocookie.com/embed/ajOA1lpTtQI"
+                  title="Daily Scribe — a morning edition on the Kindle Scribe"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+            <aside className="demo-sample">
+              <p className="kicker">Peek inside</p>
+              <div className="demo-pages">
+                <img
+                  src="/uploads/sample-news.png"
+                  alt="A news page from a sample edition — RTÉ headlines set like a newspaper"
+                  width={900}
+                  height={1273}
+                  loading="lazy"
+                />
+                <img
+                  src="/uploads/sample-crossword.png"
+                  alt="The write-in crossword page from a sample edition, answers penned into the grid"
+                  width={900}
+                  height={1273}
+                  loading="lazy"
+                />
+              </div>
+              <a
+                className="btn"
+                href={content.sample_edition.file}
+                target="_blank"
+                rel="noopener"
+              >
+                {content.sample_edition.button_label}
+              </a>
+            </aside>
+          </div>
+        </section>
+
         <section className="teasers" id="inside">
           <div className="container teaser-grid">
             {content.teasers.map((teaser) => (

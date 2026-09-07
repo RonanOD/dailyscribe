@@ -677,9 +677,68 @@ h3 {
   margin-bottom: 8px;
 }
 
+/* ---------- Demo (video + sample pages) ---------- */
+.demo {
+  padding: 56px 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--rule);
+}
+.demo-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 0.9fr;
+  gap: 48px;
+  align-items: start;
+}
+.demo-title {
+  font-size: clamp(1.6rem, 2.8vw, 2.3rem);
+  line-height: 1.1;
+  margin-bottom: 12px;
+}
+.demo-dek {
+  font-size: 1.08rem;
+  line-height: 1.55;
+  color: var(--text-soft);
+  max-width: 48ch;
+  margin: 0 0 24px;
+}
+.demo-embed {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border: 1.5px solid var(--text);
+  background: var(--text);
+}
+.demo-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+.demo-sample {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.demo-pages {
+  display: flex;
+  gap: 12px;
+}
+.demo-pages img {
+  width: 50%;
+  height: auto;
+  border: 1px solid var(--rule);
+  background: #fff;
+}
+.demo-sample .btn {
+  align-self: start;
+  white-space: nowrap;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .hero-grid,
+  .demo-grid,
   .feature-grid,
   .feature--media-right .feature-grid,
   .sample-box,
@@ -693,6 +752,11 @@ h3 {
   }
   .sample-box .btn {
     justify-self: stretch;
+    text-align: center;
+    white-space: normal;
+  }
+  .demo-sample .btn {
+    align-self: stretch;
     text-align: center;
     white-space: normal;
   }

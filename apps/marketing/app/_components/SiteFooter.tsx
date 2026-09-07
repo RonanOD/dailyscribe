@@ -30,7 +30,8 @@ export function SiteFooter() {
             <a href={SIGN_IN_URL}>Sign In</a>
           </div>
           <div className="footer-col">
-            <h4>Legal</h4>
+            <h4>Info</h4>
+            <a href="/faq">FAQ</a>
             <a href="/privacy">Privacy</a>
             <a href="/terms">Terms</a>
             <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>

@@ -3,7 +3,7 @@ import { LegalPage } from "../_components/LegalPage";
 import { CONTACT_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — The Daily Scribe",
+  title: "Privacy Policy",
   description:
     "What Daily Scribe collects, why, who processes it, and how to get it deleted.",
 };
