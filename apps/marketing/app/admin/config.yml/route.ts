@@ -108,6 +108,24 @@ collections:
             fields:
               - { label: Heading, name: heading, widget: string }
               - { label: Body, name: body, widget: text }
+
+  - name: guides
+    label: "Guides"
+    label_singular: "Guide"
+    folder: "apps/marketing/content/guides"
+    extension: md
+    format: frontmatter
+    create: true
+    slug: "{{fields.slug}}"
+    summary: "{{title}}"
+    sortable_fields: [order, title, updated]
+    fields:
+      - { label: "URL slug (lowercase, hyphens)", name: slug, widget: string, pattern: ['^[a-z0-9-]+$', 'lowercase letters, numbers and hyphens only'] }
+      - { label: Title, name: title, widget: string }
+      - { label: "Meta description (shown in search results)", name: description, widget: text }
+      - { label: "Updated", name: updated, widget: datetime, date_format: "YYYY-MM-DD", time_format: false, format: "YYYY-MM-DD" }
+      - { label: "Sort order (lower shows first on /guides)", name: order, widget: number, default: 999, value_type: int }
+      - { label: Body, name: body, widget: markdown }
 `;
 }
 

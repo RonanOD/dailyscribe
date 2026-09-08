@@ -669,12 +669,75 @@ h3 {
   line-height: 1.65;
   color: var(--text-soft);
 }
-.legal ul {
+.legal ul,
+.legal ol {
   padding-left: 22px;
   margin: 12px 0;
 }
 .legal li {
   margin-bottom: 8px;
+}
+
+/* ---------- Guides ---------- */
+.legal h3 {
+  font-size: 1.05rem;
+  margin: 24px 0 8px;
+}
+.guide-body code {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  background: color-mix(in oklch, var(--text) 8%, transparent);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.guide-body strong {
+  color: var(--text);
+}
+.guide-index {
+  list-style: none;
+  padding: 0;
+  margin: 28px 0 0;
+}
+.guide-index li {
+  padding: 18px 0;
+  border-top: 1px solid var(--rule);
+}
+.guide-index li:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+.guide-index a {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.2rem;
+  color: var(--text);
+}
+.guide-index a:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+.guide-index p {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+.guide-cta {
+  margin: 44px 0 8px;
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+}
+.guide-cta h2 {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
+}
+.guide-cta p {
+  margin: 0 0 14px;
+}
+.guide-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
 }
 
 /* ---------- Demo (video + sample pages) ---------- */

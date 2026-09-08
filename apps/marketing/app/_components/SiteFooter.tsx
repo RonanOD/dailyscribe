@@ -31,6 +31,7 @@ export function SiteFooter() {
           </div>
           <div className="footer-col">
             <h4>Info</h4>
+            <a href="/guides">Guides</a>
             <a href="/faq">FAQ</a>
             <a href="/privacy">Privacy</a>
             <a href="/terms">Terms</a>
