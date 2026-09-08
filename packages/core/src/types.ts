@@ -243,6 +243,8 @@ export interface WaitlistEntry {
   status: WaitlistStatus;
   createdAt: Date;
   approvedAt?: Date;
+  /** Set by `approve-waitlist.mjs --decline` for junk / non-genuine signups. */
+  declinedAt?: Date;
 }
 
 /** One fixed-window counter for the Mongo-backed rate limiter. A TTL index on
