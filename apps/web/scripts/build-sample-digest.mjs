@@ -3,11 +3,15 @@
  * Regenerate the public sample digest at
  * apps/marketing/public/uploads/daily-scribe-sample-digest.pdf
  *
- * It is built entirely from synthetic data defined in this file — no user
- * config, no stored secrets, no database, no network. So the output carries
- * NO PII and is safe to publish. It IS a real run of the pipeline
- * (renderDigestCoverPdf + assembleDigestPdf), so unlike a hand-made mock it
- * has working table-of-contents jumps and tappable article headlines.
+ * The news / Home Assistant / Kanji sections are built from synthetic data
+ * defined in this file — no user config, no stored secrets, no database — so
+ * the output carries NO PII. The crossword section, by default, embeds a real
+ * Universal Crossword from the same public feed the product uses (third-party
+ * content, not PII); pass SAMPLE_CROSSWORD=synthetic for a hand-built grid.
+ *
+ * It IS a real run of the pipeline (renderDigestCoverPdf + assembleDigestPdf),
+ * so unlike a hand-made mock it has working table-of-contents jumps and
+ * tappable article headlines.
  *
  * Run from apps/web:  pnpm build:sample
  * (that sets TSX_TSCONFIG_PATH=scripts/tsconfig.json, which forces the
@@ -22,7 +26,13 @@ import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { assembleDigestPdf, getPdfPageCount, KANJI_CURRICULUM } from "@dailyscribe/core";
+import {
+  assembleDigestPdf,
+  fetchUniversalPuzzleRaw,
+  getPdfPageCount,
+  KANJI_CURRICULUM,
+  parseUniversalPuzzle,
+} from "@dailyscribe/core";
 
 // pdf-lib isn't a direct dep of apps/web; reach it through @dailyscribe/core
 // (which is) so the verify step below can introspect the finished document.
@@ -90,10 +100,17 @@ const NEWS_SECTIONS = [
   },
 ];
 
-/** A small hand-built grid, letters only, so page 1 renders it blank and page 2
- *  reveals the answers — the point is to show the two-page format, not to be a
- *  real Universal puzzle. */
-const CROSSWORD = {
+// The crossword section, by default, embeds a REAL Universal Crossword pulled
+// from the same public feed the product uses (see
+// packages/core/src/crossword-sources/universal.ts and its licensing note) —
+// so the sample matches what subscribers actually receive, at full 15x15 size.
+// Set SAMPLE_CROSSWORD=synthetic to use the small hand-built grid below
+// instead (also the automatic fallback if the feed can't be reached).
+const REAL_CROSSWORD_DATE = "2026-08-18"; // a fixed weekday, so the sample is stable
+
+/** Tiny hand-built grid — a valid 5x5 word square (every row and column is a
+ *  real word). Only used offline / when SAMPLE_CROSSWORD=synthetic. */
+const FALLBACK_CROSSWORD = {
   date: "2026-01-06",
   title: "Sample Crossword",
   author: "Daily Scribe",
@@ -166,7 +183,32 @@ const HA_DATA = {
 
 // ---------------------------------------------------------------------------
 
+/** Returns the crossword to render: a real Universal puzzle by default, the
+ *  hand-built fallback when SAMPLE_CROSSWORD=synthetic or the feed is
+ *  unreachable. */
+async function resolveCrossword() {
+  if (process.env.SAMPLE_CROSSWORD === "synthetic") {
+    return { puzzle: FALLBACK_CROSSWORD, masthead: "Daily Crossword", real: false };
+  }
+  try {
+    const raw = await fetchUniversalPuzzleRaw(new Date(`${REAL_CROSSWORD_DATE}T00:00:00Z`));
+    const parsed = parseUniversalPuzzle(raw);
+    return {
+      puzzle: { ...parsed, date: REAL_CROSSWORD_DATE, createdAt: DATE },
+      masthead: "Universal Crossword",
+      real: true,
+    };
+  } catch (err) {
+    console.warn(
+      `  crossword: live feed unavailable (${err instanceof Error ? err.message : err}) — using the synthetic fallback grid.`,
+    );
+    return { puzzle: FALLBACK_CROSSWORD, masthead: "Daily Crossword", real: false };
+  }
+}
+
 async function main() {
+  const crossword = await resolveCrossword();
+
   const sections = [
     {
       label: "The News",
@@ -188,7 +230,7 @@ async function main() {
     },
     {
       label: "Crossword",
-      bytes: await renderCrosswordPdf(CROSSWORD, DATE, { masthead: "Daily Crossword", digest: true }),
+      bytes: await renderCrosswordPdf(crossword.puzzle, DATE, { masthead: crossword.masthead, digest: true }),
     },
   ];
 
@@ -246,7 +288,15 @@ async function main() {
   console.log(`  link annotations: ${internal} internal (TOC / cross-refs) + ${external} external (article headlines)`);
   console.log(`  links by page: ${perPage.join(", ") || "none"}`);
   console.log(`  sections: ${coverSections.map((s) => `${s.label} p${s.startPage}`).join(", ")}`);
-  console.log(`  PII: none — every value above is synthetic; no config, secrets, DB or network.`);
+  console.log(
+    crossword.real
+      ? `  crossword: real Universal puzzle (${REAL_CROSSWORD_DATE}) — third-party content, same feed the product uses`
+      : `  crossword: synthetic fallback grid`,
+  );
+  console.log(
+    `  PII: none — news / Home Assistant / Kanji are all synthetic (no config, secrets, DB).` +
+      (crossword.real ? " The crossword is a real syndicated puzzle." : ""),
+  );
 
   if (internal === 0) {
     console.error("\n!! No internal links in the output — the TOC would be dead. Not a valid sample.");
