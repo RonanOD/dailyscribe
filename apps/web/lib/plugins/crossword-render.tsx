@@ -2,7 +2,12 @@ import { formatIsoDate, type CrosswordClue, type CrosswordPuzzle } from "@dailys
 import { Document, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
-  page: { paddingVertical: 36, paddingHorizontal: 40, fontFamily: "Helvetica", color: "#111111" },
+  page: { paddingTop: 36, paddingBottom: 36, paddingHorizontal: 40, fontFamily: "Helvetica", color: "#111111" },
+  // In a digest bundle, packages/core/src/delivery/merge.ts stamps a
+  // "‹ Contents" button in the bottom-left of every page (box top ≈ 74pt up
+  // from the trim). Reserve room for it so the flowing clue list breaks
+  // above the button instead of rendering behind it.
+  pageDigestPad: { paddingBottom: 92 },
   masthead: { fontSize: 24, fontFamily: "Helvetica-Bold", marginBottom: 2 },
   date: { fontSize: 11, color: "#444444", marginBottom: 2 },
   subtitle: { fontSize: 10.5, color: "#555555", marginBottom: 14, fontFamily: "Helvetica-Oblique" },
@@ -134,6 +139,7 @@ function CrosswordDocument({
   digest?: boolean;
 }) {
   const dateFormatted = formatLongDate(date);
+  const pageStyle = digest ? [styles.page, styles.pageDigestPad] : styles.page;
   const subtitle = [puzzle.title, puzzle.author && `by ${puzzle.author}`].filter(Boolean).join(" — ");
   const footer = (
     <Text
@@ -146,7 +152,7 @@ function CrosswordDocument({
   );
   return (
     <Document title={`${masthead} — ${formatIsoDate(date)}`} author="Daily Scribe">
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={pageStyle}>
         <Text style={styles.masthead}>{masthead}</Text>
         <Text style={styles.date}>{dateFormatted}</Text>
         {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
@@ -154,7 +160,7 @@ function CrosswordDocument({
         <ClueColumns clues={puzzle.clues} />
         {footer}
       </Page>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={pageStyle}>
         <Text style={styles.masthead}>{masthead} — Answers</Text>
         <Text style={styles.date}>{dateFormatted}</Text>
         <CrosswordGrid puzzle={puzzle} reveal maxHeight={660} />
