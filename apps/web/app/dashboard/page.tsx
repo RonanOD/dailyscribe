@@ -156,6 +156,9 @@ export default async function DashboardPage() {
           </a>
         </h1>
         <div className="who">
+          {session.user.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase() && (
+            <a href="/admin">Admin</a>
+          )}
           <span>{session.user.email ?? session.user.name}</span>
           <form
             action={async () => {
