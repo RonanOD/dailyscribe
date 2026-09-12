@@ -497,6 +497,14 @@ a {
   white-space: normal;
 }
 
+/* Services column: badges wrap within a capped width instead of stretching
+ * the row and pushing the later columns (deliveries, last delivery,
+ * onboarded) out of view. */
+.admin-table td.services-cell {
+  white-space: normal;
+  max-width: 220px;
+}
+
 .admin-table .badge {
   display: inline-block;
   margin: 2px 4px 2px 0;
