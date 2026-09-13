@@ -1,4 +1,4 @@
-import { PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber } from "pdf-lib";
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFRef } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import type { Asset } from "../plugins/index";
 import { assembleDigestPdf, extractPdfPages, getPdfPageCount, mergePdfAssets, type DigestSection } from "./merge";
@@ -115,6 +115,47 @@ describe("assembleDigestPdf", () => {
       const destPageDict = doc.context.lookup(dest.get(0), PDFDict);
       expect(destPageDict).toBe(expectedTargets[i].node);
     }
+  });
+
+  it("writes a PDF outline with one bookmark per section, in order, pointing at each section's first page", async () => {
+    const { cover, sections, tocLinkRects } = await buildFixture();
+    const assembled = await assembleDigestPdf(cover, sections, tocLinkRects, "digest.pdf");
+    const doc = await PDFDocument.load(assembled.bytes);
+
+    expect(doc.catalog.lookup(PDFName.of("PageMode"), PDFName).asString()).toBe("/UseOutlines");
+
+    const outlineRef = doc.catalog.get(PDFName.of("Outlines")) as PDFRef;
+    const outlineDict = doc.context.lookup(outlineRef, PDFDict);
+    expect(outlineDict.lookup(PDFName.of("Type"), PDFName).asString()).toBe("/Outlines");
+    expect(outlineDict.lookup(PDFName.of("Count"), PDFNumber).asNumber()).toBe(2);
+
+    const expectedTargets = [doc.getPage(2), doc.getPage(3)]; // section A starts at 2, section B at 3
+    let itemRef = outlineDict.get(PDFName.of("First")) as PDFRef;
+    for (let i = 0; i < sections.length; i++) {
+      const itemDict = doc.context.lookup(itemRef, PDFDict);
+      expect(itemDict.lookup(PDFName.of("Title"), PDFHexString).decodeText()).toBe(sections[i].label);
+      expect(itemDict.get(PDFName.of("Parent"))).toBe(outlineRef);
+
+      const dest = itemDict.lookup(PDFName.of("Dest"), PDFArray);
+      expect(doc.context.lookup(dest.get(0), PDFDict)).toBe(expectedTargets[i].node);
+
+      if (i === 0) expect(itemDict.get(PDFName.of("Prev"))).toBeUndefined();
+      if (i === sections.length - 1) {
+        expect(itemDict.get(PDFName.of("Next"))).toBeUndefined();
+        expect(outlineDict.get(PDFName.of("Last"))).toBe(itemRef);
+      } else {
+        itemRef = itemDict.get(PDFName.of("Next")) as PDFRef;
+      }
+    }
+  });
+
+  it("adds no outline when the digest has no sections", async () => {
+    const coverOnly = await fakePdfAsset("cover.pdf", 2);
+    const assembled = await assembleDigestPdf(coverOnly, [], [], "digest.pdf");
+    const doc = await PDFDocument.load(assembled.bytes);
+
+    expect(doc.catalog.get(PDFName.of("Outlines"))).toBeUndefined();
+    expect(doc.catalog.get(PDFName.of("PageMode"))).toBeUndefined();
   });
 
   it("throws when the assembled document has no TOC page (page 2)", async () => {

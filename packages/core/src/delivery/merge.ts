@@ -1,4 +1,4 @@
-import { PDFDocument, PDFName, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, PDFHexString, PDFName, StandardFonts, rgb } from "pdf-lib";
 import type { Asset } from "../plugins/index";
 
 /**
@@ -59,7 +59,10 @@ export interface DigestSection {
  * first page in the assembled document. `tocLinkRects` gives each row's
  * clickable rectangle (PDF points, page-2 origin bottom-left), in the same
  * order as `sections` — the cover renderer owns the TOC layout, so it's the
- * only place that knows where each row actually lands on the page.
+ * only place that knows where each row actually lands on the page. Also
+ * writes a matching PDF outline (bookmarks) — one entry per section — so
+ * e-readers that build their own Contents view from /Outlines rather than
+ * in-page links (Kindle, reMarkable) can still navigate the digest.
  */
 export async function assembleDigestPdf(
   cover: Asset,
@@ -99,6 +102,41 @@ export async function assembleDigestPdf(
     annots.push(linkRef);
   }
   tocPage.node.set(PDFName.of("Annots"), merged.context.obj(annots));
+
+  // Outline (bookmark) entries mirror the TOC rows above, one per section,
+  // pointing at the same first-page refs. Kindle and reMarkable build their
+  // own "Go To"/Contents navigation from the document's /Outlines tree, not
+  // from in-page Link annotations — without this, the TOC rows above are
+  // only tappable once you're already looking at page 2, with no entry
+  // point from the device's own navigation UI.
+  if (sections.length > 0) {
+    const outlineRootRef = merged.context.nextRef();
+    const itemRefs = sections.map(() => merged.context.nextRef());
+    sections.forEach((section, i) => {
+      const targetPage = merged.getPage(sectionStartIndices[i]);
+      merged.context.assign(
+        itemRefs[i],
+        merged.context.obj({
+          Title: PDFHexString.fromText(section.label),
+          Parent: outlineRootRef,
+          Prev: i > 0 ? itemRefs[i - 1] : undefined,
+          Next: i < itemRefs.length - 1 ? itemRefs[i + 1] : undefined,
+          Dest: [targetPage.ref, "Fit"],
+        }),
+      );
+    });
+    merged.context.assign(
+      outlineRootRef,
+      merged.context.obj({
+        Type: "Outlines",
+        First: itemRefs[0],
+        Last: itemRefs[itemRefs.length - 1],
+        Count: itemRefs.length,
+      }),
+    );
+    merged.catalog.set(PDFName.of("Outlines"), outlineRootRef);
+    merged.catalog.set(PDFName.of("PageMode"), PDFName.of("UseOutlines"));
+  }
 
   // A back-to-contents button, bottom-left, on every page except the cover
   // (index 0, no reason to jump anywhere from it) and the TOC page itself
