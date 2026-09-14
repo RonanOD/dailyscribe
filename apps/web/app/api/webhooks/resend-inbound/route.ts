@@ -1,12 +1,18 @@
 import {
+  applyCharacterSheet,
+  applyMove,
   collections,
   createGeminiKanjiCheckClient,
   extractPdfPages,
   KANJI_CURRICULUM,
+  SUNKEN_VAULT_CAMPAIGN,
+  type DndGameStatus,
+  type DndSubmissionShape,
   type KanjiCharCheckResult,
 } from "@dailyscribe/core";
 import { NextResponse } from "next/server";
 import { Resend, type AttachmentData, type EmailReceivedEvent } from "resend";
+import { readDndReply } from "@/lib/dnd/dnd-check";
 
 type ReceivedEmailAttachment = EmailReceivedEvent["data"]["attachments"][number];
 
@@ -165,27 +171,137 @@ async function extractInboundRef(
     // pdfjs-dist wrapper with pure-JS polyfills for exactly this class of
     // environment, no native deps.
     const { getDocument } = await import("pdfjs-serverless");
-    const doc = await getDocument({ data: new Uint8Array(pdfBytes), useSystemFonts: true }).promise;
-
-    let ref: { service: string; token: string } | null = null;
-    const pageIndices: number[] = [];
-    for (let i = 1; i <= doc.numPages; i++) {
-      const page = await doc.getPage(i);
-      const content = await page.getTextContent();
-      const pageText = content.items.map((it) => ("str" in it ? it.str : "")).join(" ");
-      // A hyphenated line-wrap can split the ref token itself (e.g. "dai-\nlyscribe:kanji:…"),
-      // which the plain join above renders as "dai- lyscribe:kanji:…" — defeat that by also
-      // trying a hyphen-unwrapped variant before giving up on a page.
-      const match = pageText.match(SUBJECT_RE) ?? pageText.replace(/-\s+/g, "").match(SUBJECT_RE);
-      if (!match) continue;
-      if (!ref) ref = { service: match[1], token: match[2] };
-      if (match[1] === ref.service && match[2] === ref.token) pageIndices.push(i - 1); // 0-based, for pdf-lib
+    const loadingTask = getDocument({ data: new Uint8Array(pdfBytes), useSystemFonts: true });
+    const doc = await loadingTask.promise;
+    try {
+      let ref: { service: string; token: string } | null = null;
+      const pageIndices: number[] = [];
+      for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map((it) => ("str" in it ? it.str : "")).join(" ");
+        // A hyphenated line-wrap can split the ref token itself (e.g. "dai-\nlyscribe:kanji:…"),
+        // which the plain join above renders as "dai- lyscribe:kanji:…" — defeat that by also
+        // trying a hyphen-unwrapped variant before giving up on a page.
+        const match = pageText.match(SUBJECT_RE) ?? pageText.replace(/-\s+/g, "").match(SUBJECT_RE);
+        if (!match) continue;
+        if (!ref) ref = { service: match[1], token: match[2] };
+        if (match[1] === ref.service && match[2] === ref.token) pageIndices.push(i - 1); // 0-based, for pdf-lib
+      }
+      return ref ? { ...ref, pageIndices } : null;
+    } finally {
+      // Undestroyed, pdfjs-serverless's simulated worker "loopback port" left
+      // a background message pending that broke a later getDocument() call
+      // in the same process (reproduced in testing while building the DnD
+      // mail-back path, which now calls getDocument() again after this).
+      // `destroy()` lives on the loading task, not the resolved document.
+      await loadingTask.destroy();
     }
-    return ref ? { ...ref, pageIndices } : null;
   } catch (err) {
     console.error("resend-inbound: pdfjs-serverless failed to parse/extract text:", err instanceof Error ? err.stack : err);
     return null;
   }
+}
+
+/** A filled character-creation sheet is expected while there's no active hero
+ *  yet (a new campaign) or after the previous run ended (won/dead — the
+ *  terminal pages offer a restart); every other status expects an ordinary
+ *  move reply. */
+function dndExpectedShape(status: DndGameStatus): DndSubmissionShape {
+  return status === "active" ? "move" : "character";
+}
+
+/**
+ * DnD's mail-back handler: look up the campaign by inbound token, record the
+ * submission, read the reply (deterministic checkbox + scoped OCR for a move,
+ * one whole-page vision read for a character sheet — see dnd-check.ts), and
+ * apply it via the pure engine functions. Mirrors the Kanji handling below,
+ * but pulled into its own function since the two services' reply shapes
+ * (and what "reading" them means) don't share meaningful code beyond the
+ * submission bookkeeping pattern itself.
+ */
+async function handleDndSubmission(input: {
+  resendEmailId: string;
+  attachmentBytes: Buffer;
+  attachmentFilename: string;
+  attachmentContentType: string;
+  token: string;
+}): Promise<Response> {
+  const { dndCampaigns, dndSubmissions } = await collections();
+  const campaign = await dndCampaigns.findOne({ inboundToken: input.token });
+  if (!campaign) {
+    console.warn(`resend-inbound: no user matches inbound token (email ${input.resendEmailId})`);
+    return NextResponse.json({ ok: true, skipped: "unknown token" });
+  }
+
+  const expectedShapeAtReceipt = dndExpectedShape(campaign.gameState.status);
+
+  const { insertedId } = await dndSubmissions.insertOne({
+    userId: campaign.userId,
+    resendEmailId: input.resendEmailId,
+    receivedAt: new Date(),
+    attachmentFilename: input.attachmentFilename,
+    attachmentContentType: input.attachmentContentType,
+    attachmentBytes: input.attachmentBytes,
+    expectedShapeAtReceipt,
+    status: "received",
+  });
+
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    console.warn("resend-inbound: GEMINI_API_KEY not set, leaving DnD submission unread");
+    return NextResponse.json({ ok: true });
+  }
+
+  try {
+    const read = await readDndReply({
+      pdfBytes: input.attachmentBytes,
+      expectedShape: expectedShapeAtReceipt,
+      apiKey: geminiApiKey,
+      model: process.env.DND_GEMINI_MODEL || undefined,
+    });
+
+    const result =
+      read.kind === "character"
+        ? applyCharacterSheet(SUNKEN_VAULT_CAMPAIGN, read.sheet)
+        : applyMove({ character: campaign.character, gameState: campaign.gameState, turnLog: campaign.turnLog }, SUNKEN_VAULT_CAMPAIGN, read.move);
+
+    await dndCampaigns.updateOne(
+      { _id: campaign._id },
+      {
+        $set: {
+          character: result.state.character,
+          gameState: result.state.gameState,
+          turnLog: result.state.turnLog,
+          updatedAt: new Date(),
+        },
+      },
+    );
+    await dndSubmissions.updateOne(
+      { _id: insertedId },
+      {
+        $set: {
+          status: "processed",
+          visionResult: read.kind === "move" ? read.diagnostics : read.sheet,
+          processedAt: new Date(),
+        },
+      },
+    );
+  } catch (err) {
+    console.error("resend-inbound: DnD reply read/apply failed:", err instanceof Error ? err.message : err);
+    await dndSubmissions.updateOne(
+      { _id: insertedId },
+      {
+        $set: {
+          status: "failed",
+          processingError: err instanceof Error ? err.message : String(err),
+          processedAt: new Date(),
+        },
+      },
+    );
+  }
+
+  return NextResponse.json({ ok: true });
 }
 
 /**
@@ -264,7 +380,7 @@ export async function POST(req: Request) {
   }
 
   const { email_id: resendEmailId, attachments } = event.data;
-  const { kanjiProgress, kanjiSubmissions } = await collections();
+  const { kanjiSubmissions } = await collections();
 
   const already = await kanjiSubmissions.findOne({ resendEmailId });
   if (already) {
@@ -284,12 +400,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, skipped: "no ref found in PDF text" });
   }
 
-  switch (ref.service) {
-    case "kanji":
-      break;
-    default:
-      console.warn(`resend-inbound: unknown service "${ref.service}" (email ${resendEmailId})`);
-      return NextResponse.json({ ok: true, skipped: "unknown service" });
+  if (ref.service !== "kanji" && ref.service !== "dnd") {
+    console.warn(`resend-inbound: unknown service "${ref.service}" (email ${resendEmailId})`);
+    return NextResponse.json({ ok: true, skipped: "unknown service" });
   }
 
   // Trim to just this service's own pages — a mailed-back digest carries
@@ -297,6 +410,11 @@ export async function POST(req: Request) {
   // below should see content that isn't this submission's own.
   const serviceBytes = await extractPdfPages(attachmentBytes, ref.pageIndices);
 
+  if (ref.service === "dnd") {
+    return handleDndSubmission({ resendEmailId, attachmentBytes: serviceBytes, attachmentFilename, attachmentContentType, token: ref.token });
+  }
+
+  const { kanjiProgress } = await collections();
   const progress = await kanjiProgress.findOne({ inboundToken: ref.token });
   if (!progress) {
     console.warn(`resend-inbound: no user matches inbound token (email ${resendEmailId})`);

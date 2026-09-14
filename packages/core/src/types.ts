@@ -1,4 +1,5 @@
 import type { ObjectId } from "mongodb";
+import type { DndCharacter, DndGameState, DndTurnLogEntry } from "./dnd/types";
 
 /** Output of AES-256-GCM encryption, stored verbatim in MongoDB. */
 export interface EncryptedPayload {
@@ -7,7 +8,9 @@ export interface EncryptedPayload {
   authTag: string; // base64
 }
 
-/** Providers a user can store credentials for. Delivery needs none (app-wide Resend). */
+/** Providers a user can store credentials for. Delivery needs none (app-wide Resend).
+ *  DnD needs none either — its campaign is self-contained and its vision/OCR
+ *  reads use an app-wide key, same as Gemini everywhere else in this app. */
 export type SecretProvider = "nyt" | "ha";
 
 /** Per-user encrypted credential. Never store plaintext. */
@@ -43,6 +46,7 @@ export type ServiceId =
   | "ha-summary"
   | "kanji"
   | "universal-crossword"
+  | "dnd"
   | "digest";
 
 /** NYT crossword print layouts (ported from the reference repo's CROSSWORD_VERSION). */
@@ -102,6 +106,10 @@ export interface KanjiServiceConfig extends BaseSubscriptionConfig {
  *  BaseSubscriptionConfig directly) for readability at call sites. */
 export type UniversalCrosswordConfig = BaseSubscriptionConfig;
 
+/** No service-specific fields — the campaign is a fixed built-in adventure
+ *  (packages/core/src/dnd/campaign.ts), nothing to steer from the dashboard yet. */
+export type DndServiceConfig = BaseSubscriptionConfig;
+
 /** A service that can be bundled into a digest — every real service except the digest itself. */
 export type BundleableServiceId = Exclude<ServiceId, "digest">;
 
@@ -121,6 +129,7 @@ export type SubscriptionConfig =
   | HaSummaryConfig
   | KanjiServiceConfig
   | UniversalCrosswordConfig
+  | DndServiceConfig
   | DigestConfig;
 
 export interface Subscription {
@@ -222,6 +231,53 @@ export interface KanjiSubmission {
   /** Set once status moves past "received". Empty array (not omitted) when
    *  batchCharsAtReceipt was empty — there was nothing to check, not an error. */
   checkResults?: KanjiCharCheckResult[];
+  /** When the transition to "processed"/"failed" happened. */
+  processedAt?: Date;
+  /** Set only when status === "failed" — the thrown error's message. */
+  processingError?: string;
+}
+
+/** Per-user solo D&D campaign progress — a singleton doc, same shape as
+ *  KanjiProgress above. The campaign definition itself
+ *  (packages/core/src/dnd/campaign.ts) is fixed and shared; this is purely
+ *  per-user state against it. `character` is always populated (a placeholder
+ *  hero before the player's first character-creation reply is applied),
+ *  matching the old repo's state.initial.json so the renderer never has to
+ *  special-case a missing character. */
+export interface DndCampaign {
+  _id?: ObjectId;
+  userId: string;
+  /** Random, unguessable local-part used to route inbound mail to this user —
+   *  see KanjiProgress.inboundToken for the same rationale. */
+  inboundToken: string;
+  character: DndCharacter;
+  gameState: DndGameState;
+  turnLog: DndTurnLogEntry[];
+  updatedAt: Date;
+}
+
+export type DndSubmissionStatus = "received" | "processed" | "failed";
+
+/** Which reply shape was expected at receipt time — a filled character sheet
+ *  (new campaign / after death) or an ordinary move — snapshotted from
+ *  gameState.status so grading doesn't need to re-derive it later. */
+export type DndSubmissionShape = "character" | "move";
+
+/** One inbound email captured for a user's DnD reply — an event log (one row
+ *  per email), unlike DndCampaign which is a per-user singleton. Mirrors
+ *  KanjiSubmission; `visionResult` is the mail-back read's output (Milestone 3). */
+export interface DndSubmission {
+  _id?: ObjectId;
+  userId: string;
+  /** Resend's email_id — idempotency key, since Resend may retry the webhook. */
+  resendEmailId: string;
+  receivedAt: Date;
+  attachmentFilename: string;
+  attachmentContentType: string;
+  attachmentBytes: Buffer;
+  expectedShapeAtReceipt: DndSubmissionShape;
+  status: DndSubmissionStatus;
+  visionResult?: unknown;
   /** When the transition to "processed"/"failed" happened. */
   processedAt?: Date;
   /** Set only when status === "failed" — the thrown error's message. */

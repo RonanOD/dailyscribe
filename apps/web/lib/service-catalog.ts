@@ -87,6 +87,15 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
       "The real daily Universal Crossword — grid and clues on page one, the answer key on page two.",
     showInOnboarding: true,
   },
+  {
+    id: "dnd",
+    label: "DnD 5e Campaign",
+    icon: "🗡️",
+    blurb:
+      "A solo Dungeons & Dragons campaign, one room a day — write your move by hand and mail it back to play on.",
+    showInOnboarding: false,
+    comingSoon: true,
+  },
 ];
 
 /** Services offered as pickable cards in the /onboarding flow. */
