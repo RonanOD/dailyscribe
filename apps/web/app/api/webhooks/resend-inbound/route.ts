@@ -13,6 +13,7 @@ import {
 import { NextResponse } from "next/server";
 import { Resend, type AttachmentData, type EmailReceivedEvent } from "resend";
 import { readDndReply } from "@/lib/dnd/dnd-check";
+import { extractInboundRefs } from "@/lib/inbound-refs";
 
 type ReceivedEmailAttachment = EmailReceivedEvent["data"]["attachments"][number];
 
@@ -21,15 +22,6 @@ export const maxDuration = 60;
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10MB — a single PDF submission
 const ACCEPTED_CONTENT_TYPES = new Set(["application/pdf"]);
-
-// Every PDF Daily Scribe generates carries `dailyscribe:<service>:<token>` in
-// its footer text, so a single shared inbound address can route mail for any
-// (current or future) service without the address itself encoding anything —
-// the mailed-back PDF is the only source of truth. Kindle Scribe's annotate
-// pipeline strips PDF /Info metadata, but its actual text content stream
-// survives intact (confirmed against a real round-tripped submission), so
-// this is read via plain text extraction, not vision/OCR.
-const SUBJECT_RE = /dailyscribe:([a-z0-9_-]+):([a-f0-9]+)/;
 
 // Kindle Scribe's "send" flow doesn't always attach the file directly —
 // for larger PDFs it instead emails a notification with a click-tracking
@@ -151,58 +143,6 @@ async function resolveSubmissionBytes(
   return null;
 }
 
-/**
- * Scans every page for the `dailyscribe:<service>:<token>` footer tag, since
- * a mailed-back submission may be a digest bundling other services' pages
- * alongside this one (the footer is `fixed` — repeated on every page of the
- * asset it came from). Returns every page carrying the *same* service+token
- * as the first match, so the caller can trim the PDF down to just those
- * pages before storing/grading it — unrelated bundled pages are never sent
- * on to a per-service handler.
- */
-async function extractInboundRef(
-  pdfBytes: Buffer,
-): Promise<{ service: string; token: string; pageIndices: number[] } | null> {
-  try {
-    // pdfjs-dist's Node build needs @napi-rs/canvas (a native binary) for
-    // DOMMatrix/Path2D polyfills, which didn't survive Vercel's serverless
-    // bundling (ReferenceError: DOMMatrix is not defined, confirmed against
-    // a real production failure) — pdfjs-serverless is a purpose-built
-    // pdfjs-dist wrapper with pure-JS polyfills for exactly this class of
-    // environment, no native deps.
-    const { getDocument } = await import("pdfjs-serverless");
-    const loadingTask = getDocument({ data: new Uint8Array(pdfBytes), useSystemFonts: true });
-    const doc = await loadingTask.promise;
-    try {
-      let ref: { service: string; token: string } | null = null;
-      const pageIndices: number[] = [];
-      for (let i = 1; i <= doc.numPages; i++) {
-        const page = await doc.getPage(i);
-        const content = await page.getTextContent();
-        const pageText = content.items.map((it) => ("str" in it ? it.str : "")).join(" ");
-        // A hyphenated line-wrap can split the ref token itself (e.g. "dai-\nlyscribe:kanji:…"),
-        // which the plain join above renders as "dai- lyscribe:kanji:…" — defeat that by also
-        // trying a hyphen-unwrapped variant before giving up on a page.
-        const match = pageText.match(SUBJECT_RE) ?? pageText.replace(/-\s+/g, "").match(SUBJECT_RE);
-        if (!match) continue;
-        if (!ref) ref = { service: match[1], token: match[2] };
-        if (match[1] === ref.service && match[2] === ref.token) pageIndices.push(i - 1); // 0-based, for pdf-lib
-      }
-      return ref ? { ...ref, pageIndices } : null;
-    } finally {
-      // Undestroyed, pdfjs-serverless's simulated worker "loopback port" left
-      // a background message pending that broke a later getDocument() call
-      // in the same process (reproduced in testing while building the DnD
-      // mail-back path, which now calls getDocument() again after this).
-      // `destroy()` lives on the loading task, not the resolved document.
-      await loadingTask.destroy();
-    }
-  } catch (err) {
-    console.error("resend-inbound: pdfjs-serverless failed to parse/extract text:", err instanceof Error ? err.stack : err);
-    return null;
-  }
-}
-
 /** A filled character-creation sheet is expected while there's no active hero
  *  yet (a new campaign) or after the previous run ended (won/dead — the
  *  terminal pages offer a restart); every other status expects an ordinary
@@ -226,12 +166,23 @@ async function handleDndSubmission(input: {
   attachmentFilename: string;
   attachmentContentType: string;
   token: string;
-}): Promise<Response> {
+}): Promise<void> {
   const { dndCampaigns, dndSubmissions } = await collections();
+
+  // A Resend retry (or, now, a second ref group from the same email — see
+  // extractInboundRefs) must never double-apply a move: dndSubmissions has a
+  // unique index on resendEmailId, so without this check a retry's insertOne
+  // would throw, uncaught, on every attempt.
+  const already = await dndSubmissions.findOne({ resendEmailId: input.resendEmailId });
+  if (already) {
+    console.log(`resend-inbound: dnd submission for email ${input.resendEmailId} already processed`);
+    return;
+  }
+
   const campaign = await dndCampaigns.findOne({ inboundToken: input.token });
   if (!campaign) {
     console.warn(`resend-inbound: no user matches inbound token (email ${input.resendEmailId})`);
-    return NextResponse.json({ ok: true, skipped: "unknown token" });
+    return;
   }
 
   const expectedShapeAtReceipt = dndExpectedShape(campaign.gameState.status);
@@ -250,7 +201,7 @@ async function handleDndSubmission(input: {
   const geminiApiKey = process.env.GEMINI_API_KEY;
   if (!geminiApiKey) {
     console.warn("resend-inbound: GEMINI_API_KEY not set, leaving DnD submission unread");
-    return NextResponse.json({ ok: true });
+    return;
   }
 
   try {
@@ -300,8 +251,101 @@ async function handleDndSubmission(input: {
       },
     );
   }
+}
 
-  return NextResponse.json({ ok: true });
+/**
+ * Kanji's mail-back handler: look up progress by inbound token, record the
+ * submission, and grade it against the batch it was sent for. Mirrors
+ * handleDndSubmission's shape/bookkeeping pattern above.
+ */
+async function handleKanjiSubmission(input: {
+  resendEmailId: string;
+  attachmentBytes: Buffer;
+  attachmentFilename: string;
+  attachmentContentType: string;
+  token: string;
+}): Promise<void> {
+  const { kanjiProgress, kanjiSubmissions } = await collections();
+
+  const already = await kanjiSubmissions.findOne({ resendEmailId: input.resendEmailId });
+  if (already) {
+    console.log(`resend-inbound: kanji submission for email ${input.resendEmailId} already processed`);
+    return;
+  }
+
+  const progress = await kanjiProgress.findOne({ inboundToken: input.token });
+  if (!progress) {
+    console.warn(`resend-inbound: no user matches inbound token (email ${input.resendEmailId})`);
+    return;
+  }
+
+  const batchCharsAtReceipt = progress.lastBatchChars ?? [];
+
+  const { insertedId } = await kanjiSubmissions.insertOne({
+    userId: progress.userId,
+    resendEmailId: input.resendEmailId,
+    receivedAt: new Date(),
+    attachmentFilename: input.attachmentFilename,
+    attachmentContentType: input.attachmentContentType,
+    attachmentBytes: input.attachmentBytes,
+    batchCharsAtReceipt,
+    status: "received",
+  });
+
+  if (batchCharsAtReceipt.length === 0) {
+    // Happens when a submission arrives before the user's first Kanji send
+    // (no lastBatchChars snapshot yet) — nothing to check against.
+    await kanjiSubmissions.updateOne(
+      { _id: insertedId },
+      { $set: { status: "processed", checkResults: [], processedAt: new Date() } },
+    );
+    return;
+  }
+
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    console.warn("resend-inbound: GEMINI_API_KEY not set, leaving submission unchecked");
+    return;
+  }
+
+  try {
+    const expected = batchCharsAtReceipt.map((char) => ({
+      char,
+      meanings: KANJI_CURRICULUM.find((e) => e.char === char)?.meanings ?? [],
+    }));
+    const client = createGeminiKanjiCheckClient({ apiKey: geminiApiKey, model: process.env.GEMINI_MODEL || undefined });
+    const checkResults: KanjiCharCheckResult[] = await client.check({
+      attachmentBytes: input.attachmentBytes,
+      contentType: input.attachmentContentType,
+      expected,
+    });
+    await kanjiSubmissions.updateOne(
+      { _id: insertedId },
+      { $set: { status: "processed", checkResults, processedAt: new Date() } },
+    );
+
+    // Queue anything not clearly matched to be resent (instead of fresh
+    // curriculum) on the next send; clear anything that's now matched,
+    // including chars queued by an earlier check-in.
+    const matchedChars = checkResults.filter((r) => r.status === "matched").map((r) => r.char);
+    const unmatchedChars = checkResults.filter((r) => r.status !== "matched").map((r) => r.char);
+    const retryChars = Array.from(
+      new Set([...(progress.retryChars ?? []).filter((c) => !matchedChars.includes(c)), ...unmatchedChars]),
+    );
+    await kanjiProgress.updateOne({ userId: progress.userId }, { $set: { retryChars, updatedAt: new Date() } });
+  } catch (err) {
+    console.error("resend-inbound: Gemini kanji check failed:", err instanceof Error ? err.message : err);
+    await kanjiSubmissions.updateOne(
+      { _id: insertedId },
+      {
+        $set: {
+          status: "failed",
+          processingError: err instanceof Error ? err.message : String(err),
+          processedAt: new Date(),
+        },
+      },
+    );
+  }
 }
 
 /**
@@ -380,12 +424,6 @@ export async function POST(req: Request) {
   }
 
   const { email_id: resendEmailId, attachments } = event.data;
-  const { kanjiSubmissions } = await collections();
-
-  const already = await kanjiSubmissions.findOne({ resendEmailId });
-  if (already) {
-    return NextResponse.json({ ok: true, skipped: "already processed" });
-  }
 
   const submission = await resolveSubmissionBytes(resend, resendEmailId, attachments);
   if (!submission) {
@@ -394,102 +432,33 @@ export async function POST(req: Request) {
   }
   const { bytes: attachmentBytes, filename: attachmentFilename, contentType: attachmentContentType } = submission;
 
-  const ref = await extractInboundRef(attachmentBytes);
-  if (!ref) {
+  const refGroups = await extractInboundRefs(attachmentBytes);
+  if (refGroups.length === 0) {
     console.warn(`resend-inbound: no dailyscribe ref found in PDF text (email ${resendEmailId})`);
     return NextResponse.json({ ok: true, skipped: "no ref found in PDF text" });
   }
 
-  if (ref.service !== "kanji" && ref.service !== "dnd") {
-    console.warn(`resend-inbound: unknown service "${ref.service}" (email ${resendEmailId})`);
-    return NextResponse.json({ ok: true, skipped: "unknown service" });
-  }
-
-  // Trim to just this service's own pages — a mailed-back digest carries
-  // other bundled services' pages too, and neither storage nor grading
-  // below should see content that isn't this submission's own.
-  const serviceBytes = await extractPdfPages(attachmentBytes, ref.pageIndices);
-
-  if (ref.service === "dnd") {
-    return handleDndSubmission({ resendEmailId, attachmentBytes: serviceBytes, attachmentFilename, attachmentContentType, token: ref.token });
-  }
-
-  const { kanjiProgress } = await collections();
-  const progress = await kanjiProgress.findOne({ inboundToken: ref.token });
-  if (!progress) {
-    console.warn(`resend-inbound: no user matches inbound token (email ${resendEmailId})`);
-    return NextResponse.json({ ok: true, skipped: "unknown token" });
-  }
-
-  const batchCharsAtReceipt = progress.lastBatchChars ?? [];
-
-  const { insertedId } = await kanjiSubmissions.insertOne({
-    userId: progress.userId,
-    resendEmailId,
-    receivedAt: new Date(),
-    attachmentFilename,
-    attachmentContentType,
-    attachmentBytes: serviceBytes,
-    batchCharsAtReceipt,
-    status: "received",
-  });
-
-  // Grade the submission against the batch it was sent for. This never blocks
-  // the response to Resend — the capture above already durably succeeded,
-  // and a non-200 here would only cost a wasted retry (the idempotency check
-  // above means a retry can never reach this step a second time anyway).
-  if (batchCharsAtReceipt.length === 0) {
-    // Happens when a submission arrives before the user's first Kanji send
-    // (no lastBatchChars snapshot yet) — nothing to check against.
-    await kanjiSubmissions.updateOne(
-      { _id: insertedId },
-      { $set: { status: "processed", checkResults: [], processedAt: new Date() } },
-    );
-  } else {
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (!geminiApiKey) {
-      console.warn("resend-inbound: GEMINI_API_KEY not set, leaving submission unchecked");
-    } else {
-      try {
-        const expected = batchCharsAtReceipt.map((char) => ({
-          char,
-          meanings: KANJI_CURRICULUM.find((e) => e.char === char)?.meanings ?? [],
-        }));
-        const client = createGeminiKanjiCheckClient({ apiKey: geminiApiKey, model: process.env.GEMINI_MODEL || undefined });
-        const checkResults: KanjiCharCheckResult[] = await client.check({
-          attachmentBytes: serviceBytes,
-          contentType: attachmentContentType,
-          expected,
-        });
-        await kanjiSubmissions.updateOne(
-          { _id: insertedId },
-          { $set: { status: "processed", checkResults, processedAt: new Date() } },
-        );
-
-        // Queue anything not clearly matched to be resent (instead of fresh
-        // curriculum) on the next send; clear anything that's now matched,
-        // including chars queued by an earlier check-in.
-        const matchedChars = checkResults.filter((r) => r.status === "matched").map((r) => r.char);
-        const unmatchedChars = checkResults.filter((r) => r.status !== "matched").map((r) => r.char);
-        const retryChars = Array.from(
-          new Set([...(progress.retryChars ?? []).filter((c) => !matchedChars.includes(c)), ...unmatchedChars]),
-        );
-        await kanjiProgress.updateOne({ userId: progress.userId }, { $set: { retryChars, updatedAt: new Date() } });
-      } catch (err) {
-        console.error("resend-inbound: Gemini kanji check failed:", err instanceof Error ? err.message : err);
-        await kanjiSubmissions.updateOne(
-          { _id: insertedId },
-          {
-            $set: {
-              status: "failed",
-              processingError: err instanceof Error ? err.message : String(err),
-              processedAt: new Date(),
-            },
-          },
-        );
-      }
+  // One email can carry replies for several services at once (see
+  // extractInboundRefs) — handle every group, not just the first. Each
+  // handler does its own per-service idempotency check, so a retry of this
+  // whole webhook event correctly re-skips whichever groups already landed
+  // while still processing anything that didn't.
+  const handled: string[] = [];
+  for (const group of refGroups) {
+    if (group.service !== "kanji" && group.service !== "dnd") {
+      console.warn(`resend-inbound: unknown service "${group.service}" (email ${resendEmailId})`);
+      continue;
     }
+    // Trim to just this group's own pages — other groups' (or unrelated
+    // bundled) pages in the same submission must never reach this handler.
+    const serviceBytes = await extractPdfPages(attachmentBytes, group.pageIndices);
+    if (group.service === "dnd") {
+      await handleDndSubmission({ resendEmailId, attachmentBytes: serviceBytes, attachmentFilename, attachmentContentType, token: group.token });
+    } else {
+      await handleKanjiSubmission({ resendEmailId, attachmentBytes: serviceBytes, attachmentFilename, attachmentContentType, token: group.token });
+    }
+    handled.push(group.service);
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, handled });
 }
