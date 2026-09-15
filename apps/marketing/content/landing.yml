@@ -1,9 +1,9 @@
 dateline: Morning Edition
 hero_heading: Your morning edition, written for your Kindle Scribe.
 hero_subheading: Daily Scribe binds the news, a fresh write-in crossword, Kanji
-  practice, and your Home Assistant briefing into one polished PDF and delivers it
-  to your Kindle — or just your inbox — before you've poured your coffee. Write
-  your answers back by hand and it marks them.
+  practice, and your Home Assistant briefing into one polished PDF and delivers
+  it to your Kindle — or just your inbox — before you've poured your coffee.
+  Write your answers back by hand and it marks them.
 hero_image: /uploads/hero.png
 hero_image_alt: Illustration of a tablet, stylus, and a steaming cup of coffee
 teasers:
@@ -40,6 +40,22 @@ how_it_works:
     title: It arrives before your coffee does
     body: Emailed straight to your Kindle Scribe, another e-reader, or just the
       inbox you already check.
+sample_edition:
+  kicker: See for yourself
+  heading: A real edition, start to finish.
+  body: Browse an actual Daily Scribe digest — RTÉ, CBC and BBC headlines, a kanji
+    practice page, and the day's write-in crossword with its answer key — bound
+    exactly as it lands on your Kindle.
+  button_label: Download a sample edition (PDF)
+  file: /uploads/daily-scribe-sample-digest.pdf
+waitlist:
+  heading: Request an invitation
+  body: Daily Scribe is in a small private beta while we get delivery right for
+    every Kindle. Leave your email and we'll send an invite — usually within a
+    day.
+  button_label: Join the waitlist
+  placeholder: you@example.com
+  success_message: You're on the list — watch your inbox for an invite.
 features:
   - media_right: true
     body: Every edition can include a page of kanji to write out longhand — the way
@@ -55,8 +71,8 @@ features:
     id: practice
     image: /uploads/kanji.png
   - media_right: false
-    body: A brand-new write-in crossword arrives every day, answer key tucked on
-      the second page so no one spoils it early.
+    body: A brand-new write-in crossword arrives every day, answer key tucked on the
+      second page so no one spoils it early.
     image_alt: Illustration of a crossword grid
     note: Answer key included, no mail-back needed.
     kicker: Play
@@ -69,12 +85,13 @@ features:
       attack, sneak, search — in the boxes by hand and mail the page back, and
       Daily Scribe reads it and continues the story on your next edition.
     image_alt: Illustration of a dungeon map and a marked-up character sheet
-    note: Your character, campaign, and progress carry over automatically, day to day.
+    note: Your character, campaign, and progress carry over automatically, day to
+      day.
     kicker: Adventure
     title: Roll for initiative, by hand.
     coming_soon: false
     id: dnd
-    image: /uploads/feature-play.svg
+    image: /uploads/dnd.jpeg
   - media_right: true
     body: Daily Scribe pulls the day's stories from RTÉ News, BBC, and CBC and sets
       them like a real newspaper — headlines and bodies you choose by section,
@@ -111,14 +128,6 @@ features:
     coming_soon: true
     id: health
     image: /uploads/health.png
-sample_edition:
-  kicker: See for yourself
-  heading: A real edition, start to finish.
-  body: Browse an actual Daily Scribe digest — RTÉ, CBC and BBC headlines, a kanji
-    practice page, and the day's write-in crossword with its answer key — bound
-    exactly as it lands on your Kindle.
-  button_label: Download a sample edition (PDF)
-  file: /uploads/daily-scribe-sample-digest.pdf
 premium_callout:
   heading: The Sunday edition — every section, one PDF.
   body: Bundle every service you subscribe to into a single branded edition,
@@ -148,13 +157,6 @@ vignettes:
   - caption: The early riser who reads the news over coffee before anyone else is awake.
     image: /uploads/vignette-coffee.png
     image_alt: Illustration of a steaming cup of coffee
-waitlist:
-  heading: Request an invitation
-  body: Daily Scribe is in a small private beta while we get delivery right for
-    every Kindle. Leave your email and we'll send an invite — usually within a day.
-  button_label: Join the waitlist
-  placeholder: you@example.com
-  success_message: You're on the list — watch your inbox for an invite.
 final_cta:
   heading: Start your subscription.
   body: Pick your sections, whitelist one sender address, and your first edition
