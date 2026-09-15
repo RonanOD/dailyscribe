@@ -303,37 +303,14 @@ function AdventurePage({
  * the mail-back reader can sample/crop the mailed-back scan at those exact
  * same coordinates without re-deriving them (see lib/dnd/layout.ts).
  */
-function MovePage({ campaignDoc, digest }: { campaignDoc: DndCampaign; digest?: boolean }) {
+/** Character sheet content only (no Page/footer) — placed as a fixed block
+ *  below the move fields on MovePage, well clear of their absolute
+ *  positions (see MOVE_FIELDS_BOTTOM), so the two pages/pieces can merge
+ *  onto one page without disturbing DND_MOVE_FIELD_LAYOUT's coordinates. */
+function CharacterSheetSection({ character }: { character: DndCharacter }) {
   return (
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.masthead}>Your Move</Text>
-      <Text style={styles.hint}>
-        Roll physically and write your totals. To-hit vs. the monster&apos;s AC on the previous page; damage on a
-        hit; Stealth vs. the monster&apos;s passive Perception to sneak; Heal is 2d4+2 for a potion.
-      </Text>
-      {DND_MOVE_CHECKBOXES.map((field) => (
-        <AbsCheckbox key={field.id} field={field} />
-      ))}
-      {DND_MOVE_FILL_INS.map((field) => (
-        <AbsFillIn key={field.id} field={field} />
-      ))}
-      <RefFooter inboundToken={campaignDoc.inboundToken} digest={digest} />
-    </Page>
-  );
-}
-
-function CharacterSheetPage({
-  character,
-  inboundToken,
-  digest,
-}: {
-  character: DndCharacter;
-  inboundToken: string;
-  digest?: boolean;
-}) {
-  return (
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.masthead}>Character Sheet</Text>
+    <View>
+      <Text style={styles.h2}>Character Sheet</Text>
       <View style={styles.sheetRow}>
         <View>
           <Text style={styles.sheetLabel}>Name</Text>
@@ -359,7 +336,6 @@ function CharacterSheetPage({
         </View>
       </View>
 
-      <Text style={styles.h2}>Ability Scores</Text>
       <View style={{ flexDirection: "row" }}>
         {Object.entries(character.scores).map(([ability, score]) => (
           <View key={ability} style={styles.abilityCell}>
@@ -373,19 +349,44 @@ function CharacterSheetPage({
         ))}
       </View>
 
-      <Text style={styles.h2}>Weapon</Text>
-      <Text style={styles.body}>
+      <Text style={[styles.body, { marginTop: 8 }]}>
+        <Text style={styles.sheetLabel}>Weapon: </Text>
         {character.weapon} ({character.damageDie})
       </Text>
 
-      <Text style={styles.h2}>Inventory</Text>
-      {character.inventory.map((item, i) => (
-        <Text key={i} style={styles.body}>
-          · {item}
-        </Text>
-      ))}
+      <Text style={[styles.body, { marginTop: 6 }]}>
+        <Text style={styles.sheetLabel}>Inventory: </Text>
+        {character.inventory.join(", ")}
+      </Text>
+    </View>
+  );
+}
 
-      <RefFooter inboundToken={inboundToken} digest={digest} />
+// The lowest move field (the "exit" fill-in) bottoms out at 400 + 22 = 422 —
+// this must stay comfortably below that, and above the footer, however
+// DND_MOVE_FIELD_LAYOUT is tuned later. Not derived automatically: kept as
+// a plain constant since deriving it would mean importing layout math into a
+// styling decision that only needs to know "clear of the fields, above the footer."
+const CHARACTER_SHEET_TOP = 460;
+
+function MovePage({ campaignDoc, digest }: { campaignDoc: DndCampaign; digest?: boolean }) {
+  return (
+    <Page size="A4" style={styles.page}>
+      <Text style={styles.masthead}>Your Move</Text>
+      <Text style={styles.hint}>
+        Roll physically and write your totals. To-hit vs. the monster&apos;s AC on the previous page; damage on a
+        hit; Stealth vs. the monster&apos;s passive Perception to sneak; Heal is 2d4+2 for a potion.
+      </Text>
+      {DND_MOVE_CHECKBOXES.map((field) => (
+        <AbsCheckbox key={field.id} field={field} />
+      ))}
+      {DND_MOVE_FILL_INS.map((field) => (
+        <AbsFillIn key={field.id} field={field} />
+      ))}
+      <View style={{ position: "absolute", top: CHARACTER_SHEET_TOP, left: 48, right: 48 }}>
+        <CharacterSheetSection character={campaignDoc.character} />
+      </View>
+      <RefFooter inboundToken={campaignDoc.inboundToken} digest={digest} />
     </Page>
   );
 }
@@ -460,7 +461,6 @@ function DndDocument({
         <>
           <AdventurePage campaign={campaign} campaignDoc={campaignDoc} date={date} digest={digest} />
           <MovePage campaignDoc={campaignDoc} digest={digest} />
-          <CharacterSheetPage character={campaignDoc.character} inboundToken={campaignDoc.inboundToken} digest={digest} />
         </>
       )}
     </Document>
