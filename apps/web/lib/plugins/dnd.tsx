@@ -375,7 +375,8 @@ function MovePage({ campaignDoc, digest }: { campaignDoc: DndCampaign; digest?: 
       <Text style={styles.masthead}>Your Move</Text>
       <Text style={styles.hint}>
         Roll physically and write your totals. To-hit vs. the monster&apos;s AC on the previous page; damage on a
-        hit; Stealth vs. the monster&apos;s passive Perception to sneak; Heal is 2d4+2 for a potion.
+        hit; Stealth vs. the monster&apos;s passive Perception to sneak; Perception (DC 12) to find anything when
+        searching; Heal is 2d4+2 for a potion.
       </Text>
       {DND_MOVE_CHECKBOXES.map((field) => (
         <AbsCheckbox key={field.id} field={field} />

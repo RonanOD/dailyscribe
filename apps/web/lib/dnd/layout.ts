@@ -47,6 +47,7 @@ export const DND_MOVE_FILL_INS: DndFieldBox[] = [
   { id: "initiative", label: "Initiative", kind: "fill", top: 270, left: 340, width: 110, height: 22, valueType: "number" },
   { id: "stealth", label: "Stealth", kind: "fill", top: 310, left: 340, width: 110, height: 22, valueType: "number" },
   { id: "heal", label: "Heal (2d4+2)", kind: "fill", top: 350, left: 340, width: 110, height: 22, valueType: "number" },
+  { id: "perception", label: "Perception (DC 12 to search)", kind: "fill", top: 390, left: 340, width: 110, height: 22, valueType: "number" },
   { id: "exit", label: "Exit taken (e.g. north, down)", kind: "fill", top: 400, left: 56, width: 150, height: 22, valueType: "word" },
 ];
 

@@ -20,6 +20,12 @@ import type {
  * rather than mutating its input.
  */
 
+/** Flat DC for a Perception check when searching a room — not in the old
+ *  repo, which resolved search unconditionally with no roll. Deliberately
+ *  a single flat constant rather than a per-node value, at the user's
+ *  request ("keep it simple for now"). */
+const SEARCH_DC = 12;
+
 function consumePotion(inventory: string[], idx: number): string[] {
   const item = inventory[idx];
   const match = /x\s*(\d+)/i.exec(item);
@@ -197,18 +203,23 @@ export function applyMove(state: DndPlayState, campaign: DndCampaignDefinition, 
     }
   }
 
-  // --- Search the room for loot ------------------------------------------
+  // --- Search the room for loot (Perception vs. a flat DC) ----------------
   if (marked("search")) {
     const loot = node.loot ?? [];
     if (gs.searchedNodes.includes(gs.currentNode)) {
       events.push("You search again, but find nothing new.");
+    } else if (move.perceptionRoll == null) {
+      events.push("You search, but no Perception roll was read — write your total in the Perception box.");
+    } else if (move.perceptionRoll < SEARCH_DC) {
+      gs.searchedNodes.push(gs.currentNode);
+      events.push(`You search but don't find anything (Perception ${move.perceptionRoll} vs DC ${SEARCH_DC}).`);
     } else if (loot.length > 0) {
       ch.inventory = [...ch.inventory, ...loot];
       gs.searchedNodes.push(gs.currentNode);
-      events.push(`You search and find: ${loot.join(", ")}.`);
+      events.push(`You search and find: ${loot.join(", ")} (Perception ${move.perceptionRoll} vs DC ${SEARCH_DC}).`);
     } else {
       gs.searchedNodes.push(gs.currentNode);
-      events.push("You search, but find nothing of value.");
+      events.push(`You search carefully but find nothing of value (Perception ${move.perceptionRoll} vs DC ${SEARCH_DC}).`);
     }
   }
 

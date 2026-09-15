@@ -188,18 +188,40 @@ describe("applyMove — potions and search", () => {
     expect(events.some((e) => e.includes("have none left"))).toBe(true);
   });
 
-  it("finds loot on first search and nothing new on a second", () => {
+  it("finds loot on a successful Perception check, and nothing new on a second search", () => {
     // Clear the goblin first so damage-taken side effects don't interfere with the assertion.
     let state = freshState();
     state.gameState.monsterHp.goblin = 0;
     state.gameState.defeatedMonsters = ["goblin"];
 
-    const first = applyMove(state, testCampaign, { checkboxesMarked: ["Search"] });
+    const first = applyMove(state, testCampaign, { checkboxesMarked: ["Search"], perceptionRoll: 15 });
     expect(first.state.character.inventory).toContain("Shiny Coin");
     expect(first.events.some((e) => e.includes("find: Shiny Coin"))).toBe(true);
+    expect(first.state.gameState.searchedNodes).toContain("start");
 
-    const second = applyMove(first.state, testCampaign, { checkboxesMarked: ["Search"] });
+    const second = applyMove(first.state, testCampaign, { checkboxesMarked: ["Search"], perceptionRoll: 15 });
     expect(second.events.some((e) => e.includes("nothing new"))).toBe(true);
+  });
+
+  it("finds nothing on a failed Perception check, but still consumes the search", () => {
+    const state = freshState();
+    state.gameState.monsterHp.goblin = 0;
+    state.gameState.defeatedMonsters = ["goblin"];
+
+    const { state: next, events } = applyMove(state, testCampaign, { checkboxesMarked: ["Search"], perceptionRoll: 5 });
+    expect(next.character.inventory).not.toContain("Shiny Coin");
+    expect(next.gameState.searchedNodes).toContain("start");
+    expect(events.some((e) => e.includes("don't find anything"))).toBe(true);
+  });
+
+  it("prompts for a Perception roll and doesn't consume the search when none was read", () => {
+    const state = freshState();
+    state.gameState.monsterHp.goblin = 0;
+    state.gameState.defeatedMonsters = ["goblin"];
+
+    const { state: next, events } = applyMove(state, testCampaign, { checkboxesMarked: ["Search"] });
+    expect(next.gameState.searchedNodes).not.toContain("start");
+    expect(events.some((e) => e.includes("no Perception roll was read"))).toBe(true);
   });
 });
 

@@ -148,6 +148,7 @@ export async function readDndReply(params: ReadDndReplyParams): Promise<DndReply
   const initiativeRoll = asNumber(fieldById, "initiative");
   const stealthRoll = asNumber(fieldById, "stealth");
   const healAmount = asNumber(fieldById, "heal");
+  const perceptionRoll = asNumber(fieldById, "perception");
   const chosenExit = asWord(fieldById, "exit");
 
   const move: DndMoveInput = {
@@ -157,6 +158,7 @@ export async function readDndReply(params: ReadDndReplyParams): Promise<DndReply
     healAmount,
     stealthRoll,
     initiativeRoll,
+    perceptionRoll,
     chosenExit,
     checkboxesMarked: checkboxLabelsMarked,
     misreadFlag,
@@ -167,6 +169,7 @@ export async function readDndReply(params: ReadDndReplyParams): Promise<DndReply
       Initiative: initiativeRoll,
       Stealth: stealthRoll,
       Heal: healAmount,
+      Perception: perceptionRoll,
       Exit: chosenExit,
     }),
     confidence: worstConfidence(fieldOcr.map((r) => r.confidence)),

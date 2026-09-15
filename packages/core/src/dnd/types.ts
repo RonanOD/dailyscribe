@@ -103,6 +103,9 @@ export interface DndMoveInput {
   healAmount?: number | null;
   stealthRoll?: number | null;
   initiativeRoll?: number | null;
+  /** Roll vs. a flat DC to find loot when searching — new mechanic, not in
+   *  the old repo (which resolved search unconditionally, no roll). */
+  perceptionRoll?: number | null;
   chosenExit?: string | null;
   checkboxesMarked?: string[];
   misreadFlag?: boolean;
