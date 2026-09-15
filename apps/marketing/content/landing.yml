@@ -91,7 +91,7 @@ features:
     title: Roll for initiative, by hand.
     coming_soon: false
     id: dnd
-    image: /uploads/dnd.jpeg
+    image: /uploads/dnd.png
   - media_right: true
     body: Daily Scribe pulls the day's stories from RTÉ News, BBC, and CBC and sets
       them like a real newspaper — headlines and bodies you choose by section,
