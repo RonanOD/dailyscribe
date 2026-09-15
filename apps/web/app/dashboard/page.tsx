@@ -97,6 +97,7 @@ export default async function DashboardPage() {
   const haSub = subByService.get("ha-summary") ?? null;
   const kanjiSub = subByService.get("kanji") ?? null;
   const crosswordSub = subByService.get("universal-crossword") ?? null;
+  const dndSub = subByService.get("dnd") ?? null;
   const digestSub = subByService.get("digest") ?? null;
   const disabledSub = allSubs.find((s) => s.disabledReason) ?? null;
   const secretDocs = await userSecrets.find({ userId }).toArray();
@@ -181,6 +182,7 @@ export default async function DashboardPage() {
         ha={haSub ? { config: haSub.config, enabled: haSub.enabled } : null}
         kanji={kanjiSub ? { config: kanjiSub.config, enabled: kanjiSub.enabled } : null}
         crossword={crosswordSub ? { config: crosswordSub.config, enabled: crosswordSub.enabled } : null}
+        dnd={dndSub ? { config: dndSub.config, enabled: dndSub.enabled } : null}
         digestEnabled={digestSub?.enabled ?? false}
         configured={configured}
         deliveryAlert={disabledSub?.disabledReason ?? undefined}

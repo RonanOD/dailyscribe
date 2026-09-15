@@ -153,10 +153,10 @@ secret, whether it appears in onboarding) and drives the dashboard tabs, the
 onboarding picker, and the digest's member list.
 
 **Live:** RTÉ / CBC / BBC news, Home Assistant summary, Kanji-a-day, the write-in
-(Universal) crossword, plus the **Digest** bundle. **Coming:** DnD 5e, serialized
-classic novels, an eating/drinking tracker. **Paused:** the NYT crossword plugin
-still exists but is excluded from the catalogue (it needs the subscriber's own
-cookies).
+(Universal) crossword, a solo DnD 5e campaign (mail-back moves, like Kanji), plus the
+**Digest** bundle. **Coming:** serialized classic novels, an eating/drinking tracker.
+**Paused:** the NYT crossword plugin still exists but is excluded from the catalogue
+(it needs the subscriber's own cookies).
 
 ## Local development
 

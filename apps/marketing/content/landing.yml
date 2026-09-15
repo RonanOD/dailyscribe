@@ -13,9 +13,9 @@ teasers:
       — tracking your progress day over day.
     anchor: practice
   - kicker: Play
-    title: Crosswords today. Dungeons tomorrow.
-    body: A fresh write-in crossword lands with every edition. A Dungeons & Dragons
-      companion is next up the page.
+    title: Crosswords and dungeons, both by hand.
+    body: A fresh write-in crossword lands with every edition, alongside a solo
+      Dungeons & Dragons campaign you play move by move.
     anchor: play
   - kicker: Read
     title: The news, bound like a newspaper.
@@ -55,16 +55,25 @@ features:
     id: practice
     image: /uploads/kanji.png
   - media_right: false
-    body: "A brand-new write-in crossword arrives every day, answer key tucked on
-      the second page so no one spoils it early. Next up: a Dungeons & Dragons
-      campaign companion, delivered chapter by chapter alongside your party's
-      next session."
+    body: A brand-new write-in crossword arrives every day, answer key tucked on
+      the second page so no one spoils it early.
     image_alt: Illustration of a crossword grid
-    note: Dungeons & Dragons 5e campaign pages
+    note: Answer key included, no mail-back needed.
     kicker: Play
     title: Puzzles worth waking up for.
-    coming_soon: true
+    coming_soon: false
     id: play
+    image: /uploads/feature-play.svg
+  - media_right: true
+    body: A solo Dungeons & Dragons campaign, one room a day. Write your move —
+      attack, sneak, search — in the boxes by hand and mail the page back, and
+      Daily Scribe reads it and continues the story on your next edition.
+    image_alt: Illustration of a dungeon map and a marked-up character sheet
+    note: Your character, campaign, and progress carry over automatically, day to day.
+    kicker: Adventure
+    title: Roll for initiative, by hand.
+    coming_soon: false
+    id: dnd
     image: /uploads/feature-play.svg
   - media_right: true
     body: Daily Scribe pulls the day's stories from RTÉ News, BBC, and CBC and sets

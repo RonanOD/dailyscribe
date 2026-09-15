@@ -75,6 +75,12 @@ interface CrosswordConfig {
   kindleEmail?: string;
 }
 
+interface DndConfig {
+  deliveryTime?: string;
+  timezone?: string;
+  kindleEmail?: string;
+}
+
 const JLPT_LEVELS = [5, 4, 3, 2, 1] as const;
 
 interface Props {
@@ -84,6 +90,7 @@ interface Props {
   ha?: { config: HaConfig; enabled: boolean } | null;
   kanji?: { config: KanjiConfig; enabled: boolean } | null;
   crossword?: { config: CrosswordConfig; enabled: boolean } | null;
+  dnd?: { config: DndConfig; enabled: boolean } | null;
   /** Whether "send all enabled services as one PDF" is on. Membership is
    *  implicit — whichever services are enabled elsewhere — so there's no
    *  separate config to pass here. */
@@ -123,6 +130,7 @@ export function DashboardForm({
   ha,
   kanji,
   crossword,
+  dnd,
   digestEnabled: initialDigestEnabled,
   configured,
   deliveryAlert,
@@ -153,6 +161,7 @@ export function DashboardForm({
     ha?.config.kindleEmail ??
     kanji?.config.kindleEmail ??
     crossword?.config.kindleEmail ??
+    dnd?.config.kindleEmail ??
     "";
   const initialHaUrl = configured?.haUrl ?? "";
 
@@ -164,6 +173,7 @@ export function DashboardForm({
       ha?.config.deliveryTime ??
       kanji?.config.deliveryTime ??
       crossword?.config.deliveryTime ??
+      dnd?.config.deliveryTime ??
       "08:00",
     timezone:
       cbc?.config.timezone ??
@@ -172,6 +182,7 @@ export function DashboardForm({
       ha?.config.timezone ??
       kanji?.config.timezone ??
       crossword?.config.timezone ??
+      dnd?.config.timezone ??
       browserTz,
   };
 
@@ -219,6 +230,10 @@ export function DashboardForm({
     enabled: crossword?.enabled ?? false,
   };
 
+  const initialDnd = {
+    enabled: dnd?.enabled ?? false,
+  };
+
   // State
   const [kindleEmail, setKindleEmail] = useState(initialKindleEmail);
   const [deliveryTime, setDeliveryTime] = useState(initialDelivery.time);
@@ -257,6 +272,9 @@ export function DashboardForm({
   // Crossword State
   const [crosswordEnabled, setCrosswordEnabled] = useState(initialCrossword.enabled);
 
+  // DnD State
+  const [dndEnabled, setDndEnabled] = useState(initialDnd.enabled);
+
   // Digest State — "send all enabled services as one PDF", using the same
   // shared delivery time/timezone/kindle email as everything else.
   const [digestEnabled, setDigestEnabled] = useState(initialDigestEnabled ?? false);
@@ -271,6 +289,7 @@ export function DashboardForm({
   const [baseHaUrl, setBaseHaUrl] = useState(initialHaUrl);
   const [baseKanji, setBaseKanji] = useState(initialKanji);
   const [baseCrossword, setBaseCrossword] = useState(initialCrossword);
+  const [baseDnd, setBaseDnd] = useState(initialDnd);
   const [baseDigestEnabled, setBaseDigestEnabled] = useState(initialDigestEnabled ?? false);
 
   const [busy, setBusy] = useState<string | null>(null);
@@ -315,6 +334,8 @@ export function DashboardForm({
 
   const isCrosswordDirty = crosswordEnabled !== baseCrossword.enabled;
 
+  const isDndDirty = dndEnabled !== baseDnd.enabled;
+
   const isDigestDirty = digestEnabled !== baseDigestEnabled;
 
   const isDirty =
@@ -327,6 +348,7 @@ export function DashboardForm({
     isHaSettingsDirty ||
     isKanjiDirty ||
     isCrosswordDirty ||
+    isDndDirty ||
     isDigestDirty;
 
   const tabs: TabDef[] = [
@@ -342,6 +364,7 @@ export function DashboardForm({
     { key: "home-assistant", ...tabMeta("ha-summary"), dirty: isHaCredsDirty || isHaSettingsDirty },
     { key: "kanji", ...tabMeta("kanji"), dirty: isKanjiDirty },
     { key: "universal-crossword", ...tabMeta("universal-crossword"), dirty: isCrosswordDirty },
+    { key: "dnd", ...tabMeta("dnd"), dirty: isDndDirty },
   ];
 
   function ok(text: string) {
@@ -472,7 +495,16 @@ export function DashboardForm({
         enabled: crosswordEnabled,
       });
 
-      // 8. Save Digest setting (bundles whichever services above are enabled)
+      // 8. Save DnD settings
+      await postJson("/api/subscriptions", {
+        service: "dnd",
+        deliveryTime,
+        timezone: deliveryTz,
+        kindleEmail: kindleEmail.trim(),
+        enabled: dndEnabled,
+      });
+
+      // 9. Save Digest setting (bundles whichever services above are enabled)
       await postJson("/api/subscriptions", {
         service: "digest",
         deliveryTime,
@@ -513,6 +545,9 @@ export function DashboardForm({
       });
       setBaseCrossword({
         enabled: crosswordEnabled,
+      });
+      setBaseDnd({
+        enabled: dndEnabled,
       });
       setBaseDigestEnabled(digestEnabled);
 
@@ -981,6 +1016,41 @@ export function DashboardForm({
           {digestEnabled && (
             <p className="hint">
               Digest is on — this sends your bundled digest, not a standalone Crossword PDF.
+            </p>
+          )}
+        </section>
+      </div>
+
+      {/* DnD Section */}
+      <div hidden={activeTab !== "dnd"}>
+        <section className="section">
+          <h2>DnD 5e Campaign</h2>
+          <p className="hint">
+            A solo Dungeons &amp; Dragons campaign, one room a day. Write your move in the boxes by
+            hand, mail the page back, and Daily Scribe reads it and continues the story on your
+            next edition.
+          </p>
+
+          <div className="actions">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={dndEnabled}
+                onChange={(e) => setDndEnabled(e.target.checked)}
+              />
+              Enabled
+            </label>
+            <button
+              className="link"
+              onClick={() => sendTest("dnd", "test-dnd")}
+              disabled={busy !== null}
+            >
+              {busy === "test-dnd" ? "Sending…" : "Send test now"}
+            </button>
+          </div>
+          {digestEnabled && (
+            <p className="hint">
+              Digest is on — this sends your bundled digest, not a standalone DnD PDF.
             </p>
           )}
         </section>

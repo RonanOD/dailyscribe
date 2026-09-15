@@ -18,6 +18,7 @@ const SERVICES: ServiceId[] = [
   "ha-summary",
   "kanji",
   "universal-crossword",
+  "dnd",
   "digest",
 ];
 

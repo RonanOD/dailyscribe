@@ -93,8 +93,7 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     icon: "🗡️",
     blurb:
       "A solo Dungeons & Dragons campaign, one room a day — write your move by hand and mail it back to play on.",
-    showInOnboarding: false,
-    comingSoon: true,
+    showInOnboarding: true,
   },
 ];
 

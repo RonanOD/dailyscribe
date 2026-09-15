@@ -6,6 +6,7 @@ import {
   type CbcNewsConfig,
   type CrosswordVersion,
   type DigestConfig,
+  type DndServiceConfig,
   type HaSummaryConfig,
   type KanjiServiceConfig,
   type NytCrosswordConfig,
@@ -124,6 +125,8 @@ export async function POST(req: Request) {
     config = { ...base, kanjiPerDay, maxJlptLevel } satisfies KanjiServiceConfig;
   } else if (service === "universal-crossword") {
     config = { ...base } satisfies UniversalCrosswordConfig;
+  } else if (service === "dnd") {
+    config = { ...base } satisfies DndServiceConfig;
   } else if (service === "digest") {
     config = { ...base } satisfies DigestConfig;
   } else {

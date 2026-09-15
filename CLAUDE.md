@@ -136,9 +136,12 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       `apps/web/lib/service-catalog.ts` metadata module (id/label/icon/blurb/needsSecret/
       onboarding flag) now drives the dashboard tab list, the onboarding picker, the
       subscriptions-route whitelist, and `DIGEST_MEMBER_SERVICES`. The per-service config
-      `<section>`s in `dashboard-form.tsx` stay hand-written. Still to do: build the deferred
-      catalog services (DnD 5e, classic novels, eating tracking); capture the three Amazon
-      screenshots for `apps/web/public/onboarding/` (flow works without them).
+      `<section>`s in `dashboard-form.tsx` stay hand-written. **DnD 5e (Sep 2026):** the last
+      deferred catalog service landed and is now public — dashboard tab, onboarding card, and
+      its own marketing feature block, after a stint behind `comingSoon: true` while its
+      mail-back loop was verified against real production submissions. Still to do: build the
+      remaining deferred catalog services (classic novels, eating tracking); capture the three
+      Amazon screenshots for `apps/web/public/onboarding/` (flow works without them).
 - [~] **Phase 3 — Scheduling at scale.** Timezone-aware, idempotent dispatch, driven every
       ~10 min by a GitHub Actions workflow hitting `/api/cron/dispatch` (Sep 2026 — replaced
       the daily-only Vercel Hobby cron, which couldn't honour per-subscriber delivery times
@@ -148,11 +151,17 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       outbound attachment-size guard (`assertDeliverable`). Still to do: retries, failure
       notifications, and moving dispatch back onto native cron (hourly Vercel Cron on Pro).
 - [ ] **Phase 4 — Billing.** Subscription tiers (e.g. free single-service vs. paid bundles).
-- [~] **Phase 5 — Handwriting return path.** Live for Kanji: `/api/webhooks/resend-inbound`
-      routes a mailed-back PDF by an embedded page ref, trims it to just that service's own
-      pages, and grades it via Gemini (`kanjiSubmissions`, `kanjiProgress`). Still to do:
-      generalize the return path beyond Kanji to other services (e.g. crossword answers, habit
-      tracking).
+- [~] **Phase 5 — Handwriting return path.** Live for Kanji and DnD:
+      `/api/webhooks/resend-inbound` routes a mailed-back PDF by embedded page ref(s) — a single
+      reply can now carry pages for *several* mail-back services at once, each trimmed and
+      routed independently (fixed after a real combined Kanji+DnD reply silently dropped the
+      second service's pages) — and grades/applies each. Kanji grades the whole page via Gemini
+      vision (`kanjiSubmissions`, `kanjiProgress`); DnD's move-page checkboxes are read
+      deterministically (pixel darkness on a rasterized page, `apps/web/lib/dnd/mark-reader.ts`)
+      with only small per-field crops sent to Gemini OCR, reserving a whole-page Gemini read for
+      the rare character-creation/restart page (`dndSubmissions`, `dndCampaigns`) — kept cheap at
+      scale since DnD's move page has more fields than Kanji's single judgment call. Still to do:
+      generalize beyond these two (e.g. crossword answers, habit tracking).
 
 ## Service catalog (from README)
 NYT crossword · CBC News · BBC News · RTÉ News · Home Assistant summary · DnD 5e campaign ·
