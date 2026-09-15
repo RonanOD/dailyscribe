@@ -4,7 +4,7 @@ hero_subheading: Daily Scribe binds the news, a fresh write-in crossword, Kanji
   practice, and your Home Assistant briefing into one polished PDF and delivers
   it to your Kindle — or just your inbox — before you've poured your coffee.
   Write your answers back by hand and it marks them.
-hero_image: /uploads/hero2.png
+hero_image: /uploads/hero.png
 hero_image_alt: Illustration of a tablet, stylus, and a steaming cup of coffee
 teasers:
   - kicker: Practice
