@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage } from "../_components/LegalPage";
 import { getAllGuides } from "@/lib/guides";
 
-const PAGE_URL = "https://dailyscribe.ca/guides";
+const PAGE_URL = "https://www.dailyscribe.ca/guides";
 
 export const metadata: Metadata = {
   title: "Guides",

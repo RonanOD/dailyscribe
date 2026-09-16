@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { fontDisplay, fontBody } from "@dailyscribe/theme/fonts";
 import "./globals.css";
 
-const SITE_URL = "https://dailyscribe.ca";
+const SITE_URL = "https://www.dailyscribe.ca";
 const DESCRIPTION =
   "One inbox. One PDF. The news, a fresh write-in crossword, Kanji practice and your Home Assistant briefing, bound into one edition and emailed to your Kindle Scribe, any e-reader, or plain inbox every morning.";
 

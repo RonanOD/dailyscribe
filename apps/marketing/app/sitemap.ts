@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getAllGuides } from "@/lib/guides";
 
-const BASE = "https://dailyscribe.ca";
+const BASE = "https://www.dailyscribe.ca";
 
 // Served at /sitemap.xml. Static pages are listed explicitly; the guides are
 // pulled from content/guides/ so a new .md file appears here automatically.

@@ -20,7 +20,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const guide = getGuide(slug);
   if (!guide) return {};
-  const url = `https://dailyscribe.ca/guides/${guide.slug}`;
+  const url = `https://www.dailyscribe.ca/guides/${guide.slug}`;
   return {
     title: guide.title,
     description: guide.description,
