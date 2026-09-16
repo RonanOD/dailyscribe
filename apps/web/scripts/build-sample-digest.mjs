@@ -28,10 +28,12 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import {
   assembleDigestPdf,
+  deriveCharacter,
   fetchUniversalPuzzleRaw,
   getPdfPageCount,
   KANJI_CURRICULUM,
   parseUniversalPuzzle,
+  SUNKEN_VAULT_CAMPAIGN,
 } from "@dailyscribe/core";
 
 // pdf-lib isn't a direct dep of apps/web; reach it through @dailyscribe/core
@@ -43,6 +45,7 @@ import { renderHaPdf } from "../lib/plugins/ha";
 import { renderKanjiPdf } from "../lib/plugins/kanji";
 import { renderCrosswordPdf } from "../lib/plugins/crossword-render";
 import { renderDigestCoverPdf } from "../lib/plugins/digest-cover";
+import { renderDndPdf } from "../lib/plugins/dnd";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(
@@ -181,6 +184,30 @@ const HA_DATA = {
   ],
 };
 
+/** Synthetic D&D campaign doc — an "active" game one turn in, so the sample
+ *  shows the room/move page (character sheet, checkboxes) rather than a
+ *  blank character-creation prompt. Same shape as the real per-user Mongo
+ *  doc (packages/core/src/types.ts DndCampaign) but never touches the DB. */
+const DND_DOC = {
+  userId: "sample",
+  // Not a real routing token — a mailed-back sample simply won't match. Same
+  // placeholder convention as the Kanji section's inboundToken below.
+  inboundToken: "0000000000000000",
+  character: deriveCharacter({ name: "Hero", class: "fighter", scores: {} }),
+  gameState: {
+    currentNode: SUNKEN_VAULT_CAMPAIGN.startNode,
+    discoveredNodes: [SUNKEN_VAULT_CAMPAIGN.startNode],
+    defeatedMonsters: [],
+    monsterHp: {},
+    searchedNodes: [],
+    combat: { node: null, playerFirst: null },
+    status: "active",
+    turnCount: 1,
+  },
+  turnLog: [],
+  updatedAt: DATE,
+};
+
 // ---------------------------------------------------------------------------
 
 /** Returns the crossword to render: a real Universal puzzle by default, the
@@ -227,6 +254,10 @@ async function main() {
         "0000000000000000",
         true,
       ),
+    },
+    {
+      label: "Dungeons & Dragons",
+      bytes: await renderDndPdf(SUNKEN_VAULT_CAMPAIGN, DND_DOC, DATE, true),
     },
     {
       label: "Crossword",
