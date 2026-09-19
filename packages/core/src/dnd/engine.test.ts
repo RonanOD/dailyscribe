@@ -166,6 +166,20 @@ describe("applyMove — sneak / flee / dodge", () => {
     expect(events.some((e) => e.includes("Dodge action"))).toBe(true);
     expect(state.character.currentHp).toBe(state.character.maxHp - 2);
   });
+
+  it("warns and applies only the higher-priority action when Attack and Dodge are both marked", () => {
+    const { state, events } = applyMove(freshState(), testCampaign, {
+      checkboxesMarked: ["Attack", "Dodge"],
+      diceRolls: [{ label: "to hit", total: 18 }],
+      damageDealt: 4,
+    });
+    expect(events.some((e) => e.includes("You marked Dodge and Attack") && e.includes("only Dodge was applied"))).toBe(
+      true,
+    );
+    expect(events.some((e) => e.includes("Dodge action"))).toBe(true);
+    expect(events.some((e) => e.includes("Hit Goblin"))).toBe(false);
+    expect(state.gameState.monsterHp.goblin ?? 7).toBe(7);
+  });
 });
 
 describe("applyMove — potions and search", () => {

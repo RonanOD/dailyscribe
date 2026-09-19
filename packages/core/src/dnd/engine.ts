@@ -121,7 +121,28 @@ export function applyMove(state: DndPlayState, campaign: DndCampaignDefinition, 
 
   const toHit = findRoll(move, "hit");
   const damage = move.damageDealt ?? findRoll(move, "damage");
-  const attack = Boolean(target) && !(sneak || flee || dodge) && (damage != null || toHit != null || marked("attack"));
+  const attackMarked = Boolean(target) && (damage != null || toHit != null || marked("attack"));
+  const attack = !(sneak || flee || dodge) && attackMarked;
+
+  // Only one primary action resolves per turn, in this priority order. If the
+  // player marked more than one (e.g. Attack + Dodge), say so explicitly
+  // instead of silently dropping the others — see the D&D combat-clarity fix.
+  if (target) {
+    const primaryActions = [
+      { name: "Sneak", flag: sneak },
+      { name: "Flee", flag: flee },
+      { name: "Dodge", flag: dodge },
+      { name: "Attack", flag: attackMarked },
+    ];
+    const markedNames = primaryActions.filter((a) => a.flag).map((a) => a.name);
+    if (markedNames.length > 1) {
+      const [applied, ...dropped] = markedNames;
+      const verb = dropped.length > 1 ? "were" : "was";
+      events.push(
+        `You marked ${markedNames.join(" and ")} this turn — only ${applied} was applied (priority: Sneak > Flee > Dodge > Attack). ${dropped.join(" and ")} ${verb} ignored.`,
+      );
+    }
+  }
 
   function applyDamageTaken(note = ""): void {
     const taken = move.damageTaken;

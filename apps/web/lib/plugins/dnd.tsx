@@ -400,11 +400,14 @@ function MovePage({ campaignDoc, digest }: { campaignDoc: DndCampaign; digest?: 
     <Page size="A4" style={styles.page}>
       <Text style={styles.masthead}>Your Move</Text>
       <Text style={styles.hint}>
-        Roll physically and write your totals below. To Hit: roll a d20 and add your To Hit bonus (see your sheet
-        below) — write the total, and it&apos;s a hit if it meets or beats the monster&apos;s AC (previous page).
-        Damage on a hit: roll your weapon&apos;s die and add your Damage bonus. Stealth to sneak past: roll a d20 and
-        add your Stealth bonus, comparing to the monster&apos;s Perception (previous page). Perception (DC 12) to
-        search a room: roll a d20 and add your Perception bonus. Heal (drink a potion): flat 2d4+2, no bonus added.
+        Check only one of Attack / Sneak / Flee / Dodge each turn — if you mark more than one, only the
+        highest-priority action (Sneak, then Flee, then Dodge, then Attack) is applied, and I&apos;ll say so next
+        time. Roll physically and write your totals below. To Hit: roll a d20 and add your To Hit bonus (see your
+        sheet below) — write the total, and it&apos;s a hit if it meets or beats the monster&apos;s AC (previous
+        page). Damage on a hit: roll your weapon&apos;s die and add your Damage bonus. Stealth to sneak past: roll a
+        d20 and add your Stealth bonus, comparing to the monster&apos;s Perception (previous page). Perception
+        (DC 12) to search a room: roll a d20 and add your Perception bonus. Heal (drink a potion): flat 2d4+2, no
+        bonus added. Only one monster is fought at a time, in room order.
       </Text>
       {DND_MOVE_CHECKBOXES.map((field) => (
         <AbsCheckbox key={field.id} field={field} />
