@@ -1,6 +1,7 @@
 import {
   formatIsoDate,
   getOrCreateDndCampaign,
+  proficiencyBonus,
   SUNKEN_VAULT_CAMPAIGN,
   type Asset,
   type DndCampaign,
@@ -160,7 +161,7 @@ function LivingEncounter({ node, monsterHp }: { node: DndCampaignNode; monsterHp
         <View key={m.id} style={styles.monsterRow}>
           <Text style={styles.monsterName}>{m.name}</Text>
           <Text style={styles.monsterMeta}>
-            HP {monsterHp[m.id] ?? m.hp} · AC {m.ac} · {m.attack}
+            HP {monsterHp[m.id] ?? m.hp} · AC {m.ac} · Perception {m.passivePerception ?? 10} · {m.attack}
           </Text>
         </View>
       ))}
@@ -307,7 +308,17 @@ function AdventurePage({
  *  below the move fields on MovePage, well clear of their absolute
  *  positions (see MOVE_FIELDS_BOTTOM), so the two pages/pieces can merge
  *  onto one page without disturbing DND_MOVE_FIELD_LAYOUT's coordinates. */
+function fmtBonus(n: number): string {
+  return n >= 0 ? `+${n}` : `${n}`;
+}
+
 function CharacterSheetSection({ character }: { character: DndCharacter }) {
+  const profBonus = proficiencyBonus(character.level);
+  const toHitBonus = character.modifiers[character.attackAbility] + profBonus;
+  const damageBonus = character.modifiers[character.attackAbility];
+  const stealthBonus = character.modifiers.dexterity + (character.skillProficiencies.includes("Stealth") ? profBonus : 0);
+  const perceptionBonus = character.modifiers.wisdom;
+
   return (
     <View>
       <Text style={styles.h2}>Character Sheet</Text>
@@ -355,6 +366,21 @@ function CharacterSheetSection({ character }: { character: DndCharacter }) {
       </Text>
 
       <Text style={[styles.body, { marginTop: 6 }]}>
+        <Text style={styles.sheetLabel}>To Hit: </Text>
+        {fmtBonus(toHitBonus)}
+        {"    "}
+        <Text style={styles.sheetLabel}>Damage: </Text>
+        {character.damageDie}
+        {fmtBonus(damageBonus)}
+        {"    "}
+        <Text style={styles.sheetLabel}>Stealth: </Text>
+        {fmtBonus(stealthBonus)}
+        {"    "}
+        <Text style={styles.sheetLabel}>Perception: </Text>
+        {fmtBonus(perceptionBonus)}
+      </Text>
+
+      <Text style={[styles.body, { marginTop: 6 }]}>
         <Text style={styles.sheetLabel}>Inventory: </Text>
         {character.inventory.join(", ")}
       </Text>
@@ -374,9 +400,11 @@ function MovePage({ campaignDoc, digest }: { campaignDoc: DndCampaign; digest?: 
     <Page size="A4" style={styles.page}>
       <Text style={styles.masthead}>Your Move</Text>
       <Text style={styles.hint}>
-        Roll physically and write your totals. To-hit vs. the monster&apos;s AC on the previous page; damage on a
-        hit; Stealth vs. the monster&apos;s passive Perception to sneak; Perception (DC 12) to find anything when
-        searching; Heal is 2d4+2 for a potion.
+        Roll physically and write your totals below. To Hit: roll a d20 and add your To Hit bonus (see your sheet
+        below) — write the total, and it&apos;s a hit if it meets or beats the monster&apos;s AC (previous page).
+        Damage on a hit: roll your weapon&apos;s die and add your Damage bonus. Stealth to sneak past: roll a d20 and
+        add your Stealth bonus, comparing to the monster&apos;s Perception (previous page). Perception (DC 12) to
+        search a room: roll a d20 and add your Perception bonus. Heal (drink a potion): flat 2d4+2, no bonus added.
       </Text>
       {DND_MOVE_CHECKBOXES.map((field) => (
         <AbsCheckbox key={field.id} field={field} />
