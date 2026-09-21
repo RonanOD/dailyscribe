@@ -161,7 +161,8 @@ function LivingEncounter({ node, monsterHp }: { node: DndCampaignNode; monsterHp
         <View key={m.id} style={styles.monsterRow}>
           <Text style={styles.monsterName}>{m.name}</Text>
           <Text style={styles.monsterMeta}>
-            HP {monsterHp[m.id] ?? m.hp} · AC {m.ac} · Perception {m.passivePerception ?? 10} · {m.attack}
+            HP {monsterHp[m.id] ?? m.hp} · AC {m.ac} · Perception {m.passivePerception ?? 10} · Initiative{" "}
+            {10 + (m.dexMod ?? 0)} · Attack: {m.attack}
           </Text>
         </View>
       ))}
@@ -288,6 +289,16 @@ function AdventurePage({
 
       <Text style={styles.h2}>Encounter</Text>
       <LivingEncounter node={node} monsterHp={gameState.monsterHp} />
+      {node.monsters.some((m) => (gameState.monsterHp[m.id] ?? m.hp) > 0) && (
+        <Text style={[styles.hint, { marginTop: 4 }]}>
+          You roll for the monster too — nothing here rolls its own dice. Its attack (shown above) is a d20 + that
+          bonus vs. your Armor Class (character sheet, next page); on a hit, roll its damage die and write the
+          total in Damage Taken. That happens most turns — the exceptions are a successful Sneak, or finishing off
+          the last enemy here while you have the initiative (it doesn&apos;t get a final swing). Initiative (next
+          page, once per encounter): roll a d20 + your DEX modifier and compare it to the monster&apos;s Initiative
+          shown above.
+        </Text>
+      )}
 
       <Text style={styles.h2}>Map</Text>
       <MapSvg campaign={campaign} gameState={gameState} />
