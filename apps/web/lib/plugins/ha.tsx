@@ -205,9 +205,13 @@ export function extractHaSummaryData(
   timeZone: string,
   nowDate: Date,
 ): HaSummaryData {
-  // 1. Header
+  // 1. Header. `nowDate` is the digest's nominal calendar date, pinned to UTC
+  // midnight by the dispatcher's localParts() — NOT a true instant, so it must
+  // be formatted in UTC (matching formatLongDate in every other plugin), not
+  // the household's real timeZone: re-applying a negative-offset timeZone here
+  // would roll the UTC-midnight instant back to the previous local day.
   const todayFormatted = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
+    timeZone: "UTC",
     weekday: "long",
     year: "numeric",
     month: "long",
