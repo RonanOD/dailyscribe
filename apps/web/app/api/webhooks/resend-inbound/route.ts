@@ -62,13 +62,22 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function fetchAttachmentFromEmailBody(resend: Resend, emailId: string): Promise<Buffer | null> {
+/** null = no linked-copy candidate was even present (nothing to retry for);
+ *  { failed: true } = a candidate link was found but every fetch attempt
+ *  failed — almost certainly transient (Amazon's redirect 503s intermittently,
+ *  see the comment above), so the caller should ask Resend to retry rather
+ *  than silently dropping the submission (confirmed against a real production
+ *  case where exactly this happened and the email was otherwise unrecoverable
+ *  without a manual replay). */
+async function fetchAttachmentFromEmailBody(resend: Resend, emailId: string): Promise<{ bytes: Buffer } | { failed: true } | null> {
   const { data: emailData, error } = await resend.emails.receiving.get(emailId);
   if (error || !emailData?.html) return null;
 
+  let sawCandidate = false;
   for (const wrappedUrl of emailData.html.match(AMAZON_LINK_RE) ?? []) {
     const target = new URL(wrappedUrl).searchParams.get("U");
     if (!target || !/\.s3\.amazonaws\.com\/.*\.pdf/i.test(target)) continue;
+    sawCandidate = true;
 
     for (let attempt = 1; attempt <= LINK_FETCH_ATTEMPTS; attempt++) {
       try {
@@ -81,7 +90,7 @@ async function fetchAttachmentFromEmailBody(resend: Resend, emailId: string): Pr
             `resend-inbound: diagnostic — fetched linked copy, contentLengthHeader=${res.headers.get("content-length")}, actualBytes=${bytes.length}`,
           );
           if (bytes.length > MAX_ATTACHMENT_BYTES) break;
-          return bytes;
+          return { bytes };
         }
       } catch (err) {
         console.warn(
@@ -92,8 +101,14 @@ async function fetchAttachmentFromEmailBody(resend: Resend, emailId: string): Pr
       if (attempt < LINK_FETCH_ATTEMPTS) await sleep(2000 * attempt);
     }
   }
-  return null;
+  return sawCandidate ? { failed: true } : null;
 }
+
+type SubmissionResolution =
+  | { ok: true; bytes: Buffer; filename: string; contentType: string }
+  // `transient: true` means Resend should be asked to retry (see the POST
+  // handler) — a fetch/list call failed, not "there was never a file here".
+  | { ok: false; transient: boolean };
 
 /** Resolves the mailed-back PDF's bytes, trying a normal attachment first
  *  and falling back to a linked cloud copy (see fetchAttachmentFromEmailBody)
@@ -102,7 +117,7 @@ async function resolveSubmissionBytes(
   resend: Resend,
   resendEmailId: string,
   attachments: readonly ReceivedEmailAttachment[],
-): Promise<{ bytes: Buffer; filename: string; contentType: string } | null> {
+): Promise<SubmissionResolution> {
   const candidate = attachments.find((a) => ACCEPTED_CONTENT_TYPES.has(a.content_type));
   if (candidate) {
     const { data: attachmentList, error: attachmentError } = await resend.emails.receiving.attachments.list({
@@ -110,37 +125,41 @@ async function resolveSubmissionBytes(
     });
     if (attachmentError || !attachmentList) {
       console.error("resend-inbound: failed to list attachments:", attachmentError);
-      return null;
+      return { ok: false, transient: true };
     }
     const attachmentData = attachmentList.data.find((a: AttachmentData) => a.id === candidate.id);
     if (!attachmentData) {
       console.error(`resend-inbound: attachment ${candidate.id} not found in list response`);
-      return null;
+      return { ok: false, transient: true };
     }
     if (attachmentData.size > MAX_ATTACHMENT_BYTES) {
       console.warn(`resend-inbound: attachment ${candidate.id} too large (${attachmentData.size} bytes), skipping`);
-      return null;
+      return { ok: false, transient: false };
     }
     // download_url expires in ~1 hour; fetched immediately within this request.
     const fileRes = await fetch(attachmentData.download_url);
     if (!fileRes.ok) {
       console.error(`resend-inbound: failed to download attachment: HTTP ${fileRes.status}`);
-      return null;
+      return { ok: false, transient: true };
     }
     return {
+      ok: true,
       bytes: Buffer.from(await fileRes.arrayBuffer()),
       filename: candidate.filename ?? "submission",
       contentType: candidate.content_type,
     };
   }
 
-  const linkedBytes = await fetchAttachmentFromEmailBody(resend, resendEmailId);
-  if (linkedBytes) {
+  const linked = await fetchAttachmentFromEmailBody(resend, resendEmailId);
+  if (linked && "bytes" in linked) {
     console.warn(`resend-inbound: no direct attachment on email ${resendEmailId}, used linked copy from body`);
-    return { bytes: linkedBytes, filename: "submission.pdf", contentType: "application/pdf" };
+    return { ok: true, bytes: linked.bytes, filename: "submission.pdf", contentType: "application/pdf" };
+  }
+  if (linked && "failed" in linked) {
+    return { ok: false, transient: true };
   }
 
-  return null;
+  return { ok: false, transient: false };
 }
 
 /** A filled character-creation sheet is expected while there's no active hero
@@ -426,7 +445,17 @@ export async function POST(req: Request) {
   const { email_id: resendEmailId, attachments } = event.data;
 
   const submission = await resolveSubmissionBytes(resend, resendEmailId, attachments);
-  if (!submission) {
+  if (!submission.ok) {
+    if (submission.transient) {
+      // A real file was there (attachment or linked copy) but fetching it
+      // failed — almost certainly transient. Returning non-2xx makes Resend's
+      // webhook delivery retry with backoff, instead of this looking like a
+      // successful "nothing to do" delivery and the submission being lost for
+      // good (confirmed against a real production case that needed a manual
+      // replay to recover).
+      console.warn(`resend-inbound: transient failure resolving attachment for email ${resendEmailId}, asking Resend to retry`);
+      return NextResponse.json({ ok: false, error: "transient attachment fetch failure" }, { status: 502 });
+    }
     console.warn(`resend-inbound: no usable PDF (attached or linked) on email ${resendEmailId}`);
     return NextResponse.json({ ok: true, skipped: "no usable attachment" });
   }
