@@ -115,7 +115,7 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
 - [x] **Phase 0 — Foundations.** Plugin interface (`ServicePlugin`) + registry, committed and
       live. Plugins registered: NYT crossword (pure TS, no rendering needed), CBC/BBC/RTÉ News,
       Home Assistant summary, Kanji-a-day, and a self-generated write-in Crossword (Gemini word
-      list + `crossword-layout-generator` grid, answer key on page 2, no mail-back needed) —
+      list + `crossword-layout-generator` grid, answer key behind a spacer page, no mail-back needed) —
       plus a **Digest** pseudo-service (`runner.ts`) that bundles whichever of a user's other
       services are enabled into one PDF/email, with a branded cover + linked table of contents
       page and per-member failure isolation (one service erroring drops just its section, not
@@ -165,7 +165,7 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
 
 ## Service catalog (from README)
 NYT crossword · CBC News · BBC News · RTÉ News · Home Assistant summary · DnD 5e campaign ·
-Kanji-a-day · write-in Crossword (self-generated, answer key on page 2) · Track eating · Read
+Kanji-a-day · write-in Crossword (self-generated, answer key behind a spacer page) · Track eating · Read
 a classic novel. (Digest — bundle any combination of the above into one PDF/email — is a
 delivery mode on top of these, not a catalog entry of its own.)
 

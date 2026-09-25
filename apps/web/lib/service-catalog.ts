@@ -79,20 +79,24 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     showInOnboarding: true,
   },
   {
-    id: "universal-crossword",
-    label: "Universal Crossword",
-    icon: "🧩",
-    iconSrc: "/icons/crossword.svg",
-    blurb:
-      "The real daily Universal Crossword — grid and clues on page one, the answer key on page two.",
-    showInOnboarding: true,
-  },
-  {
     id: "dnd",
     label: "DnD 5e Campaign",
     icon: "🗡️",
     blurb:
       "A solo Dungeons & Dragons campaign, one room a day — write your move by hand and mail it back to play on.",
+    showInOnboarding: true,
+  },
+  {
+    // Kept last: its answer key is the digest's most spoiler-prone page, so
+    // this keeps it at the very end instead of bordering another section's
+    // first page — a user reported an accidental flash swiping back from the
+    // DnD section when the crossword sat just before it.
+    id: "universal-crossword",
+    label: "Universal Crossword",
+    icon: "🧩",
+    iconSrc: "/icons/crossword.svg",
+    blurb:
+      "The real daily Universal Crossword — grid and clues on page one, the answer key a couple pages later.",
     showInOnboarding: true,
   },
 ];

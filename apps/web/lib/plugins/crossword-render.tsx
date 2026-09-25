@@ -24,6 +24,7 @@ const styles = StyleSheet.create({
   },
   clueLine: { fontSize: 7.5, lineHeight: 1.35, marginBottom: 2 },
   footer: { position: "absolute", bottom: 20, left: 40, right: 40, fontSize: 7.5, color: "#888888", textAlign: "center" },
+  spacerText: { fontSize: 11, color: "#888888", textAlign: "center", marginTop: 260, fontFamily: "Helvetica-Oblique" },
 });
 
 // A4 at 72dpi, minus this page's horizontal padding.
@@ -158,6 +159,13 @@ function CrosswordDocument({
         {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
         <CrosswordGrid puzzle={puzzle} reveal={false} maxHeight={330} />
         <ClueColumns clues={puzzle.clues} />
+        {footer}
+      </Page>
+      {/* A deliberate spacer page: a swipe or two of friction so a reader
+          flipping between pages doesn't land on the answer key by accident
+          (real user feedback — see the crossword's SERVICE_CATALOG note). */}
+      <Page size="A4" style={pageStyle}>
+        <Text style={styles.spacerText}>— Turn the page for today's answers —</Text>
         {footer}
       </Page>
       <Page size="A4" style={pageStyle}>
