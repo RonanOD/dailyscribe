@@ -28,14 +28,11 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // "Send test now" fans out real email from the shared sender — cap it so an
-  // authed user can't loop it. Fixed windows: 5/hour and 20/day.
-  const limited = await rateLimitAll([
-    { key: `deliver-now:${userId}`, limit: 5, windowMs: HOUR },
-    { key: `deliver-now-day:${userId}`, limit: 20, windowMs: 24 * HOUR },
-  ]);
+  // authed user can't loop it and blow through Resend's daily send budget.
+  const limited = await rateLimitAll([{ key: `deliver-now-day:${userId}`, limit: 1, windowMs: 24 * HOUR }]);
   if (!limited.ok) {
     return NextResponse.json(
-      { error: "You've sent a lot of test emails recently. Try again later." },
+      { error: "Test sends are restricted to one per day. Try again tomorrow." },
       { status: 429, headers: { "Retry-After": String(Math.ceil((limited.resetAt.getTime() - Date.now()) / 1000)) } },
     );
   }
