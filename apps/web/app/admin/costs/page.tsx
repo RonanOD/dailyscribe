@@ -3,6 +3,7 @@ import { isAdmin } from "@/lib/session";
 import {
   RESEND_FREE_DAILY_LIMIT,
   VERCEL_HOBBY_CAPS,
+  VERCEL_TOKEN_MISSING_REASON,
   getDailyEmailCounts,
   getDailyGeminiCostEstimate,
   getMonthToDateGeminiCost,
@@ -114,9 +115,17 @@ export default async function AdminCostsPage() {
           </>
         ) : (
           <p className="hint">
-            Live usage unavailable ({vercelUsage.reason}) — set <code>VERCEL_API_TOKEN</code> (a
-            personal access token from Vercel account settings) to enable this chart. Showing
-            documented Hobby free-tier caps instead:
+            Live usage unavailable ({vercelUsage.reason})
+            {vercelUsage.reason === VERCEL_TOKEN_MISSING_REASON ? (
+              <>
+                {" "}
+                — set <code>VERCEL_API_TOKEN</code> (a personal access token from Vercel account
+                settings) to enable this chart.
+              </>
+            ) : (
+              " — this looks like a Hobby-plan limitation, not a configuration problem."
+            )}{" "}
+            Showing documented Hobby free-tier caps instead:
           </p>
         )}
         <ul className="hint">

@@ -138,6 +138,12 @@ export interface VercelDailyUsage {
 
 export type VercelUsageResult = { ok: true; days: VercelDailyUsage[] } | { ok: false; reason: string };
 
+/** Distinguishes "token missing" (tell the operator to set one) from "token
+ *  present but the call still failed" (telling them to set it again would be
+ *  useless noise — e.g. Hobby-plan teams get 404 "Plan not found" here since
+ *  there's no metered billing plan to report charges against). */
+export const VERCEL_TOKEN_MISSING_REASON = "VERCEL_API_TOKEN not set.";
+
 /**
  * Live Vercel usage via a personal access token (VERCEL_API_TOKEN) — the MCP
  * OAuth connection 403s on this Hobby account even for basic project reads,
@@ -154,7 +160,7 @@ export type VercelUsageResult = { ok: true; days: VercelDailyUsage[] } | { ok: f
 export async function getVercelUsage(days = 30): Promise<VercelUsageResult> {
   const token = process.env.VERCEL_API_TOKEN;
   const teamId = process.env.VERCEL_TEAM_ID ?? "team_l0UcMYdzQmCB7o8RcV6yuUUl";
-  if (!token) return { ok: false, reason: "VERCEL_API_TOKEN not set." };
+  if (!token) return { ok: false, reason: VERCEL_TOKEN_MISSING_REASON };
 
   const to = new Date();
   const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
@@ -166,7 +172,20 @@ export async function getVercelUsage(days = 30): Promise<VercelUsageResult> {
     url.searchParams.set("to", to.toISOString());
 
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return { ok: false, reason: `Vercel billing API returned ${res.status}.` };
+    if (!res.ok) {
+      // Confirmed 2026-09-26: Hobby-plan teams get 404 "Plan not found" here —
+      // there's no metered billing plan to report charges against, so this
+      // API is simply unavailable on Hobby, not a token/scope problem.
+      const body = await res.text().catch(() => "");
+      const apiMessage = (() => {
+        try {
+          return (JSON.parse(body) as { error?: { message?: string } })?.error?.message;
+        } catch {
+          return undefined;
+        }
+      })();
+      return { ok: false, reason: apiMessage ? `${res.status} ${apiMessage}` : `Vercel billing API returned ${res.status}.` };
+    }
 
     const text = await res.text();
     const byDate = new Map<string, { functionInvocations: number; activeCpuHours: number }>();
