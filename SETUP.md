@@ -137,6 +137,8 @@ Copy `.env.example` → `apps/web/.env.local` for dev, and set the same in Verce
 | `DECAP_OAUTH_GITHUB_CLIENT_ID` / `DECAP_OAUTH_GITHUB_CLIENT_SECRET` | Decap CMS's own GitHub OAuth app (apps/marketing only — see below) |
 | `GEMINI_API_KEY` | Google Gemini key for the Kanji handwriting check |
 | `GEMINI_MODEL` | Optional Gemini model override (defaults to `gemini-flash-lite-latest`) |
+| `VERCEL_API_TOKEN` | Optional — a personal access token (Vercel account settings, not MCP/OAuth) that powers the live usage chart on `/admin/costs`; unset falls back to static Hobby-plan caps |
+| `VERCEL_TEAM_ID` | Optional — defaults to the dailyscribe team if unset |
 
 Generate keys:
 ```bash

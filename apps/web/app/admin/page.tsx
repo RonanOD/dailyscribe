@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { collections, type Subscription } from "@dailyscribe/core";
-import { auth } from "@/auth";
 import { getCatalogEntry } from "@/lib/service-catalog";
+import { isAdmin } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -71,11 +71,7 @@ function donutWedgePath(
 }
 
 export default async function AdminPage() {
-  const session = await auth();
-  const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
-  if (!adminEmail || session?.user?.email?.toLowerCase() !== adminEmail) {
-    notFound();
-  }
+  if (!(await isAdmin())) notFound();
 
   const { users, subscriptions, deliveries, waitlist } = await collections();
 
@@ -147,6 +143,7 @@ export default async function AdminPage() {
           — Admin
         </h1>
         <div className="who">
+          <a href="/admin/costs">Costs</a>
           <a href="/dashboard">Dashboard</a>
         </div>
       </header>
