@@ -11,6 +11,9 @@ import {
 import { DailyBarChart } from "../_components/daily-bar-chart";
 
 export const runtime = "nodejs";
+// See the identical comment in ../page.tsx — without this, the admin gate
+// gets baked in as a static 404 at build time instead of checked per-request.
+export const dynamic = "force-dynamic";
 
 const WINDOW_DAYS = 30;
 

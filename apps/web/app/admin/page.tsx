@@ -4,6 +4,11 @@ import { getCatalogEntry } from "@/lib/service-catalog";
 import { isAdmin } from "@/lib/session";
 
 export const runtime = "nodejs";
+// Without this, Next statically prerenders the page at build time (no real
+// session present), the admin-gate check fails, and the resulting 404 gets
+// baked in as the permanent static output for every visitor — see the build
+// output's "○ (Static)" vs "ƒ (Dynamic)" marker for this route.
+export const dynamic = "force-dynamic";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
