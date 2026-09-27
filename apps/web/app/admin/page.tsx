@@ -106,6 +106,13 @@ export default async function AdminPage() {
     subsByUser.set(sub.userId, list);
   }
   const waitlistByEmail = new Map(approvedWaitlist.map((w) => [w.email, w]));
+  // Most-delivered users first; Array.sort is stable, so ties keep the
+  // query's email order.
+  const sortedUsers = [...allUsers].sort(
+    (a, b) =>
+      (deliveriesByUser.get(String(b._id))?.count ?? 0) -
+      (deliveriesByUser.get(String(a._id))?.count ?? 0),
+  );
 
   // Popularity + the "active subscriptions" stat card reflect only enabled
   // rows — the users table below shows every row (including ones a user has
@@ -224,7 +231,7 @@ export default async function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {allUsers.map((user) => {
+              {sortedUsers.map((user) => {
                 const userId = String(user._id);
                 const userSubs = subsByUser.get(userId) ?? [];
                 const delivery = deliveriesByUser.get(userId);
@@ -234,18 +241,40 @@ export default async function AdminPage() {
                     <td>{user.email ?? "—"}</td>
                     <td>{formatDate(waitlistEntry?.approvedAt)}</td>
                     <td>{waitlistEntry?.ref ?? user.ref ?? "—"}</td>
-                    <td className="services-cell">
+                    <td>
                       {userSubs.length === 0 ? (
                         <span className="muted">none</span>
                       ) : (
-                        userSubs.map((s) => {
-                          const cls = s.disabledReason ? "badge warn" : s.enabled ? "badge on" : "badge";
-                          return (
-                            <span key={s.service} className={cls} title={s.disabledReason}>
-                              {serviceLabel(s.service)}
-                            </span>
-                          );
-                        })
+                        <>
+                          {/* Native popover: the count pill toggles the full
+                           *  service list, with light-dismiss (click outside /
+                           *  Esc) and no client JS. */}
+                          <button
+                            type="button"
+                            className={
+                              userSubs.some((s) => s.disabledReason)
+                                ? "badge warn services-count"
+                                : "badge services-count"
+                            }
+                            popoverTarget={`services-${userId}`}
+                            aria-label={`${userSubs.length} services — show list`}
+                          >
+                            {userSubs.length}
+                          </button>
+                          <div id={`services-${userId}`} popover="auto" className="services-popover">
+                            <p className="services-popover-title">{user.email ?? userId}</p>
+                            <div className="services-popover-list">
+                              {userSubs.map((s) => {
+                                const cls = s.disabledReason ? "badge warn" : s.enabled ? "badge on" : "badge";
+                                return (
+                                  <span key={s.service} className={cls} title={s.disabledReason}>
+                                    {serviceLabel(s.service)}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </>
                       )}
                     </td>
                     <td>{delivery?.count ?? 0}</td>

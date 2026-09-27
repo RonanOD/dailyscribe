@@ -497,15 +497,45 @@ a {
   white-space: normal;
 }
 
-/* Services column: badges wrap within a capped width instead of stretching
- * the row and pushing the later columns (deliveries, last delivery,
- * onboarded) out of view. */
-.admin-table td.services-cell {
-  white-space: normal;
-  max-width: 220px;
+/* Services column: a count pill (keeps rows one line tall) that opens a
+ * native popover listing every service badge. */
+.admin-table .services-count {
+  font: inherit;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 2em;
+  background: none;
+  cursor: pointer;
 }
 
-.admin-table .badge {
+.admin-table .services-count:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.services-popover {
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  white-space: normal;
+  box-shadow: 0 8px 24px oklch(21% 0.02 55 / 0.18);
+}
+
+.services-popover::backdrop {
+  background: oklch(21% 0.02 55 / 0.12);
+}
+
+.services-popover-title {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.services-popover-list .badge {
   display: inline-block;
   margin: 2px 4px 2px 0;
 }
