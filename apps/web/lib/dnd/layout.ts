@@ -48,10 +48,31 @@ export const DND_MOVE_FILL_INS: DndFieldBox[] = [
   { id: "stealth", label: "Stealth", kind: "fill", top: 310, left: 340, width: 110, height: 22, valueType: "number" },
   { id: "heal", label: "Heal (2d4+2)", kind: "fill", top: 350, left: 340, width: 110, height: 22, valueType: "number" },
   { id: "perception", label: "Perception (DC 12 to search)", kind: "fill", top: 390, left: 340, width: 110, height: 22, valueType: "number" },
-  { id: "exit", label: "Exit taken (e.g. north, down)", kind: "fill", top: 400, left: 56, width: 150, height: 22, valueType: "word" },
 ];
 
-export const DND_MOVE_FIELD_LAYOUT: DndFieldBox[] = [...DND_MOVE_CHECKBOXES, ...DND_MOVE_FILL_INS];
+/**
+ * Fixed exit-checkbox slots. A room's exits vary, so the slots are generic:
+ * the renderer labels slot i with the i-th entry of `moveExitOptions(node)`
+ * (leaving unused slots undrawn), and the reader maps a marked slot i back
+ * through the same function for the room the campaign was in when the page
+ * was mailed back. Kept apart from DND_MOVE_CHECKBOXES because the engine
+ * matches those by label text ("attack", "sneak", …) and these labels are
+ * placeholders.
+ */
+export const DND_MOVE_EXIT_SLOTS: DndFieldBox[] = [
+  { id: "exit_0", label: "Exit 1", kind: "checkbox", top: 396, left: 56, width: 14, height: 14 },
+  { id: "exit_1", label: "Exit 2", kind: "checkbox", top: 396, left: 200, width: 14, height: 14 },
+  { id: "exit_2", label: "Exit 3", kind: "checkbox", top: 420, left: 56, width: 14, height: 14 },
+  { id: "exit_3", label: "Exit 4", kind: "checkbox", top: 420, left: 200, width: 14, height: 14 },
+];
+
+/** The room's exit directions in slot order — the single mapping shared by the
+ *  renderer (slot labels) and the reader (marked slot → direction). */
+export function moveExitOptions(node: { exits: Record<string, string> } | undefined): string[] {
+  return Object.keys(node?.exits ?? {}).slice(0, DND_MOVE_EXIT_SLOTS.length);
+}
+
+export const DND_MOVE_FIELD_LAYOUT: DndFieldBox[] = [...DND_MOVE_CHECKBOXES, ...DND_MOVE_FILL_INS, ...DND_MOVE_EXIT_SLOTS];
 
 export function fieldById(id: string): DndFieldBox {
   const field = DND_MOVE_FIELD_LAYOUT.find((f) => f.id === id);

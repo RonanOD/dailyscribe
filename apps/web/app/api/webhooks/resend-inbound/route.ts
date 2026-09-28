@@ -13,6 +13,7 @@ import {
 import { NextResponse } from "next/server";
 import { Resend, type AttachmentData, type EmailReceivedEvent } from "resend";
 import { readDndReply } from "@/lib/dnd/dnd-check";
+import { moveExitOptions } from "@/lib/dnd/layout";
 import { extractInboundRefs } from "@/lib/inbound-refs";
 
 type ReceivedEmailAttachment = EmailReceivedEvent["data"]["attachments"][number];
@@ -227,6 +228,7 @@ async function handleDndSubmission(input: {
     const read = await readDndReply({
       pdfBytes: input.attachmentBytes,
       expectedShape: expectedShapeAtReceipt,
+      exitOptions: moveExitOptions(SUNKEN_VAULT_CAMPAIGN.nodes[campaign.gameState.currentNode]),
       apiKey: geminiApiKey,
       model: process.env.DND_GEMINI_MODEL || undefined,
     });

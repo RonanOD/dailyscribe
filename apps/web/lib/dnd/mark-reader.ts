@@ -1,4 +1,4 @@
-import { DND_MOVE_CHECKBOXES } from "./layout";
+import { DND_MOVE_CHECKBOXES, DND_MOVE_EXIT_SLOTS } from "./layout";
 import { sampleAvgGray, type RasterPage } from "./rasterize";
 
 /**
@@ -20,10 +20,11 @@ export interface CheckboxRead {
   avgGray: number;
 }
 
-/** Deterministic, no-AI read of every checkbox on the move page: just pixel
- *  darkness in each box's known region. See DND_MOVE_CHECKBOXES for layout. */
+/** Deterministic, no-AI read of every checkbox on the move page (actions and
+ *  exit slots): just pixel darkness in each box's known region. See
+ *  DND_MOVE_CHECKBOXES / DND_MOVE_EXIT_SLOTS for layout. */
 export function readCheckboxes(raster: RasterPage): CheckboxRead[] {
-  return DND_MOVE_CHECKBOXES.map((field) => {
+  return [...DND_MOVE_CHECKBOXES, ...DND_MOVE_EXIT_SLOTS].map((field) => {
     const avgGray = sampleAvgGray(raster, field);
     return { id: field.id, marked: avgGray < CHECKBOX_DARKNESS_THRESHOLD, avgGray };
   });

@@ -13,7 +13,13 @@ import {
   type ServicePlugin,
 } from "@dailyscribe/core";
 import { Document, Line, Page, Rect, StyleSheet, Svg, Text, View, renderToBuffer } from "@react-pdf/renderer";
-import { DND_MOVE_CHECKBOXES, DND_MOVE_FILL_INS, type DndFieldBox } from "@/lib/dnd/layout";
+import {
+  DND_MOVE_CHECKBOXES,
+  DND_MOVE_EXIT_SLOTS,
+  DND_MOVE_FILL_INS,
+  moveExitOptions,
+  type DndFieldBox,
+} from "@/lib/dnd/layout";
 
 const MAIL_BACK_ADDRESS = "my@dailyscribe.ca";
 const CELL_SIZE = 30;
@@ -170,10 +176,37 @@ function LivingEncounter({ node, monsterHp }: { node: DndCampaignNode; monsterHp
   );
 }
 
+/** "north (Dry Fountain)" once the destination is discovered, else just
+ *  "north" — the map stays fog-of-war. */
+function exitLabel(campaign: DndCampaignDefinition, node: DndCampaignNode, direction: string, discoveredNodes: string[]): string {
+  const dest = node.exits[direction];
+  const name = direction.charAt(0).toUpperCase() + direction.slice(1);
+  return discoveredNodes.includes(dest) && campaign.nodes[dest] ? `${name} (${campaign.nodes[dest].title})` : name;
+}
+
+function RoomExits({
+  campaign,
+  node,
+  discoveredNodes,
+}: {
+  campaign: DndCampaignDefinition;
+  node: DndCampaignNode;
+  discoveredNodes: string[];
+}) {
+  const exits = moveExitOptions(node);
+  return (
+    <Text style={[styles.body, { marginTop: 6 }]}>
+      <Text style={{ fontFamily: "Helvetica-Bold" }}>Exits: </Text>
+      {exits.length > 0 ? exits.map((d) => exitLabel(campaign, node, d, discoveredNodes)).join(" · ") : "none"}
+      {exits.length > 0 ? " — tick one on the next page to move." : ""}
+    </Text>
+  );
+}
+
 /** A checkbox drawn at a fixed page position from `DND_MOVE_FIELD_LAYOUT`, so
  *  the mail-back reader can sample its exact pixel region later. Never render
  *  a move-page checkbox any other way. */
-function AbsCheckbox({ field }: { field: DndFieldBox }) {
+function AbsCheckbox({ field, label, labelWidth = 260 }: { field: DndFieldBox; label?: string; labelWidth?: number }) {
   return (
     <>
       <Svg
@@ -184,8 +217,8 @@ function AbsCheckbox({ field }: { field: DndFieldBox }) {
       >
         <Rect x={0.5} y={0.5} width={field.width - 1} height={field.height - 1} fill="none" stroke="#333333" strokeWidth={1.2} />
       </Svg>
-      <Text style={{ position: "absolute", top: field.top + 1.5, left: field.left + field.width + 6, fontSize: 9.5, width: 260 }}>
-        {field.label}
+      <Text style={{ position: "absolute", top: field.top + 1.5, left: field.left + field.width + 6, fontSize: 9.5, width: labelWidth }}>
+        {label ?? field.label}
       </Text>
     </>
   );
@@ -278,6 +311,7 @@ function AdventurePage({
 
       <Text style={styles.h2}>{node.title}</Text>
       <Text style={styles.body}>{node.description}</Text>
+      <RoomExits campaign={campaign} node={node} discoveredNodes={gameState.discoveredNodes} />
 
       {lastTurn && (
         <View style={styles.echoBox}>
@@ -399,14 +433,28 @@ function CharacterSheetSection({ character }: { character: DndCharacter }) {
   );
 }
 
-// The lowest move field (the "exit" fill-in) bottoms out at 400 + 22 = 422 —
+// The lowest move fields (the bottom row of exit slots) bottom out at 420 + 14 = 434 —
 // this must stay comfortably below that, and above the footer, however
 // DND_MOVE_FIELD_LAYOUT is tuned later. Not derived automatically: kept as
 // a plain constant since deriving it would mean importing layout math into a
 // styling decision that only needs to know "clear of the fields, above the footer."
 const CHARACTER_SHEET_TOP = 460;
 
-function MovePage({ campaignDoc, digest }: { campaignDoc: DndCampaign; digest?: boolean }) {
+// Heading for the exit slots — sits between the "misread" checkbox (ends at
+// 354) and the first exit row (DND_MOVE_EXIT_SLOTS, top 396).
+const EXIT_HEADING_TOP = 366;
+
+function MovePage({
+  campaign,
+  campaignDoc,
+  digest,
+}: {
+  campaign: DndCampaignDefinition;
+  campaignDoc: DndCampaign;
+  digest?: boolean;
+}) {
+  const node = campaign.nodes[campaignDoc.gameState.currentNode];
+  const exits = moveExitOptions(node);
   return (
     <Page size="A4" style={styles.page}>
       <Text style={styles.masthead}>Your Move</Text>
@@ -425,6 +473,20 @@ function MovePage({ campaignDoc, digest }: { campaignDoc: DndCampaign; digest?: 
       ))}
       {DND_MOVE_FILL_INS.map((field) => (
         <AbsFillIn key={field.id} field={field} />
+      ))}
+      {exits.length > 0 && (
+        <Text style={{ position: "absolute", top: EXIT_HEADING_TOP, left: 56, width: 270, fontSize: 9.5, lineHeight: 1.3 }}>
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Take an exit</Text> (tick one). While enemies remain you can
+          only leave with a successful Sneak or by Fleeing.
+        </Text>
+      )}
+      {exits.map((direction, i) => (
+        <AbsCheckbox
+          key={DND_MOVE_EXIT_SLOTS[i].id}
+          field={DND_MOVE_EXIT_SLOTS[i]}
+          label={exitLabel(campaign, node, direction, campaignDoc.gameState.discoveredNodes)}
+          labelWidth={120}
+        />
       ))}
       <View style={{ position: "absolute", top: CHARACTER_SHEET_TOP, left: 48, right: 48 }}>
         <CharacterSheetSection character={campaignDoc.character} />
@@ -503,7 +565,7 @@ function DndDocument({
       {status === "active" && (
         <>
           <AdventurePage campaign={campaign} campaignDoc={campaignDoc} date={date} digest={digest} />
-          <MovePage campaignDoc={campaignDoc} digest={digest} />
+          <MovePage campaign={campaign} campaignDoc={campaignDoc} digest={digest} />
         </>
       )}
     </Document>

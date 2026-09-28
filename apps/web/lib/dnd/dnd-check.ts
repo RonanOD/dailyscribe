@@ -7,7 +7,7 @@ import {
   type DndMoveInput,
 } from "@dailyscribe/core";
 import { getDocument } from "pdfjs-serverless";
-import { DND_MOVE_CHECKBOXES, DND_MOVE_FILL_INS } from "./layout";
+import { DND_MOVE_CHECKBOXES, DND_MOVE_EXIT_SLOTS, DND_MOVE_FILL_INS } from "./layout";
 import { readCheckboxes, type CheckboxRead } from "./mark-reader";
 import { cropFieldToPng, renderPageToRaster, type RasterPage } from "./rasterize";
 
@@ -62,10 +62,6 @@ function asNumber(byId: Map<string, DndMoveFieldOcrResult>, id: string): number 
   return Number.isFinite(n) ? n : null;
 }
 
-function asWord(byId: Map<string, DndMoveFieldOcrResult>, id: string): string | null {
-  const raw = byId.get(id)?.value?.trim().toLowerCase();
-  return raw || null;
-}
 
 /** Builds the "Last move, as I read it" echo text directly from the
  *  structured read — deterministic, no extra AI call, since the old repo's
@@ -96,6 +92,9 @@ export interface ReadDndReplyParams {
   /** The trimmed submission — just this service's own pages (see extractPdfPages in route.ts). */
   pdfBytes: Uint8Array;
   expectedShape: "move" | "character";
+  /** The current room's exits in slot order (`moveExitOptions`), so a marked
+   *  exit checkbox can be mapped back to its direction. */
+  exitOptions?: string[];
   apiKey: string;
   model?: string;
 }
@@ -149,7 +148,10 @@ export async function readDndReply(params: ReadDndReplyParams): Promise<DndReply
   const stealthRoll = asNumber(fieldById, "stealth");
   const healAmount = asNumber(fieldById, "heal");
   const perceptionRoll = asNumber(fieldById, "perception");
-  const chosenExit = asWord(fieldById, "exit");
+  // First marked exit slot wins; a slot past the room's exits (stray mark on
+  // an undrawn box) maps to nothing.
+  const markedExitSlot = DND_MOVE_EXIT_SLOTS.findIndex((f) => checkboxById.get(f.id)?.marked);
+  const chosenExit = markedExitSlot === -1 ? null : (params.exitOptions?.[markedExitSlot] ?? null);
 
   const move: DndMoveInput = {
     diceRolls: toHit != null ? [{ label: "to hit", total: toHit }] : [],
