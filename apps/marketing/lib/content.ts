@@ -27,11 +27,6 @@ export interface Feature {
   image_alt: string;
 }
 
-export interface PremiumPoint {
-  heading: string;
-  body: string;
-}
-
 export interface Vignette {
   caption: string;
   image: string;
@@ -65,10 +60,13 @@ export interface LandingContent {
   sample_edition: SampleEdition;
   waitlist: WaitlistBlock;
   features: Feature[];
-  premium_callout: {
+  open_source: {
     heading: string;
     body: string;
-    points: PremiumPoint[];
+    link_label: string;
+    link_url: string;
+    image: string;
+    image_alt: string;
   };
   plain_email_note: {
     heading: string;

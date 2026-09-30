@@ -75,18 +75,16 @@ collections:
               - { label: "Image on the right", name: media_right, widget: boolean, default: false }
               - { label: Image, name: image, widget: image }
               - { label: "Image Alt Text", name: image_alt, widget: string }
-          - label: "Premium Bundle Callout"
-            name: premium_callout
+          - label: "Open Source Callout"
+            name: open_source
             widget: object
             fields:
               - { label: Heading, name: heading, widget: string }
               - { label: Body, name: body, widget: text }
-              - label: Points
-                name: points
-                widget: list
-                fields:
-                  - { label: Heading, name: heading, widget: string }
-                  - { label: Body, name: body, widget: string }
+              - { label: "Link Label", name: link_label, widget: string }
+              - { label: "Link URL", name: link_url, widget: string }
+              - { label: Image, name: image, widget: image }
+              - { label: "Image Alt Text", name: image_alt, widget: string }
           - label: "Plain-Email Reassurance"
             name: plain_email_note
             widget: object

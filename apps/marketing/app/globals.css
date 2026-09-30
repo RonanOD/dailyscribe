@@ -390,48 +390,36 @@ h3 {
   white-space: nowrap;
 }
 
-/* ---------- Premium callout ---------- */
-.premium {
+/* ---------- Open source ---------- */
+.opensource {
   padding: 56px 0;
   border-bottom: 1px solid var(--rule);
 }
-.premium-box {
-  border: 2px solid var(--text);
-  padding: 44px 48px;
+.opensource-grid {
   display: grid;
   grid-template-columns: 1.3fr 0.7fr;
-  gap: 36px;
+  gap: 40px;
   align-items: center;
 }
-.premium-headline {
+.opensource-headline {
   font-size: clamp(1.6rem, 2.6vw, 2.3rem);
   margin-bottom: 14px;
 }
-.premium-body {
+.opensource-body {
   font-size: 1.05rem;
   line-height: 1.6;
   color: var(--text-soft);
   margin: 0 0 18px;
   max-width: 50ch;
 }
-.premium-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border-left: 2px solid var(--accent);
-  padding-left: 20px;
+.opensource-art {
+  display: flex;
+  justify-content: center;
 }
-.premium-list li {
-  font-size: 0.95rem;
-  color: var(--text-soft);
-  margin-bottom: 10px;
-  line-height: 1.4;
-}
-.premium-list li:last-child {
-  margin-bottom: 0;
-}
-.premium-list strong {
-  color: var(--text);
+.opensource-art img {
+  width: 100%;
+  max-width: 150px;
+  height: auto;
 }
 
 /* ---------- Email note ---------- */
@@ -805,12 +793,11 @@ h3 {
   .feature-grid,
   .feature--media-right .feature-grid,
   .sample-box,
-  .premium-box,
+  .opensource-grid,
   .plainmail-grid {
     grid-template-columns: 1fr;
   }
-  .sample-box,
-  .premium-box {
+  .sample-box {
     padding: 28px 22px;
   }
   .sample-box .btn {
@@ -848,12 +835,6 @@ h3 {
   .readers-grid {
     grid-template-columns: 1fr;
     gap: 32px;
-  }
-  .premium-list {
-    border-left: none;
-    padding-left: 0;
-    border-top: 2px solid var(--accent);
-    padding-top: 16px;
   }
   .utility-inner {
     font-size: 0.7rem;

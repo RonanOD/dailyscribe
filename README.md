@@ -23,6 +23,13 @@ waitlist form; `apps/web/scripts/approve-waitlist.mjs` seeds approved emails int
 `users` in small batches and sends the invite. See the roadmap in
 [`CLAUDE.md`](./CLAUDE.md).
 
+## License
+
+[GNU AGPLv3](./LICENSE). The source is open — read it, self-host it, send patches.
+The AGPL's one added condition versus a permissive license: if you run a modified
+version of this code as a network service for others, you need to make your
+modified source available to them too.
+
 ## Architecture
 
 ```mermaid

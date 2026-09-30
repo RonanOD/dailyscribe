@@ -15,18 +15,18 @@ export function SiteFooter() {
             <h4>Sections</h4>
             <a href="/#practice">Practice</a>
             <a href="/#play">Play</a>
+            <a href="/#dnd">Dungeons &amp; Dragons</a>
             <a href="/#read">Read</a>
             <a href="/#live">Live</a>
           </div>
           <div className="footer-col">
             <h4>Coming Soon</h4>
-            <a href="/#play">Dungeons &amp; Dragons</a>
             <a href="/#read">Classic Novels</a>
             <a href="/#health">Eating &amp; Drinking</a>
           </div>
           <div className="footer-col">
             <h4>Account</h4>
-            <a href="/#premium">Premium</a>
+            <a href="/#open-source">Open Source</a>
             <a href={SIGN_IN_URL}>Sign In</a>
           </div>
           <div className="footer-col">

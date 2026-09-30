@@ -128,18 +128,27 @@ features:
     coming_soon: true
     id: health
     image: /uploads/health1.png
-premium_callout:
-  heading: The Sunday edition — every section, one PDF.
-  body: Bundle every service you subscribe to into a single branded edition,
-    complete with a cover page and a linked table of contents. One email, one
-    download, everything you asked for — nothing you didn't.
-  points:
-    - heading: One cover, one edition.
-      body: All your sections bound together.
-    - heading: Linked table of contents.
-      body: Jump straight to what you want.
-    - heading: Nothing lost.
-      body: One section failing never takes down the rest.
+  - media_right: false
+    body: Subscribe to more than one section and Daily Scribe binds them into a
+      single edition automatically — one cover page, one linked table of
+      contents, one email. If a single section fails to fetch that morning, it
+      just drops from the edition; everything else still arrives on time.
+    image_alt: Illustration of bound, stacked pages
+    note: Included free with every subscription — nothing extra to turn on.
+    kicker: Bundle
+    title: One edition, every section.
+    coming_soon: false
+    id: digest
+    image: /uploads/feature-digest.svg
+open_source:
+  heading: The source is yours to read.
+  body: Daily Scribe is open source under the AGPLv3 — read the rendering,
+    delivery, and handwriting-grading code, self-host it yourself, or send a
+    patch. No paywall hiding how any of this works.
+  link_label: View the source on GitHub
+  link_url: https://github.com/RonanOD/dailyscribe
+  image: /uploads/code-brackets.svg
+  image_alt: Illustration of code brackets
 plain_email_note:
   heading: No Kindle? No problem.
   body: Everything above works exactly the same delivered as a PDF to your

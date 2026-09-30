@@ -166,28 +166,6 @@ export default function HomePage() {
         ))}
       </main>
 
-      <section className="premium" id="premium">
-        <div className="container">
-          <div className="premium-box">
-            <div>
-              <p className="kicker">Premium</p>
-              <h2 className="premium-headline">{content.premium_callout.heading}</h2>
-              <p className="premium-body">{content.premium_callout.body}</p>
-              <a className="btn btn--primary" href={SIGN_IN_URL}>
-                Upgrade to Premium
-              </a>
-            </div>
-            <ul className="premium-list">
-              {content.premium_callout.points.map((point) => (
-                <li key={point.heading}>
-                  <strong>{point.heading}</strong> {point.body}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
       <section className="plainmail">
         <div className="container plainmail-grid">
           <div className="plainmail-art">
@@ -216,6 +194,21 @@ export default function HomePage() {
                 <p>{vignette.caption}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="opensource" id="open-source">
+        <div className="container opensource-grid">
+          <div>
+            <h2 className="opensource-headline">{content.open_source.heading}</h2>
+            <p className="opensource-body">{content.open_source.body}</p>
+            <a className="btn btn--primary" href={content.open_source.link_url} target="_blank" rel="noopener">
+              {content.open_source.link_label}
+            </a>
+          </div>
+          <div className="opensource-art">
+            <img src={content.open_source.image} alt={content.open_source.image_alt} width={220} height={160} />
           </div>
         </div>
       </section>
