@@ -805,8 +805,13 @@ h3 {
   background: #fff;
 }
 .demo-sample .btn {
-  align-self: start;
   white-space: nowrap;
+}
+.demo-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  align-self: start;
 }
 
 /* ---------- Responsive ---------- */
@@ -831,8 +836,11 @@ h3 {
     justify-self: stretch;
     justify-content: center;
   }
-  .demo-sample .btn {
+  .demo-actions {
     align-self: stretch;
+    justify-content: center;
+  }
+  .demo-sample .btn {
     text-align: center;
     white-space: normal;
   }

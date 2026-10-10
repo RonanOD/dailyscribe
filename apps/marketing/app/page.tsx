@@ -94,14 +94,17 @@ export default function HomePage() {
                   loading="lazy"
                 />
               </div>
-              <a
-                className="btn"
-                href={content.sample_edition.file}
-                target="_blank"
-                rel="noopener"
-              >
-                {content.sample_edition.button_label}
-              </a>
+              <div className="demo-actions">
+                <a
+                  className="btn"
+                  href={content.sample_edition.file}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  {content.sample_edition.button_label}
+                </a>
+                <CoffeeButton />
+              </div>
             </aside>
           </div>
         </section>
