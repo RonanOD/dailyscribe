@@ -1,8 +1,24 @@
 import ReactMarkdown from "react-markdown";
 import { getLandingContent } from "@/lib/content";
+import { BUY_ME_A_COFFEE_URL } from "@/lib/site";
 import { Masthead, SIGN_IN_URL } from "./_components/Masthead";
 import { WaitlistForm } from "./_components/WaitlistForm";
 import { SiteFooter } from "./_components/SiteFooter";
+
+function CoffeeButton() {
+  return (
+    <a
+      className="coffee-btn"
+      href={BUY_ME_A_COFFEE_URL}
+      target="_blank"
+      rel="noopener"
+      title="Buy me a coffee"
+      aria-label="Buy me a coffee"
+    >
+      <img src="/uploads/vignette-coffee1.png" alt="" width={50} height={50} />
+    </a>
+  );
+}
 
 export default function HomePage() {
   const content = getLandingContent();
@@ -31,6 +47,7 @@ export default function HomePage() {
                 >
                   {content.sample_edition.button_label}
                 </a>
+                <CoffeeButton />
               </div>
             </div>
             <div className="hero-art">
@@ -127,14 +144,17 @@ export default function HomePage() {
                 <h2 className="sample-headline">{content.sample_edition.heading}</h2>
                 <p className="sample-body">{content.sample_edition.body}</p>
               </div>
-              <a
-                className="btn btn--primary"
-                href={content.sample_edition.file}
-                target="_blank"
-                rel="noopener"
-              >
-                {content.sample_edition.button_label}
-              </a>
+              <div className="sample-actions">
+                <a
+                  className="btn btn--primary"
+                  href={content.sample_edition.file}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  {content.sample_edition.button_label}
+                </a>
+                <CoffeeButton />
+              </div>
             </div>
           </div>
         </section>

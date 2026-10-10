@@ -386,8 +386,31 @@ h3 {
   max-width: 52ch;
 }
 .sample-box .btn {
-  justify-self: start;
   white-space: nowrap;
+}
+.sample-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  justify-self: start;
+}
+
+.coffee-btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  border-radius: 2px;
+  overflow: hidden;
+  transition: opacity 0.15s;
+}
+.coffee-btn:hover {
+  opacity: 0.7;
+}
+.coffee-btn img {
+  display: block;
+  width: 50px;
+  height: 50px;
 }
 
 /* ---------- Open source ---------- */
@@ -801,9 +824,12 @@ h3 {
     padding: 28px 22px;
   }
   .sample-box .btn {
-    justify-self: stretch;
     text-align: center;
     white-space: normal;
+  }
+  .sample-actions {
+    justify-self: stretch;
+    justify-content: center;
   }
   .demo-sample .btn {
     align-self: stretch;
