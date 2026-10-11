@@ -35,7 +35,16 @@ export interface AppUser {
   ref?: string;
   /** Set when the user finishes the /onboarding flow; gates the first-run redirect. */
   onboardedAt?: Date;
+  /** When each activation email went out (see onboarding-nudges.ts). Claimed
+   *  before sending, so each kind reaches a user at most once. */
+  nudges?: Partial<Record<NudgeKind, Date>>;
 }
+
+/** Activation emails for users who stalled before their first delivery:
+ *  - `reinvite`: one-off resend to invitees who never signed in.
+ *  - `inviteReminder`: automatic, a few days after an unused invite.
+ *  - `finishSetup`: signed in but never picked a service. */
+export type NudgeKind = "reinvite" | "inviteReminder" | "finishSetup";
 
 /** Services in the catalog. */
 export type ServiceId =

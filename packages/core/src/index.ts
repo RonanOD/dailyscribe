@@ -3,6 +3,7 @@ export * from "./crypto";
 export * from "./db";
 export * from "./net";
 export * from "./validation";
+export * from "./onboarding-nudges";
 export * from "./plugins/index";
 export * from "./plugins/nyt-crossword";
 export * from "./plugins/kanji";

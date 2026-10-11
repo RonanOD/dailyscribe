@@ -136,7 +136,14 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       `apps/web/lib/service-catalog.ts` metadata module (id/label/icon/blurb/needsSecret/
       onboarding flag) now drives the dashboard tab list, the onboarding picker, the
       subscriptions-route whitelist, and `DIGEST_MEMBER_SERVICES`. The per-service config
-      `<section>`s in `dashboard-form.tsx` stay hand-written. **DnD 5e (Sep 2026):** the last
+      `<section>`s in `dashboard-form.tsx` stay hand-written. **Activation emails (Oct 2026):**
+      a funnel check found 41 of 71 users were approved invitees who never signed in, so
+      `packages/core/src/onboarding-nudges.ts` adds once-per-user emails (stamped on
+      `users.nudges`): a one-off `reinvite` (`approve-waitlist.mjs --reinvite`), plus automatic
+      `inviteReminder` (4 days after an unused invite) and `finishSetup` (2 days after a sign-in
+      with no services) that ride the dispatch cron when `ONBOARDING_NUDGES_ENABLED="true"`.
+      Sent as "Ronan at Daily Scribe" with `MAIL_REPLY_TO` (required, so replies don't hit the
+      `my@` mail-back inbox). **DnD 5e (Sep 2026):** the last
       deferred catalog service landed and is now public — dashboard tab, onboarding card, and
       its own marketing feature block, after a stint behind `comingSoon: true` while its
       mail-back loop was verified against real production submissions. Still to do: build the

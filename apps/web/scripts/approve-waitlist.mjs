@@ -17,13 +17,28 @@
  *   npx tsx scripts/approve-waitlist.mjs --batch 5 --no-email   # ...without inviting
  *   npx tsx scripts/approve-waitlist.mjs --decline a@x.com      # mark junk rows "declined"
  *   npx tsx scripts/approve-waitlist.mjs --remove a@x.com       # hard-delete from waitlist + users
+ *
+ * Activation emails (copy + eligibility in packages/core/src/onboarding-nudges.ts;
+ * each kind reaches a user at most once, stamped on users.nudges):
+ *   npx tsx scripts/approve-waitlist.mjs --reinvite --dry-run           # list who'd get the re-invite
+ *   npx tsx scripts/approve-waitlist.mjs --reinvite --test-to me@x.com  # one sample per ref variant, no DB writes
+ *   npx tsx scripts/approve-waitlist.mjs --reinvite --exclude a@x.com,b@y.com
+ *   npx tsx scripts/approve-waitlist.mjs --finish-setup [--dry-run | --test-to me@x.com]
  */
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Resend } from "resend";
-import { collections, getDb, isEmailShaped } from "@dailyscribe/core";
+import {
+  collections,
+  findNudgeCandidates,
+  getDb,
+  isEmailShaped,
+  nudgeSenderFromEnv,
+  sendNudge,
+  sendTestNudge,
+} from "@dailyscribe/core";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -73,10 +88,70 @@ function inviteEmail(to, from) {
   };
 }
 
+function argValue(args, flag) {
+  const i = args.indexOf(flag);
+  return i !== -1 ? args[i + 1] : undefined;
+}
+
+/** --reinvite / --finish-setup: send one activation email kind to everyone eligible. */
+async function nudgeMode(kind, args) {
+  const dryRun = args.includes("--dry-run");
+  const testTo = argValue(args, "--test-to");
+  const exclude = new Set(
+    (argValue(args, "--exclude") ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean),
+  );
+
+  if (testTo) {
+    // One sample per distinct opener (only the re-invite varies by ref).
+    const refs = kind === "reinvite"
+      ? ["reddit-soloroleplaying", "reddit-kindlescribe", "reddit-ereader", "site-hero"]
+      : [undefined];
+    const sender = nudgeSenderFromEnv({ requireReplyTo: false });
+    for (const ref of refs) {
+      await sendTestNudge(sender, kind, testTo, ref);
+      console.log(`  test ${kind}${ref ? ` [${ref}]` : ""} sent to ${testTo}`);
+    }
+    return;
+  }
+
+  const now = new Date();
+  const candidates = (await findNudgeCandidates(kind, now)).filter((c) => {
+    if (exclude.has(c.email) || isUndeliverable(c.email)) {
+      console.log(`  ${c.email}: skipped (excluded / undeliverable)`);
+      return false;
+    }
+    return true;
+  });
+  console.log(`${candidates.length} eligible for ${kind}${dryRun ? " (dry run, nothing sent)" : ""}:`);
+  if (dryRun) {
+    for (const c of candidates) console.log(`  ${c.email}${c.ref ? `  [${c.ref}]` : ""}`);
+    return;
+  }
+
+  const sender = nudgeSenderFromEnv();
+  let sent = 0;
+  for (const c of candidates) {
+    try {
+      const status = await sendNudge(sender, kind, c, now);
+      if (status === "sent") sent += 1;
+      console.log(`  ${c.email}: ${status}`);
+    } catch (err) {
+      console.log(`  ${c.email}: FAILED, ${err instanceof Error ? err.message : err}`);
+    }
+  }
+  console.log(`${sent} sent.`);
+}
+
 async function main() {
   loadEnvLocal();
 
   const args = process.argv.slice(2);
+  for (const [flag, kind] of [["--reinvite", "reinvite"], ["--finish-setup", "finishSetup"]]) {
+    if (args.includes(flag)) {
+      await nudgeMode(kind, args);
+      process.exit(0);
+    }
+  }
   const noEmail = args.includes("--no-email");
   const listOnly = args.includes("--list");
   const declineMode = args.includes("--decline");
