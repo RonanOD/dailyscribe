@@ -6,6 +6,13 @@ const DEFAULT_PER_DAY = 3;
 const DEFAULT_MAX_JLPT: 1 | 2 | 3 | 4 | 5 = 5;
 const JLPT_LEVELS = [1, 2, 3, 4, 5] as const;
 
+/** JLPT levels KANJI_CURRICULUM (packages/core/src/data/kanji.ts) actually has
+ *  entries for. Keep in sync with that generated dataset. Since the pool filter
+ *  is `entry.jlpt >= maxJlptLevel`, any level below the lowest one here returns
+ *  the exact same pool as that lowest level, not an empty one, so it's not a
+ *  crash — just a dashboard option that silently does nothing. */
+export const AVAILABLE_JLPT_LEVELS = [5, 4] as const;
+
 /** Parsed, rendering-ready config for the Kanji plugin (as opposed to
  *  `KanjiServiceConfig`, the persisted shape including shared delivery fields). */
 export interface KanjiConfig {
@@ -19,9 +26,14 @@ export function parseKanjiConfig(config: unknown): KanjiConfig {
     typeof raw.kanjiPerDay === "number" && Number.isFinite(raw.kanjiPerDay) ? raw.kanjiPerDay : DEFAULT_PER_DAY;
   const kanjiPerDay = Math.min(MAX_PER_DAY, Math.max(MIN_PER_DAY, Math.floor(perDayNum)));
   const levelNum = typeof raw.maxJlptLevel === "number" ? Math.floor(raw.maxJlptLevel) : DEFAULT_MAX_JLPT;
-  const maxJlptLevel = (JLPT_LEVELS as readonly number[]).includes(levelNum)
+  const requestedLevel = (JLPT_LEVELS as readonly number[]).includes(levelNum)
     ? (levelNum as 1 | 2 | 3 | 4 | 5)
     : DEFAULT_MAX_JLPT;
+  const maxJlptLevel = (
+    (AVAILABLE_JLPT_LEVELS as readonly number[]).includes(requestedLevel)
+      ? requestedLevel
+      : Math.min(...AVAILABLE_JLPT_LEVELS)
+  ) as 1 | 2 | 3 | 4 | 5;
   return { kanjiPerDay, maxJlptLevel };
 }
 
