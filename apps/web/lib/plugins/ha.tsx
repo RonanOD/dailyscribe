@@ -178,6 +178,66 @@ function parseIsoDate(val: unknown): Date | null {
   return null;
 }
 
+/** Offset (ms) of `timeZone` from UTC at `instant`, e.g. -4h for America/Toronto in summer. */
+function tzOffsetMs(instant: Date, timeZone: string): number {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const p: Record<string, string> = {};
+  for (const part of fmt.formatToParts(instant)) p[part.type] = part.value;
+  const hour = p.hour === "24" ? 0 : Number(p.hour);
+  const asUtc = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), hour, Number(p.minute), Number(p.second));
+  return asUtc - Math.floor(instant.getTime() / 1000) * 1000;
+}
+
+/** The UTC instant at which local midnight of `isoDate` (YYYY-MM-DD) occurs in `timeZone`. */
+function zonedMidnight(isoDate: string, timeZone: string): Date {
+  const guess = Date.parse(`${isoDate}T00:00:00Z`);
+  // Re-derive the offset at the corrected instant so a DST change between UTC
+  // midnight and local midnight doesn't leave us an hour off.
+  const first = guess - tzOffsetMs(new Date(guess), timeZone);
+  return new Date(guess - tzOffsetMs(new Date(first), timeZone));
+}
+
+/**
+ * The real-time window for the digest's local calendar day. `nowDate` is the
+ * dispatcher's UTC-midnight stand-in for that day (see the header note in
+ * extractHaSummaryData), so its UTC date *is* the local date to cover.
+ */
+export function localDayWindow(nowDate: Date, timeZone: string): { isoDate: string; start: Date; end: Date } {
+  const isoDate = formatIsoDate(nowDate);
+  const nextIsoDate = formatIsoDate(new Date(nowDate.getTime() + 24 * 60 * 60 * 1000));
+  return { isoDate, start: zonedMidnight(isoDate, timeZone), end: zonedMidnight(nextIsoDate, timeZone) };
+}
+
+/** A date-only (all-day) event boundary, as YYYY-MM-DD, or null for timed ones. */
+function allDayDate(val: HaCalendarEvent["start"]): string | null {
+  if (typeof val === "string") return /^\d{4}-\d{2}-\d{2}$/.test(val) ? val : null;
+  if (val && !val.dateTime && val.date) return val.date;
+  return null;
+}
+
+/** Whether an event falls on the local day: all-day events by date, timed ones by overlap. */
+function isOnLocalDay(ev: HaCalendarEvent, day: { isoDate: string; start: Date; end: Date }): boolean {
+  const startDay = allDayDate(ev.start);
+  if (startDay) {
+    // All-day end dates are exclusive; a missing end means a single day.
+    const endDay = allDayDate(ev.end);
+    return startDay <= day.isoDate && (endDay ? day.isoDate < endDay : day.isoDate === startDay);
+  }
+  const start = parseIsoDate(ev.start);
+  if (!start) return false;
+  const end = parseIsoDate(ev.end) ?? start;
+  return start < day.end && (end > day.start || start.getTime() === day.start.getTime());
+}
+
 export interface HaSummaryData {
   todayFormatted: string;
   sunInfo: string;
@@ -345,14 +405,19 @@ export function extractHaSummaryData(
   if (unlockedLocks.length > 0) anomalies.push(`Unlocked: ${unlockedLocks.join(", ")}`);
 
   // 5. Today's Calendar
+  // HA returns anything overlapping the requested window, so filter again
+  // against the local day: a previous day's all-day event ends exactly at our
+  // window start and would otherwise leak in.
+  const localDay = localDayWindow(nowDate, timeZone);
   const calendarRows: string[] = [];
-  for (const { calId, events } of calendarEvents) {
+  for (const { calId, events: allEvents } of calendarEvents) {
+    const events = allEvents.filter((ev) => isOnLocalDay(ev, localDay));
     if (calId === config.wasteCalendar && events.length > 0) {
       const summaries = events.map((e) => e.summary ?? "?").join(", ");
       calendarRows.push(`Waste pickup: ${summaries}`);
     } else {
       for (const ev of events) {
-        const startDt = parseIsoDate(ev.start);
+        const startDt = allDayDate(ev.start) ? null : parseIsoDate(ev.start);
         const timeStr = startDt
           ? new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit" })
               .format(startDt)
@@ -624,10 +689,13 @@ export const haSummaryPlugin: ServicePlugin = {
     const hourlyForecast = await fetchHaForecast(creds.url, creds.token, config.weatherEntity, "hourly");
     const dailyForecast = await fetchHaForecast(creds.url, creds.token, config.weatherEntity, "daily");
 
-    // Fetch calendar events for today
-    const now = ctx.date;
-    const startIso = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const endIso = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+    // Fetch calendar events for the subscriber's local day. ctx.date is a
+    // UTC-midnight stand-in, not an instant, so the window must be built in
+    // their timezone rather than from the server's local getters.
+    const timezone = (ctx.config as { timezone?: string }).timezone || "America/Toronto";
+    const day = localDayWindow(ctx.date, timezone);
+    const startIso = day.start.toISOString();
+    const endIso = day.end.toISOString();
 
     const calendarEntities = states.filter((s) => s.entity_id.startsWith("calendar.")).map((s) => s.entity_id);
     const calendarEvents = await Promise.all(
@@ -641,7 +709,6 @@ export const haSummaryPlugin: ServicePlugin = {
       }),
     );
 
-    const timezone = (ctx.config as { timezone?: string }).timezone || "America/Toronto";
     const summaryData = extractHaSummaryData(
       states,
       hourlyForecast,
