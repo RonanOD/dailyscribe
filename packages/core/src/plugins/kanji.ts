@@ -11,7 +11,7 @@ const JLPT_LEVELS = [1, 2, 3, 4, 5] as const;
  *  is `entry.jlpt >= maxJlptLevel`, any level below the lowest one here returns
  *  the exact same pool as that lowest level, not an empty one, so it's not a
  *  crash — just a dashboard option that silently does nothing. */
-export const AVAILABLE_JLPT_LEVELS = [5, 4] as const;
+export const AVAILABLE_JLPT_LEVELS = [5, 4, 3, 2, 1] as const;
 
 /** Parsed, rendering-ready config for the Kanji plugin (as opposed to
  *  `KanjiServiceConfig`, the persisted shape including shared delivery fields). */

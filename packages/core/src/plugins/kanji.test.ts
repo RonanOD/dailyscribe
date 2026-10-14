@@ -32,15 +32,12 @@ describe("parseKanjiConfig", () => {
     expect(parseKanjiConfig({ kanjiPerDay: "5" }).kanjiPerDay).toBe(3);
   });
 
-  it("only accepts a JLPT level the curriculum actually has data for", () => {
-    expect(parseKanjiConfig({ maxJlptLevel: 4 }).maxJlptLevel).toBe(4);
-    expect(parseKanjiConfig({ maxJlptLevel: 5 }).maxJlptLevel).toBe(5);
-    // N1-N3 have no curriculum data (see AVAILABLE_JLPT_LEVELS) — clamp to
-    // the lowest level that does, rather than accepting a level that would
-    // silently behave identically to it.
-    expect(parseKanjiConfig({ maxJlptLevel: 3 }).maxJlptLevel).toBe(4);
-    expect(parseKanjiConfig({ maxJlptLevel: 1 }).maxJlptLevel).toBe(4);
+  it("accepts every JLPT level from N5 to N1", () => {
+    for (const lvl of [5, 4, 3, 2, 1]) {
+      expect(parseKanjiConfig({ maxJlptLevel: lvl }).maxJlptLevel).toBe(lvl);
+    }
     expect(parseKanjiConfig({ maxJlptLevel: 9 }).maxJlptLevel).toBe(5);
+    expect(parseKanjiConfig({ maxJlptLevel: 0 }).maxJlptLevel).toBe(5);
     expect(parseKanjiConfig({ maxJlptLevel: "N3" }).maxJlptLevel).toBe(5);
   });
 });

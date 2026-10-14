@@ -17,16 +17,19 @@
  * font sources directly (decoded via atob, no fs/network involved), so the
  * font bytes are embedded as ordinary JS instead.
  *
- * Why a subset at all, and why Google Fonts specifically: the full Noto Sans
- * JP file is tens of MB; Google Fonts' css2 endpoint accepts a `text=` query
- * param and returns a font containing only the requested glyphs. Requesting
- * with an old-browser User-Agent forces a .ttf response instead of .woff2,
- * since that's what @react-pdf/font's data-URI path expects.
+ * Why a subset at all: the full Noto Sans JP file is several MB per weight.
+ * The full .ttf comes from Google Fonts (an old-browser User-Agent forces a
+ * single .ttf response instead of unicode-range-split .woff2 slices, and
+ * .ttf is what @react-pdf/font's data-URI path expects), then subset-font
+ * (harfbuzz, via WASM) cuts it down locally. Google's own `text=` subsetting
+ * param used to do this server-side, but it rejects the URL (HTTP 400) once
+ * the glyph set covers N1-N3 (~2,500 glyphs, ~22 KB encoded).
  */
 
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import subsetFont from "subset-font";
 import { KANJI_CURRICULUM } from "@dailyscribe/core";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -54,13 +57,13 @@ function buildGlyphSet() {
 }
 
 async function fetchSubsetTtf(weight, text) {
-  const url = `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@${weight}&text=${encodeURIComponent(text)}`;
+  const url = `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@${weight}`;
   const css = await fetch(url, { headers: { "User-Agent": OLD_BROWSER_UA } }).then((r) => r.text());
   const match = css.match(/url\(([^)]+)\)/);
   if (!match) throw new Error(`No font url() found in Google Fonts CSS response for weight ${weight}`);
   const fontUrl = match[1];
-  const bytes = await fetch(fontUrl).then((r) => r.arrayBuffer());
-  return Buffer.from(bytes);
+  const full = Buffer.from(await fetch(fontUrl).then((r) => r.arrayBuffer()));
+  return subsetFont(full, text, { targetFormat: "truetype" });
 }
 
 async function main() {

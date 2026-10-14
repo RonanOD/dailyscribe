@@ -81,17 +81,12 @@ interface DndConfig {
   kindleEmail?: string;
 }
 
-// KANJI_CURRICULUM only has entries for N4/N5 today (see
-// packages/core/src/data/kanji.ts) — keep in sync with
-// AVAILABLE_JLPT_LEVELS in packages/core/src/plugins/kanji.ts. Offering
-// N1-N3 here wouldn't crash (the pool filter is `jlpt >= level`, so a
-// stricter level just silently returns the same N4/N5 pool), but it would
-// mislead users into thinking they'd get content that doesn't exist yet.
-const JLPT_LEVELS = [5, 4] as const;
+// Keep in sync with AVAILABLE_JLPT_LEVELS in packages/core/src/plugins/kanji.ts
+// (the levels KANJI_CURRICULUM actually has entries for).
+const JLPT_LEVELS = [5, 4, 3, 2, 1] as const;
 function clampToAvailableJlpt(level: number | undefined): number {
-  if (level === 5 || level === 4) return level;
-  if (level === undefined) return 5;
-  return 4; // 1-3 behaved identically to 4 under the old filter
+  if (level !== undefined && (JLPT_LEVELS as readonly number[]).includes(level)) return level;
+  return 5;
 }
 
 interface Props {
