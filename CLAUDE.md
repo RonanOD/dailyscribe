@@ -48,10 +48,12 @@ emailed to the owner's Kindle, on multi-tenant-ready foundations — is built an
   seeds approved emails into `users` in batches and emails invites. All three providers set
   `allowDangerousEmailAccountLinking` (each verifies the address) so a seeded stub / second
   method attaches cleanly.
-- **Scheduling:** a **GitHub Actions workflow** (`.github/workflows/dispatch.yml`) polls
-  `GET /api/cron/dispatch` (guarded by `CRON_SECRET`) every ~10 min — timezone-aware,
-  exactly-once per day via a `deliveries` marker row. A once-daily **Vercel Cron**
-  (`apps/web/vercel.json`) is the fallback. (Vercel Hobby cron alone only fires daily,
+- **Scheduling:** a **Cloudflare Worker cron trigger** (`workers/dispatch-cron`) hits
+  `GET /api/cron/dispatch` (guarded by `CRON_SECRET`) every 10 min — timezone-aware,
+  exactly-once per day via a `deliveries` marker row. Fallbacks: the **GitHub Actions
+  workflow** (`.github/workflows/dispatch.yml`; GitHub's `schedule` only fired 6-7x/day,
+  which is why the Worker took over in Oct 2026) and a once-daily **Vercel Cron**
+  (`apps/web/vercel.json`). (Vercel Hobby cron alone only fires daily,
   too coarse to honour per-subscriber delivery times across timezones; native hourly
   Vercel Cron on Pro would replace the workflow.)
 - **Email delivery:** **Resend**, sending from the single verified address
@@ -152,11 +154,14 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
 - [~] **Phase 3 — Scheduling at scale.** Timezone-aware, idempotent dispatch, driven every
       ~10 min by a GitHub Actions workflow hitting `/api/cron/dispatch` (Sep 2026 — replaced
       the daily-only Vercel Hobby cron, which couldn't honour per-subscriber delivery times
-      outside the owner's timezone; the daily Vercel Cron stays as a fallback).
+      outside the owner's timezone; the daily Vercel Cron stays as a fallback). **Oct 2026:**
+      GitHub's `schedule` proved best-effort (6-7 runs/day, 2-5 hour gaps, so editions
+      arrived hours late), so a Cloudflare Worker cron (`workers/dispatch-cron`) became
+      the primary driver, with GitHub Actions demoted to fallback.
       Bounce/complaint visibility landed (`/api/webhooks/resend-events` → `deliveryEvents`,
       auto-disables subscriptions on hard bounce / spam complaint, dashboard banner) and
-      outbound attachment-size guard (`assertDeliverable`). Still to do: retries, failure
-      notifications, and moving dispatch back onto native cron (hourly Vercel Cron on Pro).
+      outbound attachment-size guard (`assertDeliverable`). Still to do: retries and failure
+      notifications.
 - [ ] **Phase 4 — Billing.** Subscription tiers (e.g. free single-service vs. paid bundles).
 - [~] **Phase 5 — Handwriting return path.** Live for Kanji and DnD:
       `/api/webhooks/resend-inbound` routes a mailed-back PDF by embedded page ref(s) — a single

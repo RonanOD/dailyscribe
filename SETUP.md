@@ -127,7 +127,7 @@ Copy `.env.example` → `apps/web/.env.local` for dev, and set the same in Verce
 | `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | GitHub OAuth app |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth client |
 | `ALLOW_NEW_SIGNUPS` | `"false"` = invite-only (waitlist approval seeds `users`); `"true"` = open |
-| `CRON_SECRET` | Bearer token cron callers must present to `/api/cron/*` (Vercel Cron + the `.github/workflows/` dispatch + signup-report workflows) |
+| `CRON_SECRET` | Bearer token cron callers must present to `/api/cron/*` (Vercel Cron, the `workers/dispatch-cron` Worker, and the `.github/workflows/` dispatch + signup-report workflows) |
 | `ADMIN_EMAIL` | Operator inbox for the daily new-signups digest (`/api/cron/signup-report`); unset disables that email |
 | `RESEND_API_KEY` | Resend API key (app-wide outbound email + magic-link sign-in) |
 | `MAIL_FROM_DEFAULT` | From address, `Daily Scribe <my@dailyscribe.ca>` (also the code default) |
@@ -163,16 +163,22 @@ Directory and its own custom domain(s):
    `apps/marketing` below.
 3. Add all env vars above (Production + Preview) except the two
    `DECAP_OAUTH_GITHUB_*` ones, which belong on the marketing project only.
-4. Delivery dispatch is driven by **`.github/workflows/dispatch.yml`**, which hits
-   `/api/cron/dispatch` every ~10 min (Vercel Hobby cron is once/day — too coarse to
-   honour per-subscriber delivery times across timezones). The daily cron in
-   `apps/web/vercel.json` stays as a fallback; Vercel attaches
-   `Authorization: Bearer $CRON_SECRET` automatically, and the workflows send it from
-   the `CRON_SECRET` **GitHub Actions repo secret** (set it to the same value). A
-   second workflow, `signup-report.yml`, hits `/api/cron/signup-report` daily at 08:00
-   UTC to email `ADMIN_EMAIL` about new waitlist signups. To move dispatch back onto
-   native cron, upgrade to Vercel Pro, set the `vercel.json` schedule to `0 * * * *`,
-   and delete `dispatch.yml`.
+4. Delivery dispatch is driven by the **`workers/dispatch-cron`** Cloudflare Worker,
+   whose cron trigger hits `/api/cron/dispatch` every 10 min (Vercel Hobby cron is
+   once/day, too coarse to honour per-subscriber delivery times across timezones, and
+   GitHub Actions `schedule` turned out to fire only 6-7 times a day). Deploy it once:
+   ```bash
+   cd workers/dispatch-cron
+   pnpm wrangler login
+   pnpm wrangler deploy
+   pnpm wrangler secret put CRON_SECRET   # same value as the Vercel env var
+   ```
+   Two fallbacks stay in place: **`.github/workflows/dispatch.yml`** (sends the
+   `CRON_SECRET` **GitHub Actions repo secret**, same value) and the daily cron in
+   `apps/web/vercel.json` (Vercel attaches `Authorization: Bearer $CRON_SECRET`
+   automatically). Extra calls are harmless: each subscription sends at most once a
+   day. A second workflow, `signup-report.yml`, hits `/api/cron/signup-report` daily
+   at 08:00 UTC to email `ADMIN_EMAIL` about new waitlist signups.
 5. **Migrating from the old single-domain setup?** Do it in this order so
    nothing is unreachable mid-cutover: (1) create the `apps/marketing` project
    and confirm it builds on its `*.vercel.app` preview URL; (2) add

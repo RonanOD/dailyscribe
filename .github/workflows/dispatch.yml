@@ -1,4 +1,8 @@
-# Drives Daily Scribe's daily delivery dispatch.
+# FALLBACK driver for Daily Scribe's delivery dispatch. The primary driver is
+# the Cloudflare Worker in `workers/dispatch-cron` (Oct 2026): GitHub's
+# `schedule` trigger is best-effort and was observed firing only 6-7 times a
+# day instead of every 10 minutes. This stays as a backstop; extra calls are
+# harmless.
 #
 # Why this exists: Vercel Hobby cron only fires once a day. `dispatchDue` sends a
 # subscription when the subscriber's *local* clock is at or past their chosen
