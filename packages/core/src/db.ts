@@ -1,5 +1,6 @@
 import { MongoClient, type Db } from "mongodb";
 import type {
+  AccountFeedback,
   AppUser,
   CrosswordPuzzle,
   Delivery,
@@ -58,6 +59,7 @@ export async function collections() {
     waitlist: db.collection<WaitlistEntry>("waitlist"),
     rateLimits: db.collection<RateLimitBucket>("rateLimits"),
     deliveryEvents: db.collection<DeliveryEvent>("deliveryEvents"),
+    accountFeedback: db.collection<AccountFeedback>("accountFeedback"),
   };
 }
 
@@ -87,6 +89,7 @@ export function ensureIndexes(): Promise<void> {
         c.rateLimits.createIndex({ key: 1, windowStart: 1 }, { unique: true }),
         c.rateLimits.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
         c.deliveryEvents.createIndex({ emailId: 1, type: 1 }, { unique: true }),
+        c.accountFeedback.createIndex({ createdAt: 1 }),
       ]);
     })().catch((err) => {
       indexesEnsured = undefined;

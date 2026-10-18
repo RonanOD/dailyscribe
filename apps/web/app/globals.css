@@ -691,3 +691,23 @@ a {
   border: 1px solid var(--border);
   border-radius: 8px;
 }
+
+/* Stop deliveries / delete account (dashboard, below the settings). */
+.account-actions summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--muted);
+}
+.account-actions[open] summary {
+  margin-bottom: 16px;
+}
+.account-actions h2 {
+  margin-top: 8px;
+}
+.account-actions__delete {
+  margin-top: 28px !important;
+}
+.button--danger {
+  background: var(--err);
+  color: var(--accent-ink);
+}

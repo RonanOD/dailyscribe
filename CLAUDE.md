@@ -145,7 +145,12 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       `inviteReminder` (4 days after an unused invite) and `finishSetup` (2 days after a sign-in
       with no services) that ride the dispatch cron when `ONBOARDING_NUDGES_ENABLED="true"`.
       Sent as "Ronan at Daily Scribe" with `MAIL_REPLY_TO` (required, so replies don't hit the
-      `my@` mail-back inbox). **DnD 5e (Sep 2026):** the last
+      `my@` mail-back inbox). **Leaving (Oct 2026, DAI-34):** a closed "Stop deliveries or
+      delete your account" panel under the dashboard settings: "Stop all deliveries" switches
+      every service off but keeps the account; "Delete my account" (type "delete") removes the
+      user and every row keyed to them (`packages/core/src/account.ts`). Both take an optional
+      "what didn't work?" answer, stored in `accountFeedback` (delete rows keep no id/email)
+      and listed in the admin `signup-report`. **DnD 5e (Sep 2026):** the last
       deferred catalog service landed and is now public — dashboard tab, onboarding card, and
       its own marketing feature block, after a stint behind `comingSoon: true` while its
       mail-back loop was verified against real production submissions. Still to do: build the

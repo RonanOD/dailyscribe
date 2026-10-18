@@ -339,6 +339,22 @@ export interface WaitlistEntry {
 
 /** One fixed-window counter for the Mongo-backed rate limiter. A TTL index on
  *  `expiresAt` sweeps stale windows. */
+/** A user stopping all deliveries or deleting their account, with their
+ *  optional "what didn't work?" answer (DAI-34). Delete rows carry no user id
+ *  or email. */
+export interface AccountFeedback {
+  _id?: ObjectId;
+  kind: "stop-all" | "delete";
+  /** Only on "stop-all"; removed if the user later deletes their account. */
+  userId?: string;
+  /** Services that were switched on at the time. */
+  services: string[];
+  reason?: string;
+  /** Only on "delete": when the account was created. */
+  joinedAt?: Date;
+  createdAt: Date;
+}
+
 export interface RateLimitBucket {
   _id?: ObjectId;
   /** e.g. "deliver-now:<userId>". */

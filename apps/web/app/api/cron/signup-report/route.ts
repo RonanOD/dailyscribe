@@ -1,4 +1,11 @@
-import { collections, createResendDeliverer, failureStreak, findFailedDispatches, PAUSE_AFTER_GAVE_UP_DAYS } from "@dailyscribe/core";
+import {
+  collections,
+  createResendDeliverer,
+  failureStreak,
+  findAccountFeedback,
+  findFailedDispatches,
+  PAUSE_AFTER_GAVE_UP_DAYS,
+} from "@dailyscribe/core";
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { cronAuthError } from "@/lib/cron-auth";
@@ -15,7 +22,8 @@ const WINDOW_MS = 24 * 60 * 60 * 1000;
  * the first day of a failure run, and the day it got paused, are listed in full;
  * days in between collapse to one "still failing" line, and don't send an email
  * on their own. Triggered the same way as `/api/cron/dispatch` (a GitHub Actions
- * workflow); sends nothing on a quiet day. The fixed 24h window is naturally idempotent for a
+ * workflow); sends nothing on a quiet day. Also lists users who stopped all
+ * deliveries or deleted their account, with their "what didn't work?" answer. The fixed 24h window is naturally idempotent for a
  * fixed-time daily run — a missed run just omits that day's names, which are
  * still counted in the running "pending total".
  */
@@ -34,13 +42,14 @@ export async function GET(req: Request) {
 
   const { waitlist, users, subscriptions } = await collections();
   const since = new Date(Date.now() - WINDOW_MS);
-  const [fresh, pendingTotal, failures] = await Promise.all([
+  const [fresh, pendingTotal, failures, leavers] = await Promise.all([
     waitlist
       .find({ status: "pending", createdAt: { $gte: since } })
       .sort({ createdAt: 1 })
       .toArray(),
     waitlist.countDocuments({ status: "pending" }),
     findFailedDispatches(since),
+    findAccountFeedback(since),
   ]);
 
   // Day N of a failure run: 1 is news, the day it paused is news, the rest are repeats.
@@ -60,8 +69,8 @@ export async function GET(req: Request) {
   const newFailures = classified.filter((c) => c.isNew);
   const repeats = classified.filter((c) => !c.isNew);
 
-  if (fresh.length === 0 && newFailures.length === 0) {
-    return NextResponse.json({ new: fresh.length, pending: pendingTotal, failed: 0, repeats: repeats.length });
+  if (fresh.length === 0 && newFailures.length === 0 && leavers.length === 0) {
+    return NextResponse.json({ new: fresh.length, pending: pendingTotal, failed: 0, repeats: repeats.length, left: 0 });
   }
 
   const sections: string[] = [];
@@ -116,10 +125,28 @@ export async function GET(req: Request) {
     }
     sections.push(lines.join("\n"));
   }
+  if (leavers.length > 0) {
+    const ids = leavers.map((l) => l.userId).filter((id): id is string => !!id && ObjectId.isValid(id));
+    const emails = new Map(
+      (await users.find({ _id: { $in: ids.map((id) => new ObjectId(id)) } }, { projection: { email: 1 } }).toArray()).map(
+        (u) => [String(u._id), u.email ?? "?"],
+      ),
+    );
+    const rows = leavers.map((l) => {
+      const who =
+        l.kind === "delete"
+          ? `deleted account (joined ${l.joinedAt?.toISOString().slice(0, 10) ?? "?"})`
+          : `${(l.userId && emails.get(l.userId)) ?? "since-deleted user"} stopped all deliveries`;
+      const had = l.services.length > 0 ? l.services.join(", ") : "nothing on";
+      return `  ${who}; had: ${had}\n      ${l.reason ? `"${l.reason}"` : "(no reason given)"}`;
+    });
+    sections.push([`${leavers.length} user${leavers.length === 1 ? "" : "s"} left in the last 24h:`, "", ...rows].join("\n"));
+  }
   const text = sections.join("\n\n");
   const subjectParts = [
     fresh.length > 0 ? `${fresh.length} new waitlist signup${plural}` : "",
     newFailures.length > 0 ? `${newFailures.length} failed deliver${newFailures.length === 1 ? "y" : "ies"}` : "",
+    leavers.length > 0 ? `${leavers.length} left` : "",
   ].filter(Boolean);
 
   const mailer = createResendDeliverer({
@@ -133,5 +160,5 @@ export async function GET(req: Request) {
     assets: [],
   });
 
-  return NextResponse.json({ new: fresh.length, pending: pendingTotal, failed: newFailures.length, repeats: repeats.length });
+  return NextResponse.json({ new: fresh.length, pending: pendingTotal, failed: newFailures.length, repeats: repeats.length, left: leavers.length });
 }
