@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_DISPATCH_ATTEMPTS,
+  PAUSE_AFTER_GAVE_UP_DAYS,
   RETRY_DELAYS_MS,
   deliveryFailureEmail,
   failureHint,
   isPermanentFailure,
+  pausedReason,
   retryDelayMs,
 } from "./dispatch-attempts";
 
@@ -55,5 +57,24 @@ describe("failure emails", () => {
   it("uses no em dashes of its own", () => {
     const { subject, text } = deliveryFailureEmail("Daily Scribe Digest", "2026-10-17", DIGEST_EMPTY);
     expect(subject + text).not.toContain("—");
+  });
+  it("warns that a week of failures pauses the service", () => {
+    const { text } = deliveryFailureEmail("Home Status", "2026-10-17", HA_403);
+    expect(text).toContain(`${PAUSE_AFTER_GAVE_UP_DAYS} days`);
+  });
+  it("sends a distinct pause notice", () => {
+    const { subject, text } = deliveryFailureEmail("Daily Scribe Digest", "2026-10-24", DIGEST_EMPTY, {
+      pausedAfterDays: 7,
+    });
+    expect(subject).toBe("Your Daily Scribe Digest is paused");
+    expect(text).toContain("7 days in a row");
+    expect(text).toContain("switch it back on");
+    expect(subject + text).not.toContain("—");
+  });
+  it("explains the pause in the dashboard banner", () => {
+    const reason = pausedReason("Home Status", 7, HA_403);
+    expect(reason).toMatch(/^Delivery paused:/);
+    expect(reason).toContain(HA_403);
+    expect(reason).not.toContain("—");
   });
 });

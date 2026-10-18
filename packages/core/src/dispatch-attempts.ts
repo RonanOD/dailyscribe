@@ -15,6 +15,10 @@ export const CLAIM_LOCK_MS = 5 * MINUTE_MS;
 /** A user hears about a failing service at most once per this window, so a
  *  setting that stays broken doesn't turn into a daily email. */
 export const USER_ALERT_COOLDOWN_MS = 7 * DAY_MS;
+/** Consecutive days of give-ups after which the subscription is paused
+ *  (`enabled: false` + `disabledReason`), so a setting nobody fixes stops
+ *  being attempted, and reported, every day. */
+export const PAUSE_AFTER_GAVE_UP_DAYS = 7;
 
 export interface AttemptKey {
   userId: string;
@@ -109,14 +113,20 @@ export async function recordDispatchFailure(
  * Stamp `userNotifiedAt` on today's attempt if this user hasn't been told about
  * this service within the cooldown. Returns true when the caller should send.
  */
-export async function claimUserAlert(key: AttemptKey, now: Date): Promise<boolean> {
+export async function claimUserAlert(
+  key: AttemptKey,
+  now: Date,
+  opts: { ignoreCooldown?: boolean } = {},
+): Promise<boolean> {
   const { dispatchAttempts } = await collections();
-  const recent = await dispatchAttempts.findOne({
-    userId: key.userId,
-    service: key.service,
-    userNotifiedAt: { $gte: new Date(now.getTime() - USER_ALERT_COOLDOWN_MS) },
-  });
-  if (recent) return false;
+  if (!opts.ignoreCooldown) {
+    const recent = await dispatchAttempts.findOne({
+      userId: key.userId,
+      service: key.service,
+      userNotifiedAt: { $gte: new Date(now.getTime() - USER_ALERT_COOLDOWN_MS) },
+    });
+    if (recent) return false;
+  }
   const res = await dispatchAttempts.updateOne(
     { ...key, userNotifiedAt: { $exists: false } },
     { $set: { userNotifiedAt: now } },
@@ -128,6 +138,51 @@ export async function claimUserAlert(key: AttemptKey, now: Date): Promise<boolea
 export async function releaseUserAlert(key: AttemptKey): Promise<void> {
   const { dispatchAttempts } = await collections();
   await dispatchAttempts.updateOne(key, { $unset: { userNotifiedAt: "" } });
+}
+
+function isFailedAttempt(row: Pick<DispatchAttempt, "status" | "attempts">): boolean {
+  return row.status === "gave-up" || (row.status === "pending" && row.attempts >= MAX_DISPATCH_ATTEMPTS);
+}
+
+/**
+ * How many days in a row (most recent first) this subscription's scheduled
+ * send has failed. Counts only days created after `since`, the last auto-pause,
+ * so re-enabling a paused subscription starts a fresh count. Days with no row
+ * (dispatch didn't run) neither break nor extend the streak. `asOf` (a
+ * puzzleDate) counts back from that day instead of the latest.
+ */
+export async function failureStreak(
+  userId: string,
+  service: ServiceId,
+  since?: Date,
+  asOf?: string,
+): Promise<number> {
+  const { dispatchAttempts } = await collections();
+  const rows = await dispatchAttempts
+    .find(
+      {
+        userId,
+        service,
+        ...(since ? { createdAt: { $gt: since } } : {}),
+        ...(asOf ? { puzzleDate: { $lte: asOf } } : {}),
+      },
+      { projection: { status: 1, attempts: 1 } },
+    )
+    .sort({ puzzleDate: -1 })
+    .limit(60)
+    .toArray();
+  let streak = 0;
+  for (const row of rows) {
+    if (!isFailedAttempt(row)) break;
+    streak++;
+  }
+  return streak;
+}
+
+/** Flag the day's row as the one that paused the subscription, for the admin report. */
+export async function markAttemptPaused(key: AttemptKey): Promise<void> {
+  const { dispatchAttempts } = await collections();
+  await dispatchAttempts.updateOne(key, { $set: { paused: true } });
 }
 
 /** Attempts that gave up (or exhausted their tries) since `since`, for the admin report. */
@@ -163,7 +218,33 @@ export interface DeliveryFailureEmail {
   text: string;
 }
 
-export function deliveryFailureEmail(label: string, puzzleDate: string, error: string): DeliveryFailureEmail {
+export function deliveryFailureEmail(
+  label: string,
+  puzzleDate: string,
+  error: string,
+  opts: { pausedAfterDays?: number } = {},
+): DeliveryFailureEmail {
+  if (opts.pausedAfterDays) {
+    return {
+      subject: `Your ${label} is paused`,
+      text: [
+        "Hi,",
+        "",
+        `Daily Scribe hasn't been able to deliver your ${label} for ${opts.pausedAfterDays} days in a row, so I've paused it.`,
+        "",
+        failureHint(error),
+        "",
+        "Once that's fixed, switch it back on from your dashboard and it'll start arriving again.",
+        "",
+        `Dashboard: ${APP_URL}/dashboard`,
+        "",
+        `What went wrong: ${error}`,
+        "",
+        "Ronan",
+        "Daily Scribe",
+      ].join("\n"),
+    };
+  }
   return {
     subject: `Your ${label} didn't go out today`,
     text: [
@@ -177,10 +258,15 @@ export function deliveryFailureEmail(label: string, puzzleDate: string, error: s
       "",
       `What went wrong: ${error}`,
       "",
-      "You won't get another email about this for a week, even if it keeps failing.",
+      `You won't get another email about this for a week. If it's still failing after ${PAUSE_AFTER_GAVE_UP_DAYS} days, I'll pause it, and you can switch it back on from your dashboard.`,
       "",
       "Ronan",
       "Daily Scribe",
     ].join("\n"),
   };
+}
+
+/** The dashboard banner (`subscriptions.disabledReason`) for an auto-paused subscription. */
+export function pausedReason(label: string, days: number, error: string): string {
+  return `Delivery paused: your ${label} failed ${days} days in a row (${error}). Fix the setting, then switch it back on.`;
 }

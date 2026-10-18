@@ -151,6 +151,9 @@ export interface Subscription {
    *  complaint on the Kindle address (see the resend-events webhook). Surfaced
    *  in the dashboard so the user can fix the address and re-enable. */
   disabledReason?: string;
+  /** When dispatch last auto-paused this row after days of give-ups. Kept when
+   *  the user re-enables, so the failure streak starts fresh from here. */
+  pausedAt?: Date;
   createdAt: Date;
 }
 
@@ -203,6 +206,8 @@ export interface DispatchAttempt {
   lockedUntil: Date;
   /** When the user was emailed that today's delivery failed (rate-limited per service). */
   userNotifiedAt?: Date;
+  /** Set on the day's row when this give-up paused the subscription. */
+  paused?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

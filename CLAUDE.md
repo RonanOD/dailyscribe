@@ -167,7 +167,10 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       user can fix (HTTP 401/403, missing config, empty digest), then emails the user once
       per service per week (`packages/core/src/dispatch-attempts.ts`) and lists the day's
       give-ups in the admin `signup-report` email. Before this, a failing subscription
-      silently retried on every tick, all day, forever.
+      silently retried on every tick, all day, forever. After 7 give-up days in a row the
+      subscription is auto-paused (`enabled: false` + `disabledReason`, like a hard bounce,
+      with a pause email; `pausedAt` restarts the count if they re-enable), and the admin
+      report lists only day 1 and the pause day in full, collapsing the days between.
 - [ ] **Phase 4 — Billing.** Subscription tiers (e.g. free single-service vs. paid bundles).
 - [~] **Phase 5 — Handwriting return path.** Live for Kanji and DnD:
       `/api/webhooks/resend-inbound` routes a mailed-back PDF by embedded page ref(s) — a single

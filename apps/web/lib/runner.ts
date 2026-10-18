@@ -6,12 +6,16 @@ import {
   createResendDeliverer,
   decryptSecret,
   deliveryFailureEmail,
+  failureStreak,
   getPdfPageCount,
   getPlugin,
   isKindleAddress,
+  markAttemptPaused,
   mergePdfAssets,
   nudgeSenderFromEnv,
   nytCrosswordPlugin,
+  PAUSE_AFTER_GAVE_UP_DAYS,
+  pausedReason,
   recordDispatchFailure,
   recordDispatchSuccess,
   registerPlugin,
@@ -154,17 +158,28 @@ async function collectDigestSections(
 
 /**
  * Email the user (their account address, not the Kindle) that today's delivery
- * gave up, at most once per service per week. Best effort: a failure here is
- * logged and never affects the dispatch result.
+ * gave up, at most once per service per week. A pause notice skips that limit,
+ * since it's the one email that tells them the service has stopped. Best
+ * effort: a failure here is logged and never affects the dispatch result.
  */
-async function alertUser(key: AttemptKey, label: string, error: string, now: Date): Promise<void> {
+async function alertUser(
+  key: AttemptKey,
+  label: string,
+  error: string,
+  now: Date,
+  pausedAfterDays?: number,
+): Promise<void> {
   try {
     const { users } = await collections();
     const user = ObjectId.isValid(key.userId) ? await users.findOne({ _id: new ObjectId(key.userId) }) : null;
     if (!user?.email || isKindleAddress(user.email)) return;
-    if (!(await claimUserAlert(key, now))) return;
+    if (!(await claimUserAlert(key, now, { ignoreCooldown: Boolean(pausedAfterDays) }))) return;
     try {
-      await sendPlainEmail(nudgeSenderFromEnv(), user.email, deliveryFailureEmail(label, key.puzzleDate, error));
+      await sendPlainEmail(
+        nudgeSenderFromEnv(),
+        user.email,
+        deliveryFailureEmail(label, key.puzzleDate, error, { pausedAfterDays }),
+      );
     } catch (err) {
       await releaseUserAlert(key);
       throw err;
@@ -175,6 +190,32 @@ async function alertUser(key: AttemptKey, label: string, error: string, now: Dat
 }
 
 /**
+ * After a scheduled send gives up: pause the subscription once it has failed
+ * PAUSE_AFTER_GAVE_UP_DAYS days in a row (as the bounce webhook does, via
+ * `disabledReason`), otherwise just alert the user.
+ */
+async function handleGaveUp(sub: Subscription, key: AttemptKey, label: string, error: string, now: Date) {
+  try {
+    const streak = await failureStreak(sub.userId, sub.service, sub.pausedAt);
+    if (streak >= PAUSE_AFTER_GAVE_UP_DAYS && sub._id) {
+      const { subscriptions } = await collections();
+      const res = await subscriptions.updateOne(
+        { _id: sub._id, enabled: true },
+        { $set: { enabled: false, disabledReason: pausedReason(label, streak, error), pausedAt: now } },
+      );
+      if (res.modifiedCount === 1) {
+        await markAttemptPaused(key);
+        await alertUser(key, label, error, now, streak);
+        return;
+      }
+    }
+  } catch (err) {
+    console.error(`auto-pause check for ${key.service} (user ${key.userId}) failed:`, err);
+  }
+  await alertUser(key, label, error, now);
+}
+
+/**
  * Run one subscription: fetch the service assets, email them to the Kindle, and
  * log the outcome. Never throws: failures are caught and recorded as a "failed"
  * delivery.
@@ -182,7 +223,8 @@ async function alertUser(key: AttemptKey, label: string, error: string, now: Dat
  * Scheduled runs first claim the day's `dispatchAttempts` row, which makes the
  * send exactly-once across overlapping dispatch callers and paces retries
  * (up to MAX_DISPATCH_ATTEMPTS a day, backing off; permanent errors give up at
- * once). Giving up emails the user. Forced sends ("send now") skip all of this.
+ * once). Giving up emails the user, and a week of give-ups in a row pauses
+ * the subscription. Forced sends ("send now") skip all of this.
  */
 export async function runSubscription(
   sub: Subscription,
@@ -272,7 +314,7 @@ export async function runSubscription(
     });
     if (attempt) {
       const { gaveUp } = await recordDispatchFailure(attempt, error, now);
-      if (gaveUp) await alertUser(key, label, error, now);
+      if (gaveUp) await handleGaveUp(sub, key, label, error, now);
     }
     return { subscriptionId, service: sub.service, status: "failed", error };
   }

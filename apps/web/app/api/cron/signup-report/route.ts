@@ -1,4 +1,4 @@
-import { collections, createResendDeliverer, findFailedDispatches } from "@dailyscribe/core";
+import { collections, createResendDeliverer, failureStreak, findFailedDispatches, PAUSE_AFTER_GAVE_UP_DAYS } from "@dailyscribe/core";
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { cronAuthError } from "@/lib/cron-auth";
@@ -11,9 +11,11 @@ const WINDOW_MS = 24 * 60 * 60 * 1000;
 /**
  * Once-a-day operator report to `ADMIN_EMAIL`: new waitlist signups (so the
  * operator knows when to run `apps/web/scripts/approve-waitlist.mjs`) and any
- * scheduled deliveries that gave up in the same window (`dispatchAttempts`). Triggered
- * the same way as `/api/cron/dispatch` (a GitHub Actions workflow); sends
- * nothing on a quiet day. The fixed 24h window is naturally idempotent for a
+ * scheduled deliveries that gave up in the same window (`dispatchAttempts`). Only
+ * the first day of a failure run, and the day it got paused, are listed in full;
+ * days in between collapse to one "still failing" line, and don't send an email
+ * on their own. Triggered the same way as `/api/cron/dispatch` (a GitHub Actions
+ * workflow); sends nothing on a quiet day. The fixed 24h window is naturally idempotent for a
  * fixed-time daily run — a missed run just omits that day's names, which are
  * still counted in the running "pending total".
  */
@@ -30,7 +32,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "RESEND_API_KEY is not set" }, { status: 500 });
   }
 
-  const { waitlist, users } = await collections();
+  const { waitlist, users, subscriptions } = await collections();
   const since = new Date(Date.now() - WINDOW_MS);
   const [fresh, pendingTotal, failures] = await Promise.all([
     waitlist
@@ -41,8 +43,25 @@ export async function GET(req: Request) {
     findFailedDispatches(since),
   ]);
 
-  if (fresh.length === 0 && failures.length === 0) {
-    return NextResponse.json({ new: 0, pending: pendingTotal, failed: 0 });
+  // Day N of a failure run: 1 is news, the day it paused is news, the rest are repeats.
+  const pausedAt = new Map(
+    (
+      await subscriptions
+        .find({ userId: { $in: [...new Set(failures.map((f) => f.userId))] }, pausedAt: { $exists: true } })
+        .toArray()
+    ).map((s) => [`${s.userId}:${s.service}`, s.pausedAt]),
+  );
+  const classified = await Promise.all(
+    failures.map(async (f) => {
+      const day = await failureStreak(f.userId, f.service, pausedAt.get(`${f.userId}:${f.service}`), f.puzzleDate);
+      return { f, day, isNew: Boolean(f.paused) || day <= 1 };
+    }),
+  );
+  const newFailures = classified.filter((c) => c.isNew);
+  const repeats = classified.filter((c) => !c.isNew);
+
+  if (fresh.length === 0 && newFailures.length === 0) {
+    return NextResponse.json({ new: fresh.length, pending: pendingTotal, failed: 0, repeats: repeats.length });
   }
 
   const sections: string[] = [];
@@ -66,7 +85,7 @@ export async function GET(req: Request) {
       ].join("\n"),
     );
   }
-  if (failures.length > 0) {
+  if (newFailures.length > 0 || repeats.length > 0) {
     const ids = failures.map((f) => f.userId).filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id));
     const emails = new Map(
       (await users.find({ _id: { $in: ids } }, { projection: { email: 1 } }).toArray()).map((u) => [
@@ -74,20 +93,33 @@ export async function GET(req: Request) {
         u.email ?? "?",
       ]),
     );
-    const rows = failures.map((f) => {
-      const notified = f.userNotifiedAt ? " (user emailed)" : "";
-      return `  ${f.puzzleDate}  ${f.service}  ${emails.get(f.userId) ?? f.userId}  x${f.attempts}${notified}\n      ${f.lastError ?? "no error recorded (run killed mid-send?)"}`;
-    });
-    sections.push(
-      [`${failures.length} scheduled deliver${failures.length === 1 ? "y" : "ies"} gave up in the last 24h:`, "", ...rows].join(
-        "\n",
-      ),
-    );
+    const lines: string[] = [];
+    if (newFailures.length > 0) {
+      lines.push(
+        `${newFailures.length} scheduled deliver${newFailures.length === 1 ? "y" : "ies"} gave up in the last 24h:`,
+        "",
+        ...newFailures.map(({ f, day }) => {
+          const notes = [f.paused ? `PAUSED after ${day} days` : "", f.userNotifiedAt ? "user emailed" : ""].filter(
+            Boolean,
+          );
+          const suffix = notes.length > 0 ? ` (${notes.join(", ")})` : "";
+          return `  ${f.puzzleDate}  ${f.service}  ${emails.get(f.userId) ?? f.userId}  x${f.attempts}${suffix}\n      ${f.lastError ?? "no error recorded (run killed mid-send?)"}`;
+        }),
+      );
+    }
+    if (repeats.length > 0) {
+      if (lines.length > 0) lines.push("");
+      lines.push(
+        `Still failing, already reported (pauses after ${PAUSE_AFTER_GAVE_UP_DAYS} days):`,
+        ...repeats.map(({ f, day }) => `  ${f.service}  ${emails.get(f.userId) ?? f.userId}  day ${day}`),
+      );
+    }
+    sections.push(lines.join("\n"));
   }
   const text = sections.join("\n\n");
   const subjectParts = [
     fresh.length > 0 ? `${fresh.length} new waitlist signup${plural}` : "",
-    failures.length > 0 ? `${failures.length} failed deliver${failures.length === 1 ? "y" : "ies"}` : "",
+    newFailures.length > 0 ? `${newFailures.length} failed deliver${newFailures.length === 1 ? "y" : "ies"}` : "",
   ].filter(Boolean);
 
   const mailer = createResendDeliverer({
@@ -101,5 +133,5 @@ export async function GET(req: Request) {
     assets: [],
   });
 
-  return NextResponse.json({ new: fresh.length, pending: pendingTotal, failed: failures.length });
+  return NextResponse.json({ new: fresh.length, pending: pendingTotal, failed: newFailures.length, repeats: repeats.length });
 }
