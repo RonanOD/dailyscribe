@@ -35,6 +35,7 @@ import {
   findNudgeCandidates,
   getDb,
   isEmailShaped,
+  isKindleAddress,
   nudgeSenderFromEnv,
   sendNudge,
   sendTestNudge,
@@ -61,6 +62,8 @@ const UNDELIVERABLE_DOMAINS = new Set(["example.com", "example.net", "example.or
 const UNDELIVERABLE_TLDS = ["test", "invalid", "local", "localhost", "example"];
 
 function isUndeliverable(email) {
+  // A Kindle inbox only shows attached documents, so a plain invite there is unreadable.
+  if (isKindleAddress(email)) return true;
   const at = email.lastIndexOf("@");
   if (at === -1) return true;
   const domain = email.slice(at + 1);

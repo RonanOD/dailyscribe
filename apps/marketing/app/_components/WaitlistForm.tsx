@@ -13,6 +13,12 @@ function resolveRef(fallback: string): string {
   return fromUrl ? fromUrl.slice(0, 64) : fallback;
 }
 
+// Mirrors isKindleAddress in @dailyscribe/core (the API checks too); this just
+// saves a round trip. A Kindle inbox can't show the invite email.
+const KINDLE_ADDRESS = /@(free\.)?kindle\.com$/i;
+const KINDLE_ADDRESS_ERROR =
+  "That's your Kindle's address. Please use your regular email: your invite goes there, and you'll add your Kindle address during setup.";
+
 export interface WaitlistCopy {
   button_label: string;
   placeholder: string;
@@ -35,6 +41,11 @@ export function WaitlistForm({
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    if (KINDLE_ADDRESS.test(email.trim())) {
+      setState("error");
+      setMessage(KINDLE_ADDRESS_ERROR);
+      return;
+    }
     setState("loading");
     try {
       const res = await fetch(`${WEB_APP_URL}/api/waitlist`, {

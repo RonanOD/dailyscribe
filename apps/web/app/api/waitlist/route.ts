@@ -1,4 +1,4 @@
-import { collections, isEmailShaped } from "@dailyscribe/core";
+import { collections, isEmailShaped, isKindleAddress } from "@dailyscribe/core";
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -26,6 +26,9 @@ function corsHeaders(origin: string | null): Record<string, string> {
   };
 }
 
+const KINDLE_ADDRESS_ERROR =
+  "That's your Kindle's address. Please use your regular email: your invite goes there, and you'll add your Kindle address during setup.";
+
 export function OPTIONS(req: Request) {
   return new NextResponse(null, { status: 204, headers: corsHeaders(req.headers.get("origin")) });
 }
@@ -47,6 +50,10 @@ export async function POST(req: Request) {
   const email = (body.email ?? "").trim().toLowerCase();
   if (!isEmailShaped(email)) {
     return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400, headers });
+  }
+  // The invite and sign-in link are plain emails, which a Kindle inbox can't show.
+  if (isKindleAddress(email)) {
+    return NextResponse.json({ error: KINDLE_ADDRESS_ERROR }, { status: 400, headers });
   }
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
