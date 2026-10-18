@@ -187,6 +187,26 @@ export interface Delivery {
   deliveredAt: Date;
 }
 
+/** One per subscription per local day: claims the scheduled send so overlapping
+ *  dispatch runs can't double-send, and paces retries (see dispatch-attempts.ts).
+ *  Forced "send now" deliveries bypass this and only write a `Delivery` row. */
+export interface DispatchAttempt {
+  _id?: ObjectId;
+  userId: string;
+  service: ServiceId;
+  puzzleDate: string; // YYYY-MM-DD in the subscription's timezone
+  status: "pending" | "success" | "gave-up";
+  /** Attempts claimed so far, incremented at claim time so a run killed mid-send still counts. */
+  attempts: number;
+  lastError?: string;
+  nextAttemptAt: Date;
+  lockedUntil: Date;
+  /** When the user was emailed that today's delivery failed (rate-limited per service). */
+  userNotifiedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 /** Per-user cursor into the Kanji curriculum (packages/core/src/data/kanji.ts).
  *  The curriculum is a fixed ordered array, so "how far along" a user is
  *  is fully captured by an integer offset — no per-item seen-set needed. */

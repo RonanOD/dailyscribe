@@ -1,18 +1,30 @@
 import {
   assembleDigestPdf,
+  claimDispatchAttempt,
+  claimUserAlert,
   collections,
   createResendDeliverer,
   decryptSecret,
+  deliveryFailureEmail,
   getPdfPageCount,
   getPlugin,
+  isKindleAddress,
   mergePdfAssets,
+  nudgeSenderFromEnv,
   nytCrosswordPlugin,
+  recordDispatchFailure,
+  recordDispatchSuccess,
   registerPlugin,
+  releaseUserAlert,
+  sendPlainEmail,
+  type AttemptKey,
   type Asset,
   type Deliverer,
   type DigestSection,
+  type DispatchAttempt,
   type Subscription,
 } from "@dailyscribe/core";
+import { ObjectId } from "mongodb";
 import { bbcNewsPlugin } from "@/lib/plugins/bbc";
 import { cbcNewsPlugin } from "@/lib/plugins/cbc";
 import { renderDigestCoverPdf } from "@/lib/plugins/digest-cover";
@@ -141,9 +153,36 @@ async function collectDigestSections(
 }
 
 /**
- * Run one subscription: skip if already delivered today (unless forced), fetch the
- * service assets, email them to the Kindle, and log the outcome. Never throws —
- * failures are caught and recorded as a "failed" delivery.
+ * Email the user (their account address, not the Kindle) that today's delivery
+ * gave up, at most once per service per week. Best effort: a failure here is
+ * logged and never affects the dispatch result.
+ */
+async function alertUser(key: AttemptKey, label: string, error: string, now: Date): Promise<void> {
+  try {
+    const { users } = await collections();
+    const user = ObjectId.isValid(key.userId) ? await users.findOne({ _id: new ObjectId(key.userId) }) : null;
+    if (!user?.email || isKindleAddress(user.email)) return;
+    if (!(await claimUserAlert(key, now))) return;
+    try {
+      await sendPlainEmail(nudgeSenderFromEnv(), user.email, deliveryFailureEmail(label, key.puzzleDate, error));
+    } catch (err) {
+      await releaseUserAlert(key);
+      throw err;
+    }
+  } catch (err) {
+    console.error(`delivery-failure alert for ${key.service} (user ${key.userId}) failed:`, err);
+  }
+}
+
+/**
+ * Run one subscription: fetch the service assets, email them to the Kindle, and
+ * log the outcome. Never throws: failures are caught and recorded as a "failed"
+ * delivery.
+ *
+ * Scheduled runs first claim the day's `dispatchAttempts` row, which makes the
+ * send exactly-once across overlapping dispatch callers and paces retries
+ * (up to MAX_DISPATCH_ATTEMPTS a day, backing off; permanent errors give up at
+ * once). Giving up emails the user. Forced sends ("send now") skip all of this.
  */
 export async function runSubscription(
   sub: Subscription,
@@ -153,26 +192,30 @@ export async function runSubscription(
   const { userSecrets, deliveries } = await collections();
   const { isoDate, utcMidnight } = localParts(now, sub.config.timezone);
   const subscriptionId = sub._id?.toString() ?? "unknown";
+  const key: AttemptKey = { userId: sub.userId, service: sub.service, puzzleDate: isoDate };
 
+  let attempt: DispatchAttempt | null = null;
   if (!opts.force) {
-    const already = await deliveries.findOne({
-      userId: sub.userId,
-      service: sub.service,
-      puzzleDate: isoDate,
-      status: "success",
-    });
-    if (already) return { subscriptionId, service: sub.service, status: "skipped" };
+    attempt = await claimDispatchAttempt(key, now);
+    if (!attempt) return { subscriptionId, service: sub.service, status: "skipped" };
+    // A forced "send now" today already counts as today's delivery.
+    const already = await deliveries.findOne({ ...key, status: "success" });
+    if (already) {
+      await recordDispatchSuccess(key, now);
+      return { subscriptionId, service: sub.service, status: "skipped" };
+    }
   }
 
+  let label: string = sub.service;
   try {
     const secretDocs = await userSecrets.find({ userId: sub.userId }).toArray();
     const secrets: Record<string, string> = {};
     for (const doc of secretDocs) secrets[doc.provider] = decryptSecret(doc.data);
 
     let assets: Asset[];
-    let label: string;
     let noteSuffix = "";
     if (sub.service === "digest") {
+      label = "Daily Scribe Digest";
       const { sections, failedLabels } = await collectDigestSections(sub.userId, utcMidnight, secrets);
       if (sections.length === 0) {
         const reason =
@@ -191,15 +234,14 @@ export async function runSubscription(
 
       const { asset: cover, tocLinkRects } = await renderDigestCoverPdf(withStartPages, utcMidnight);
       assets = [await assembleDigestPdf(cover, sections, tocLinkRects, `daily-scribe-digest-${isoDate}.pdf`)];
-      label = "Daily Scribe Digest";
       if (failedLabels.length > 0) {
         noteSuffix = ` Note: ${failedLabels.join(", ")} couldn't be included today — it'll be back once resolved.`;
       }
     } else {
       const plugin = getPlugin(sub.service);
       if (!plugin) throw new Error(`Unknown service: ${sub.service}`);
-      assets = await plugin.run({ userId: sub.userId, date: utcMidnight, config: sub.config, secrets });
       label = plugin.label;
+      assets = await plugin.run({ userId: sub.userId, date: utcMidnight, config: sub.config, secrets });
     }
 
     await getDeliverer().deliver({
@@ -216,6 +258,7 @@ export async function runSubscription(
       status: "success",
       deliveredAt: new Date(),
     });
+    if (attempt) await recordDispatchSuccess(key, now);
     return { subscriptionId, service: sub.service, status: "success" };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
@@ -227,6 +270,10 @@ export async function runSubscription(
       error,
       deliveredAt: new Date(),
     });
+    if (attempt) {
+      const { gaveUp } = await recordDispatchFailure(attempt, error, now);
+      if (gaveUp) await alertUser(key, label, error, now);
+    }
     return { subscriptionId, service: sub.service, status: "failed", error };
   }
 }

@@ -191,7 +191,9 @@ export function nudgeSenderFromEnv({ requireReplyTo = true } = {}): NudgeSender 
   return { resend: new Resend(apiKey), fromAddress, replyTo: process.env.MAIL_REPLY_TO || undefined };
 }
 
-async function sendEmail(sender: NudgeSender, to: string, email: NudgeEmail): Promise<void> {
+/** Plain-text email from Ronan, with replies routed to MAIL_REPLY_TO. Also used
+ *  for delivery-failure alerts (dispatch-attempts.ts). */
+export async function sendPlainEmail(sender: NudgeSender, to: string, email: NudgeEmail): Promise<void> {
   const { error } = await sender.resend.emails.send({
     from: `Ronan at Daily Scribe <${sender.fromAddress}>`,
     to,
@@ -204,7 +206,7 @@ async function sendEmail(sender: NudgeSender, to: string, email: NudgeEmail): Pr
 
 /** Send one sample of `kind` to `to` without touching any user record. */
 export async function sendTestNudge(sender: NudgeSender, kind: NudgeKind, to: string, ref?: string) {
-  await sendEmail(sender, to, nudgeEmail(kind, ref));
+  await sendPlainEmail(sender, to, nudgeEmail(kind, ref));
 }
 
 /**
@@ -226,7 +228,7 @@ export async function sendNudge(
   );
   if (claim.modifiedCount === 0) return "already-sent";
   try {
-    await sendEmail(sender, candidate.email, nudgeEmail(kind, candidate.ref));
+    await sendPlainEmail(sender, candidate.email, nudgeEmail(kind, candidate.ref));
     return "sent";
   } catch (err) {
     await users.updateOne({ _id: candidate.user._id }, { $unset: { [field]: "" } });

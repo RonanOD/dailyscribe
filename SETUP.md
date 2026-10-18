@@ -128,7 +128,7 @@ Copy `.env.example` → `apps/web/.env.local` for dev, and set the same in Verce
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth client |
 | `ALLOW_NEW_SIGNUPS` | `"false"` = invite-only (waitlist approval seeds `users`); `"true"` = open |
 | `CRON_SECRET` | Bearer token cron callers must present to `/api/cron/*` (Vercel Cron, the `workers/dispatch-cron` Worker, and the `.github/workflows/` dispatch + signup-report workflows) |
-| `ADMIN_EMAIL` | Operator inbox for the daily new-signups digest (`/api/cron/signup-report`); unset disables that email |
+| `ADMIN_EMAIL` | Operator inbox for the daily report (`/api/cron/signup-report`): new waitlist signups plus scheduled deliveries that gave up; unset disables that email |
 | `RESEND_API_KEY` | Resend API key (app-wide outbound email + magic-link sign-in) |
 | `MAIL_FROM_DEFAULT` | From address, `Daily Scribe <my@dailyscribe.ca>` (also the code default) |
 | `RESEND_INBOUND_DOMAIN` | The Resend domain with Receiving enabled — `dailyscribe.ca` (the apex domain; independent of which Vercel project/hostname actually serves the webhook) |

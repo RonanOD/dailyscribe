@@ -1,4 +1,5 @@
-import { collections, createResendDeliverer } from "@dailyscribe/core";
+import { collections, createResendDeliverer, findFailedDispatches } from "@dailyscribe/core";
+import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { cronAuthError } from "@/lib/cron-auth";
 
@@ -8,8 +9,9 @@ export const maxDuration = 30;
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Once-a-day digest of new waitlist signups, emailed to `ADMIN_EMAIL` so the
- * operator knows when to run `apps/web/scripts/approve-waitlist.mjs`. Triggered
+ * Once-a-day operator report to `ADMIN_EMAIL`: new waitlist signups (so the
+ * operator knows when to run `apps/web/scripts/approve-waitlist.mjs`) and any
+ * scheduled deliveries that gave up in the same window (`dispatchAttempts`). Triggered
  * the same way as `/api/cron/dispatch` (a GitHub Actions workflow); sends
  * nothing on a quiet day. The fixed 24h window is naturally idempotent for a
  * fixed-time daily run — a missed run just omits that day's names, which are
@@ -28,36 +30,65 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "RESEND_API_KEY is not set" }, { status: 500 });
   }
 
-  const { waitlist } = await collections();
+  const { waitlist, users } = await collections();
   const since = new Date(Date.now() - WINDOW_MS);
-  const [fresh, pendingTotal] = await Promise.all([
+  const [fresh, pendingTotal, failures] = await Promise.all([
     waitlist
       .find({ status: "pending", createdAt: { $gte: since } })
       .sort({ createdAt: 1 })
       .toArray(),
     waitlist.countDocuments({ status: "pending" }),
+    findFailedDispatches(since),
   ]);
 
-  if (fresh.length === 0) {
-    return NextResponse.json({ new: 0, pending: pendingTotal });
+  if (fresh.length === 0 && failures.length === 0) {
+    return NextResponse.json({ new: 0, pending: pendingTotal, failed: 0 });
   }
 
+  const sections: string[] = [];
   const plural = fresh.length === 1 ? "" : "s";
-  const rows = fresh.map((w) => {
-    const date = w.createdAt.toISOString().slice(0, 10);
-    const ref = w.ref ? `  [${w.ref}]` : "";
-    const note = w.note ? `  — ${w.note}` : "";
-    return `  ${date}  ${w.email}${ref}${note}`;
-  });
-  const text = [
-    `${fresh.length} new waitlist signup${plural} in the last 24h:`,
-    "",
-    ...rows,
-    "",
-    `${pendingTotal} pending in total.`,
-    "",
-    `Approve: cd apps/web && npx tsx scripts/approve-waitlist.mjs --batch ${Math.min(fresh.length, 5)}`,
-  ].join("\n");
+  if (fresh.length > 0) {
+    const rows = fresh.map((w) => {
+      const date = w.createdAt.toISOString().slice(0, 10);
+      const ref = w.ref ? `  [${w.ref}]` : "";
+      const note = w.note ? `  — ${w.note}` : "";
+      return `  ${date}  ${w.email}${ref}${note}`;
+    });
+    sections.push(
+      [
+        `${fresh.length} new waitlist signup${plural} in the last 24h:`,
+        "",
+        ...rows,
+        "",
+        `${pendingTotal} pending in total.`,
+        "",
+        `Approve: cd apps/web && npx tsx scripts/approve-waitlist.mjs --batch ${Math.min(fresh.length, 5)}`,
+      ].join("\n"),
+    );
+  }
+  if (failures.length > 0) {
+    const ids = failures.map((f) => f.userId).filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id));
+    const emails = new Map(
+      (await users.find({ _id: { $in: ids } }, { projection: { email: 1 } }).toArray()).map((u) => [
+        String(u._id),
+        u.email ?? "?",
+      ]),
+    );
+    const rows = failures.map((f) => {
+      const notified = f.userNotifiedAt ? " (user emailed)" : "";
+      return `  ${f.puzzleDate}  ${f.service}  ${emails.get(f.userId) ?? f.userId}  x${f.attempts}${notified}\n      ${f.lastError ?? "no error recorded (run killed mid-send?)"}`;
+    });
+    sections.push(
+      [`${failures.length} scheduled deliver${failures.length === 1 ? "y" : "ies"} gave up in the last 24h:`, "", ...rows].join(
+        "\n",
+      ),
+    );
+  }
+  const text = sections.join("\n\n");
+  const subjectParts = [
+    fresh.length > 0 ? `${fresh.length} new waitlist signup${plural}` : "",
+    failures.length > 0 ? `${failures.length} failed deliver${failures.length === 1 ? "y" : "ies"}` : "",
+  ].filter(Boolean);
 
   const mailer = createResendDeliverer({
     apiKey,
@@ -65,10 +96,10 @@ export async function GET(req: Request) {
   });
   await mailer.deliver({
     to,
-    subject: `Daily Scribe — ${fresh.length} new waitlist signup${plural}`,
+    subject: `Daily Scribe — ${subjectParts.join(", ")}`,
     text,
     assets: [],
   });
 
-  return NextResponse.json({ new: fresh.length, pending: pendingTotal });
+  return NextResponse.json({ new: fresh.length, pending: pendingTotal, failed: failures.length });
 }
