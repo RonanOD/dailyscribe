@@ -682,14 +682,85 @@ a {
   margin-bottom: 6px;
 }
 
-.kindle-guide-shot {
+/* Mockups of Amazon's settings tables: deliberately Amazon-plain (white, sans)
+   so they read as "this is what you'll see over there", not as our own UI. */
+.amazon-mock {
   margin: 10px 0 16px;
-}
-
-.kindle-guide-shot img {
-  width: 100%;
+  padding: 14px 16px 12px;
+  background: #fff;
+  color: #0f1111;
   border: 1px solid var(--border);
   border-radius: 8px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.8rem;
+}
+.amazon-mock-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.amazon-mock-intro {
+  margin: 4px 0 10px;
+  color: #565959;
+}
+.amazon-mock table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.amazon-mock th,
+.amazon-mock td {
+  padding: 6px 8px;
+  text-align: left;
+  border-top: 1px solid #ddd;
+  overflow-wrap: anywhere;
+}
+.amazon-mock th {
+  background: #f3f3f3;
+}
+.amazon-mock th:last-child,
+.amazon-mock td:last-child {
+  width: 64px;
+  color: #007185;
+}
+.amazon-mock th:last-child {
+  color: #0f1111;
+}
+.amazon-mock-hl td {
+  background: color-mix(in oklch, var(--accent) 12%, #fff);
+  font-weight: 700;
+}
+.amazon-mock figcaption {
+  margin-top: 8px;
+  font-family: var(--font-body), Georgia, serif;
+  color: var(--accent);
+}
+
+/* Onboarding Kindle test send */
+.kindle-test {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.kindle-test h3 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+.kindle-test .button {
+  margin-top: 8px;
+}
+.kindle-test-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.kindle-test-causes {
+  margin: 0 0 4px;
+  padding-left: 20px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.kindle-test-causes li {
+  margin-bottom: 6px;
 }
 
 /* Stop deliveries / delete account (dashboard, below the settings). */

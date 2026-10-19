@@ -11,6 +11,10 @@ import { KindleSetupGuide } from "./kindle-setup-guide";
 
 const STEPS = ["Kindle setup", "Pick services", "Schedule"] as const;
 
+/** Onboarding's Kindle check: a real test send the user confirms on the device,
+ *  since Amazon silently drops mail from unapproved senders. */
+type TestState = "idle" | "sending" | "sent" | "confirmed" | "missing" | "skipped";
+
 /** Default feed key lists sent at creation so a new subscriber starts with the
  *  curated set spelled out (the plugin also falls back to these if omitted). */
 const DEFAULT_FEEDS: Record<string, string[]> = {
@@ -49,7 +53,10 @@ export function OnboardingFlow({
 
   // Step 1 — Kindle setup
   const [kindleEmail, setKindleEmail] = useState("");
-  const [whitelisted, setWhitelisted] = useState(false);
+  const [testState, setTestState] = useState<TestState>("idle");
+  /** The address the last test went to; editing the field invalidates the check. */
+  const [testedEmail, setTestedEmail] = useState("");
+  const [testError, setTestError] = useState<string | null>(null);
 
   // Step 2 — service picks (+ Home Assistant credentials if picked)
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -73,7 +80,8 @@ export function OnboardingFlow({
     [selected, byId],
   );
 
-  const step1Ok = kindleEmail.includes("@") && whitelisted;
+  const test: TestState = kindleEmail.trim() === testedEmail ? testState : "idle";
+  const step1Ok = test === "confirmed" || test === "skipped";
   const step2Ok = selected.size > 0 && (!needsHa || (haUrl.trim() !== "" && haToken.trim() !== ""));
 
   function toggleService(id: string) {
@@ -83,6 +91,20 @@ export function OnboardingFlow({
       else next.add(id);
       return next;
     });
+  }
+
+  async function sendTest() {
+    const to = kindleEmail.trim();
+    setTestedEmail(to);
+    setTestState("sending");
+    setTestError(null);
+    try {
+      await postJson("/api/onboarding/test-send", { kindleEmail: to });
+      setTestState("sent");
+    } catch (e) {
+      setTestError(e instanceof Error ? e.message : String(e));
+      setTestState("idle");
+    }
   }
 
   async function finish() {
@@ -150,18 +172,84 @@ export function OnboardingFlow({
               placeholder="you@kindle.com"
             />
           </div>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={whitelisted}
-              onChange={(e) => setWhitelisted(e.target.checked)}
-            />
-            {/* Wrap in a span so the nested <code> doesn't become its own flex
-                item inside .check (which would eat the spaces around it). */}
-            <span>
-              I&apos;ve added <code>my@dailyscribe.ca</code> to my Approved list
-            </span>
-          </label>
+          <div className="kindle-test">
+            <h3>Check it works</h3>
+            {test === "idle" || test === "sending" ? (
+              <>
+                <p className="hint">
+                  Once <code>my@dailyscribe.ca</code> is approved, we&apos;ll send a one-page welcome PDF
+                  to your Kindle. Amazon gives no error if the sender isn&apos;t approved, so this is the
+                  only way to know it works.
+                </p>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={sendTest}
+                  disabled={test === "sending" || !kindleEmail.includes("@")}
+                >
+                  {test === "sending" ? "Sending…" : "Send a test page to my Kindle"}
+                </button>
+              </>
+            ) : test === "sent" ? (
+              <>
+                <p className="hint">
+                  Sent to <code>{testedEmail}</code>. It usually shows up within a few minutes. Make sure
+                  your Kindle is on Wi-Fi, then sync it. Did &ldquo;Welcome to Daily Scribe&rdquo; arrive?
+                </p>
+                <div className="kindle-test-actions">
+                  <button type="button" className="button" onClick={() => setTestState("confirmed")}>
+                    Yes, it arrived
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    onClick={() => setTestState("missing")}
+                  >
+                    Not yet
+                  </button>
+                </div>
+              </>
+            ) : test === "confirmed" ? (
+              <p className="message ok">Your Kindle is connected. On to your services.</p>
+            ) : (
+              <>
+                <p className="hint">Nothing yet? The usual causes:</p>
+                <ul className="kindle-test-causes">
+                  <li>
+                    <code>my@dailyscribe.ca</code> isn&apos;t on the Approved list yet, or was added on a
+                    different Amazon site than the one your Kindle is registered to. Mail sent before you
+                    approved it is gone, so send again once it&apos;s there.
+                  </li>
+                  <li>
+                    The Send-to-Kindle address above has a typo. Copy it from the Send-to-Kindle
+                    E-Mail Settings list rather than retyping it.
+                  </li>
+                  <li>The Kindle hasn&apos;t synced. Turn on Wi-Fi and choose Sync.</li>
+                </ul>
+                <div className="kindle-test-actions">
+                  <button type="button" className="button" onClick={sendTest}>
+                    Send again
+                  </button>
+                  {test === "missing" && (
+                    <button
+                      type="button"
+                      className="button button--secondary"
+                      onClick={() => setTestState("skipped")}
+                    >
+                      Continue without confirming
+                    </button>
+                  )}
+                </div>
+                {test === "skipped" && (
+                  <p className="hint">
+                    OK. If your first edition doesn&apos;t arrive, the Approved list is the first thing to
+                    check (it&apos;s under Delivery on your dashboard).
+                  </p>
+                )}
+              </>
+            )}
+            {testError && <p className="message err">{testError}</p>}
+          </div>
         </section>
       )}
 

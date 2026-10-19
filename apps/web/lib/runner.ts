@@ -53,7 +53,7 @@ registerPlugin(dndPlugin);
  * App-wide deliverer: Resend, sending from Daily Scribe's single verified address.
  * Users whitelist my@dailyscribe.ca once; one API key replaces per-user Gmail credentials.
  */
-function getDeliverer(): Deliverer {
+export function getDeliverer(): Deliverer {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY is not set.");
   return createResendDeliverer({

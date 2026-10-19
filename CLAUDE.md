@@ -154,8 +154,11 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       deferred catalog service landed and is now public — dashboard tab, onboarding card, and
       its own marketing feature block, after a stint behind `comingSoon: true` while its
       mail-back loop was verified against real production submissions. Still to do: build the
-      remaining deferred catalog services (classic novels, eating tracking); capture the three
-      Amazon screenshots for `apps/web/public/onboarding/` (flow works without them).
+      remaining deferred catalog services (classic novels, eating tracking). **Kindle check
+      (Oct 2026, DAI-8):** onboarding's "I've approved the sender" checkbox became a real test
+      send (`/api/onboarding/test-send`, a one-page welcome PDF) the user confirms arrived,
+      since Amazon silently drops unapproved mail; the guide's Amazon screenshots became HTML
+      mockups (highlighted row, placeholder device address).
 - [x] **Phase 3 — Scheduling at scale.** Timezone-aware, idempotent dispatch, driven every
       ~10 min by a GitHub Actions workflow hitting `/api/cron/dispatch` (Sep 2026 — replaced
       the daily-only Vercel Hobby cron, which couldn't honour per-subscriber delivery times

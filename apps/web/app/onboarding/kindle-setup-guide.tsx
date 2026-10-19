@@ -14,10 +14,10 @@ import { useEffect, useState } from "react";
  * account. So the link's domain is a small picker (remembered per browser),
  * defaulting to amazon.ca.
  *
- * The screenshots are hand-captured static assets under /public/onboarding
- * (refresh them if Amazon redesigns its settings UI). They are optional: any
- * that 404 hide themselves, and the numbered text steps always render, so the
- * flow ships before the images exist.
+ * The two Amazon tables are HTML mockups rather than screenshots: they can
+ * highlight the row that matters, show a placeholder device address instead of
+ * a real one, and don't go stale in a browser-chrome way. Update the headings
+ * if Amazon renames its settings sections.
  */
 const SENDER = "my@dailyscribe.ca";
 const STORAGE_KEY = "ds.amazonMarketplace";
@@ -41,21 +41,44 @@ const MARKETPLACES: { host: string; label: string }[] = [
 const DEFAULT_HOST = MARKETPLACES[0].host;
 const VALID_HOSTS = new Set(MARKETPLACES.map((m) => m.host));
 
-/** One screenshot. Self-hides if the asset is missing, so the guide still reads
- *  fine without it. */
-function GuideShot({ src, alt }: { src: string; alt: string }) {
+/** A simplified copy of one of Amazon's settings tables, with the row the user
+ *  cares about highlighted. */
+function AmazonTableMock({
+  title,
+  intro,
+  columns,
+  rows,
+  note,
+}: {
+  title: string;
+  intro: string;
+  columns: string[];
+  rows: { cells: string[]; highlight?: boolean }[];
+  note: string;
+}) {
   return (
-    <figure className="kindle-guide-shot">
-      {/* eslint-disable-next-line @next/next/no-img-element -- static asset, no optimization needed */}
-      <img
-        src={src}
-        alt={alt}
-        loading="lazy"
-        onError={(e) => {
-          const fig = e.currentTarget.closest("figure");
-          if (fig) fig.hidden = true;
-        }}
-      />
+    <figure className="amazon-mock" aria-label={`Example of Amazon's "${title}" section`}>
+      <div className="amazon-mock-title">{title}</div>
+      <div className="amazon-mock-intro">{intro}</div>
+      <table>
+        <thead>
+          <tr>
+            {columns.map((c) => (
+              <th key={c}>{c}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.cells.join("|")} className={r.highlight ? "amazon-mock-hl" : undefined}>
+              {r.cells.map((c, i) => (
+                <td key={i}>{c}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <figcaption>{note}</figcaption>
     </figure>
   );
 }
@@ -120,9 +143,12 @@ export function KindleSetupGuide() {
         </li>
       </ol>
 
-      <GuideShot
-        src="/onboarding/amazon-approved-list.png"
-        alt={`Amazon "Approved Personal Document E-mail List" showing ${SENDER} added`}
+      <AmazonTableMock
+        title="Approved Personal Document E-mail List"
+        intro="To prevent spam, your Kindle will only receive files from the following e-mail addresses you have authorized."
+        columns={["E-mail address", "Actions"]}
+        rows={[{ cells: [SENDER, "Delete"], highlight: true }]}
+        note={`Done when ${SENDER} is in this list.`}
       />
 
       <p className="hint">
@@ -131,9 +157,15 @@ export function KindleSetupGuide() {
         Scribe to and paste it into the text box below.
       </p>
 
-      <GuideShot
-        src="/onboarding/amazon-send-to-kindle.png"
-        alt='Amazon "Send-to-Kindle E-Mail Settings" section listing each device and its address'
+      <AmazonTableMock
+        title="Send-to-Kindle E-Mail Settings"
+        intro="You can e-mail personal documents to the following Kindle(s) using the e-mail addresses shown."
+        columns={["Name", "E-mail address", "Actions"]}
+        rows={[
+          { cells: ["Your Kindle Scribe", "yourname_a1b2c3@kindle.com", "Edit"], highlight: true },
+          { cells: ["Kindle for iPhone", "yourname_x9y8z7@kindle.com", "Edit"] },
+        ]}
+        note="Copy the address of the Kindle you'll read on (your Scribe, not a phone app)."
       />
     </div>
   );
