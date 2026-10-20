@@ -44,6 +44,8 @@ export async function POST(req: Request) {
     await getDeliverer().deliver({
       to: kindleEmail,
       subject: "Welcome to Daily Scribe",
+      // Resend rejects a message with neither text nor html, even with an attachment.
+      text: "Your Kindle is connected to Daily Scribe.",
       assets: [await renderWelcomePdf()],
     });
   } catch (e) {
