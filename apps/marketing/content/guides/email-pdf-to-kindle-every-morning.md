@@ -3,7 +3,7 @@ slug: email-pdf-to-kindle-every-morning
 title: How to automatically email a PDF to your Kindle every morning
 description: Kindle's Send-to-Kindle email works well but can't be scheduled. Here are the ways to send a PDF on a daily timer, and the trade-offs of each.
 updated: 2026-09-08
-order: 3
+order: 4
 ---
 
 ## Send to Kindle is a delivery mechanism, not a scheduler

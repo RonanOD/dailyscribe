@@ -3,7 +3,7 @@ slug: kindle-scribe-daily-delivery-setup
 title: "Kindle Scribe daily delivery: a setup guide"
 description: A step-by-step guide to receiving a personalised daily edition on your Kindle Scribe — the one Amazon setting to change, and how the whole flow fits together.
 updated: 2026-09-08
-order: 4
+order: 5
 ---
 
 ## What "daily delivery" means here

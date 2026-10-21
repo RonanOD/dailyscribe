@@ -1,7 +1,7 @@
 dateline: Morning Edition
 hero_heading: Your morning edition, written for your Kindle Scribe.
-hero_subheading: Daily Scribe binds the news, a fresh write-in crossword, Kanji
-  practice, and your Home Assistant briefing into one polished PDF and delivers
+hero_subheading: Daily Scribe binds the news, a fresh write-in crossword, chess
+  puzzles, Kanji practice, and your Home Assistant briefing into one polished PDF and delivers
   it to your Kindle — or just your inbox — before you've poured your coffee.
   Write your answers back by hand and it marks them.
 hero_image: /uploads/hero.png
@@ -13,9 +13,9 @@ teasers:
       — tracking your progress day over day.
     anchor: practice
   - kicker: Play
-    title: Crosswords and dungeons, both by hand.
-    body: A fresh write-in crossword lands with every edition, alongside a solo
-      Dungeons & Dragons campaign you play move by move.
+    title: Crosswords, chess, and dungeons, all by hand.
+    body: A fresh write-in crossword and chess puzzles at your level land with every
+      edition, alongside a solo Dungeons & Dragons campaign you play move by move.
     anchor: play
   - kicker: Read
     title: The news, bound like a newspaper.
@@ -80,6 +80,19 @@ features:
     coming_soon: false
     id: play
     image: /uploads/feature-play.svg
+  - media_right: true
+    body: Up to four chess puzzles a day, picked for your level from the Lichess
+      puzzle database, from beginner tactics to expert combinations. Each one has
+      the board from your side, whose move it is, and the task. Pencil in your
+      line, then turn past a spacer page for the full solution and a link to
+      replay it on Lichess.
+    image_alt: Illustration of a chessboard with a knight
+    note: Puzzles from the free Lichess puzzle database. No account needed.
+    kicker: Strategy
+    title: A tactic before breakfast.
+    coming_soon: false
+    id: chess
+    image: /uploads/feature-chess.svg
   - media_right: true
     body: A solo Dungeons & Dragons campaign, one room a day. Write your move —
       attack, sneak, search — in the boxes by hand and mail the page back, and

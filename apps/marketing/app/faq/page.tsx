@@ -32,14 +32,23 @@ export default function FaqPage() {
       <h2>Do I need any other accounts or subscriptions?</h2>
       <p>
         No. The services available today &mdash; the RT&Eacute;&nbsp;/&nbsp;BBC&nbsp;/&nbsp;CBC
-        news digest, the daily write-in crossword, Kanji&nbsp;A&nbsp;Day, and the Home&nbsp;Assistant
-        briefing &mdash; need no outside accounts or logins.
+        news digest, the daily write-in crossword, chess puzzles, Kanji&nbsp;A&nbsp;Day, and the
+        Home&nbsp;Assistant briefing &mdash; need no outside accounts or logins.
       </p>
 
       <h2>What is a &ldquo;write-in&rdquo; crossword?</h2>
       <p>
         A fresh crossword in every edition, with the answer key on the next page so nothing is
         spoiled early. You solve it on the Scribe with the pen.
+      </p>
+
+      <h2>Where do the chess puzzles come from?</h2>
+      <p>
+        From the{" "}
+        <a href="https://database.lichess.org/#puzzles">Lichess puzzle database</a>, which
+        Lichess releases free for anyone to use. Daily Scribe picks well-rated, popular puzzles
+        at the level you choose, from beginner to expert, and every solution links back to the
+        puzzle on lichess.org. Thank you, Lichess.
       </p>
 
       <h2>How does mailing a page back work?</h2>
