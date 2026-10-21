@@ -2,8 +2,10 @@ import {
   collections,
   isEmailShaped,
   isKindleAddress,
+  parseChessConfig,
   type BbcNewsConfig,
   type CbcNewsConfig,
+  type ChessServiceConfig,
   type CrosswordVersion,
   type DigestConfig,
   type DndServiceConfig,
@@ -64,6 +66,8 @@ export async function POST(req: Request) {
     wasteCalendar?: string;
     kanjiPerDay?: unknown;
     maxJlptLevel?: unknown;
+    puzzlesPerDay?: unknown;
+    difficulty?: unknown;
     deliveryTime?: string;
     timezone?: string;
     kindleEmail?: string;
@@ -127,6 +131,8 @@ export async function POST(req: Request) {
     config = { ...base } satisfies UniversalCrosswordConfig;
   } else if (service === "dnd") {
     config = { ...base } satisfies DndServiceConfig;
+  } else if (service === "chess") {
+    config = { ...base, ...parseChessConfig(body) } satisfies ChessServiceConfig;
   } else if (service === "digest") {
     config = { ...base } satisfies DigestConfig;
   } else {

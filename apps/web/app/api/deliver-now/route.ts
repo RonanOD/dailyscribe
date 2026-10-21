@@ -19,6 +19,7 @@ const SERVICES: ServiceId[] = [
   "kanji",
   "universal-crossword",
   "dnd",
+  "chess",
   "digest",
 ];
 

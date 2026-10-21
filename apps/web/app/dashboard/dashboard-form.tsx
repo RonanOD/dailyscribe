@@ -75,6 +75,14 @@ interface CrosswordConfig {
   kindleEmail?: string;
 }
 
+interface ChessConfig {
+  puzzlesPerDay?: number;
+  difficulty?: string;
+  deliveryTime?: string;
+  timezone?: string;
+  kindleEmail?: string;
+}
+
 interface DndConfig {
   deliveryTime?: string;
   timezone?: string;
@@ -84,6 +92,17 @@ interface DndConfig {
 // Keep in sync with AVAILABLE_JLPT_LEVELS in packages/core/src/plugins/kanji.ts
 // (the levels KANJI_CURRICULUM actually has entries for).
 const JLPT_LEVELS = [5, 4, 3, 2, 1] as const;
+// Keep in sync with CHESS_DIFFICULTY_LABELS in packages/core/src/plugins/chess.ts
+// (core isn't importable from this client component).
+const CHESS_LEVELS = [
+  { key: "beginner", label: "Beginner (under 1200)" },
+  { key: "intermediate", label: "Intermediate (1200–1599)" },
+  { key: "club", label: "Club player (1600–1999)" },
+  { key: "advanced", label: "Advanced (2000–2399)" },
+  { key: "expert", label: "Expert (2400+)" },
+] as const;
+const MAX_CHESS_PER_DAY = 4;
+
 function clampToAvailableJlpt(level: number | undefined): number {
   if (level !== undefined && (JLPT_LEVELS as readonly number[]).includes(level)) return level;
   return 5;
@@ -97,6 +116,7 @@ interface Props {
   kanji?: { config: KanjiConfig; enabled: boolean } | null;
   crossword?: { config: CrosswordConfig; enabled: boolean } | null;
   dnd?: { config: DndConfig; enabled: boolean } | null;
+  chess?: { config: ChessConfig; enabled: boolean } | null;
   /** Whether "send all enabled services as one PDF" is on. Membership is
    *  implicit — whichever services are enabled elsewhere — so there's no
    *  separate config to pass here. */
@@ -137,6 +157,7 @@ export function DashboardForm({
   kanji,
   crossword,
   dnd,
+  chess,
   digestEnabled: initialDigestEnabled,
   configured,
   deliveryAlert,
@@ -168,6 +189,7 @@ export function DashboardForm({
     kanji?.config.kindleEmail ??
     crossword?.config.kindleEmail ??
     dnd?.config.kindleEmail ??
+    chess?.config.kindleEmail ??
     "";
   const initialHaUrl = configured?.haUrl ?? "";
 
@@ -180,6 +202,7 @@ export function DashboardForm({
       kanji?.config.deliveryTime ??
       crossword?.config.deliveryTime ??
       dnd?.config.deliveryTime ??
+      chess?.config.deliveryTime ??
       "08:00",
     timezone:
       cbc?.config.timezone ??
@@ -189,6 +212,7 @@ export function DashboardForm({
       kanji?.config.timezone ??
       crossword?.config.timezone ??
       dnd?.config.timezone ??
+      chess?.config.timezone ??
       browserTz,
   };
 
@@ -240,6 +264,12 @@ export function DashboardForm({
     enabled: dnd?.enabled ?? false,
   };
 
+  const initialChess = {
+    puzzlesPerDay: chess?.config.puzzlesPerDay ?? 2,
+    difficulty: chess?.config.difficulty ?? "intermediate",
+    enabled: chess?.enabled ?? false,
+  };
+
   // State
   const [kindleEmail, setKindleEmail] = useState(initialKindleEmail);
   const [deliveryTime, setDeliveryTime] = useState(initialDelivery.time);
@@ -281,6 +311,11 @@ export function DashboardForm({
   // DnD State
   const [dndEnabled, setDndEnabled] = useState(initialDnd.enabled);
 
+  // Chess State
+  const [chessPerDay, setChessPerDay] = useState(initialChess.puzzlesPerDay);
+  const [chessDifficulty, setChessDifficulty] = useState(initialChess.difficulty);
+  const [chessEnabled, setChessEnabled] = useState(initialChess.enabled);
+
   // Digest State — "send all enabled services as one PDF", using the same
   // shared delivery time/timezone/kindle email as everything else.
   const [digestEnabled, setDigestEnabled] = useState(initialDigestEnabled ?? false);
@@ -296,6 +331,7 @@ export function DashboardForm({
   const [baseKanji, setBaseKanji] = useState(initialKanji);
   const [baseCrossword, setBaseCrossword] = useState(initialCrossword);
   const [baseDnd, setBaseDnd] = useState(initialDnd);
+  const [baseChess, setBaseChess] = useState(initialChess);
   const [baseDigestEnabled, setBaseDigestEnabled] = useState(initialDigestEnabled ?? false);
 
   const [busy, setBusy] = useState<string | null>(null);
@@ -342,6 +378,11 @@ export function DashboardForm({
 
   const isDndDirty = dndEnabled !== baseDnd.enabled;
 
+  const isChessDirty =
+    chessPerDay !== baseChess.puzzlesPerDay ||
+    chessDifficulty !== baseChess.difficulty ||
+    chessEnabled !== baseChess.enabled;
+
   const isDigestDirty = digestEnabled !== baseDigestEnabled;
 
   const isDirty =
@@ -355,6 +396,7 @@ export function DashboardForm({
     isKanjiDirty ||
     isCrosswordDirty ||
     isDndDirty ||
+    isChessDirty ||
     isDigestDirty;
 
   const tabs: TabDef[] = [
@@ -371,6 +413,7 @@ export function DashboardForm({
     { key: "kanji", ...tabMeta("kanji"), dirty: isKanjiDirty },
     { key: "universal-crossword", ...tabMeta("universal-crossword"), dirty: isCrosswordDirty },
     { key: "dnd", ...tabMeta("dnd"), dirty: isDndDirty },
+    { key: "chess", ...tabMeta("chess"), dirty: isChessDirty },
   ];
 
   function ok(text: string) {
@@ -510,7 +553,18 @@ export function DashboardForm({
         enabled: dndEnabled,
       });
 
-      // 9. Save Digest setting (bundles whichever services above are enabled)
+      // 9. Save Chess settings
+      await postJson("/api/subscriptions", {
+        service: "chess",
+        puzzlesPerDay: chessPerDay,
+        difficulty: chessDifficulty,
+        deliveryTime,
+        timezone: deliveryTz,
+        kindleEmail: kindleEmail.trim(),
+        enabled: chessEnabled,
+      });
+
+      // 10. Save Digest setting (bundles whichever services above are enabled)
       await postJson("/api/subscriptions", {
         service: "digest",
         deliveryTime,
@@ -554,6 +608,11 @@ export function DashboardForm({
       });
       setBaseDnd({
         enabled: dndEnabled,
+      });
+      setBaseChess({
+        puzzlesPerDay: chessPerDay,
+        difficulty: chessDifficulty,
+        enabled: chessEnabled,
       });
       setBaseDigestEnabled(digestEnabled);
 
@@ -1022,6 +1081,71 @@ export function DashboardForm({
           {digestEnabled && (
             <p className="hint">
               Digest is on — this sends your bundled digest, not a standalone Crossword PDF.
+            </p>
+          )}
+        </section>
+      </div>
+
+      {/* Chess Section */}
+      <div hidden={activeTab !== "chess"}>
+        <section className="section">
+          <h2>Chess Puzzles</h2>
+          <p className="hint">
+            Daily puzzles from the Lichess puzzle database, picked for your level. Each one shows the
+            board, whose move it is, and the task. Write your answer in the margin; the solutions are
+            behind a spacer page. No need to mail anything back.
+          </p>
+
+          <div className="row">
+            <div className="field" style={{ maxWidth: 220 }}>
+              <label htmlFor="chess-per-day">Puzzles per day</label>
+              <input
+                id="chess-per-day"
+                type="number"
+                min={1}
+                max={MAX_CHESS_PER_DAY}
+                value={chessPerDay}
+                onChange={(e) =>
+                  setChessPerDay(Math.min(Math.max(Number(e.target.value) || 1, 1), MAX_CHESS_PER_DAY))
+                }
+              />
+            </div>
+            <div className="field" style={{ maxWidth: 260 }}>
+              <label htmlFor="chess-difficulty">Difficulty</label>
+              <select
+                id="chess-difficulty"
+                value={chessDifficulty}
+                onChange={(e) => setChessDifficulty(e.target.value)}
+              >
+                {CHESS_LEVELS.map((lvl) => (
+                  <option key={lvl.key} value={lvl.key}>
+                    {lvl.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="actions">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={chessEnabled}
+                onChange={(e) => setChessEnabled(e.target.checked)}
+              />
+              Enabled
+            </label>
+            <button
+              className="link"
+              onClick={() => sendTest("chess", "test-chess")}
+              disabled={busy !== null}
+            >
+              {busy === "test-chess" ? "Sending…" : "Send test now"}
+            </button>
+          </div>
+          {digestEnabled && (
+            <p className="hint">
+              Digest is on — this sends your bundled digest, not a standalone Chess PDF.
             </p>
           )}
         </section>

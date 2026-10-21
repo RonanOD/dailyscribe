@@ -37,6 +37,7 @@ import { haSummaryPlugin } from "@/lib/plugins/ha";
 import { kanjiPlugin } from "@/lib/plugins/kanji";
 import { rteNewsPlugin } from "@/lib/plugins/rte";
 import { universalCrosswordPlugin } from "@/lib/plugins/universal-crossword";
+import { chessPlugin } from "@/lib/plugins/chess";
 import { DIGEST_MEMBER_SERVICES } from "@/lib/digest";
 
 // Register the available service plugins once per runtime.
@@ -48,6 +49,7 @@ registerPlugin(haSummaryPlugin);
 registerPlugin(kanjiPlugin);
 registerPlugin(universalCrosswordPlugin);
 registerPlugin(dndPlugin);
+registerPlugin(chessPlugin);
 
 /**
  * App-wide deliverer: Resend, sending from Daily Scribe's single verified address.

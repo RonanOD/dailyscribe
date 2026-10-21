@@ -1,4 +1,5 @@
 import type { ObjectId } from "mongodb";
+import type { ChessDifficulty } from "./data/chess";
 import type { DndCharacter, DndGameState, DndTurnLogEntry } from "./dnd/types";
 
 /** Output of AES-256-GCM encryption, stored verbatim in MongoDB. */
@@ -38,6 +39,8 @@ export interface AppUser {
   /** When each activation email went out (see onboarding-nudges.ts). Claimed
    *  before sending, so each kind reaches a user at most once. */
   nudges?: Partial<Record<NudgeKind, Date>>;
+  /** One-off product announcements already sent (apps/web/scripts/announce.mjs), by key. */
+  announcements?: Record<string, Date>;
 }
 
 /** Activation emails for users who stalled before their first delivery:
@@ -56,6 +59,7 @@ export type ServiceId =
   | "kanji"
   | "universal-crossword"
   | "dnd"
+  | "chess"
   | "digest";
 
 /** NYT crossword print layouts (ported from the reference repo's CROSSWORD_VERSION). */
@@ -119,6 +123,12 @@ export type UniversalCrosswordConfig = BaseSubscriptionConfig;
  *  (packages/core/src/dnd/campaign.ts), nothing to steer from the dashboard yet. */
 export type DndServiceConfig = BaseSubscriptionConfig;
 
+/** Chess puzzles: how many a day, and which Lichess rating band they come from. */
+export interface ChessServiceConfig extends BaseSubscriptionConfig {
+  puzzlesPerDay: number;
+  difficulty: ChessDifficulty;
+}
+
 /** A service that can be bundled into a digest — every real service except the digest itself. */
 export type BundleableServiceId = Exclude<ServiceId, "digest">;
 
@@ -139,6 +149,7 @@ export type SubscriptionConfig =
   | KanjiServiceConfig
   | UniversalCrosswordConfig
   | DndServiceConfig
+  | ChessServiceConfig
   | DigestConfig;
 
 export interface Subscription {

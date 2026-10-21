@@ -87,6 +87,17 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     showInOnboarding: true,
   },
   {
+    // Before the crossword (which stays last): its solutions page is also a
+    // spoiler, but it sits behind its own spacer page.
+    id: "chess",
+    label: "Chess Puzzles",
+    icon: "♞",
+    iconSrc: "/icons/chess.svg",
+    blurb:
+      "Daily chess puzzles from Lichess at your level, with the board, the task, and the solutions behind a spacer page.",
+    showInOnboarding: true,
+  },
+  {
     // Kept last: its answer key is the digest's most spoiler-prone page, so
     // this keeps it at the very end instead of bordering another section's
     // first page — a user reported an accidental flash swiping back from the
