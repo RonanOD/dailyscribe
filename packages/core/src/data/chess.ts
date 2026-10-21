@@ -13,6 +13,8 @@ export interface ChessPuzzle {
   fen: string;
   /** The full line in SAN, starting with the solver's move. */
   solution: string[];
+  /** The same line in UCI (e.g. "e2e4", "e7e8q"), for replaying it on a board. */
+  uci: string[];
   rating: number;
   /** Short task shown above the board, e.g. "Mate in 2". */
   hint: string;

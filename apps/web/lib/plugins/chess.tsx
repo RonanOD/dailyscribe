@@ -6,7 +6,9 @@ import {
   parseChessConfig,
   selectChessPuzzles,
   sideToMove,
+  solutionSteps,
   type Asset,
+  type ChessBoard,
   type ChessDifficulty,
   type ChessPuzzle,
   type RunContext,
@@ -40,8 +42,13 @@ const styles = StyleSheet.create({
   puzzleTitle: { fontSize: 10.5, fontFamily: "Helvetica-Bold", marginBottom: 1 },
   puzzleTask: { fontSize: 9.5, color: "#444444", marginBottom: 5 },
   coord: { fontSize: 7, color: "#555555", textAlign: "center" },
-  answerLine: { marginTop: 14, borderBottom: "0.75pt solid #000000", fontSize: 8, color: "#666666", paddingBottom: 2 },
-  answerRow: { marginBottom: 14 },
+  answerPrompt: { marginTop: 8, fontSize: 8, color: "#666666" },
+  answerLine: { marginTop: 18, borderBottom: "0.75pt solid #000000" },
+  answerRow: { marginBottom: 16 },
+  key: { fontSize: 8.5, color: "#444444", lineHeight: 1.4, marginBottom: 14 },
+  steps: { flexDirection: "row", flexWrap: "wrap", marginTop: 6 },
+  step: { marginRight: 12, marginBottom: 8, alignItems: "center" },
+  stepLabel: { fontSize: 8.5, fontFamily: "Helvetica-Bold", marginTop: 2 },
   answerHeading: { fontSize: 11, fontFamily: "Helvetica-Bold" },
   answerMoves: { fontSize: 12, marginTop: 3 },
   answerMeta: { fontSize: 8.5, color: "#666666", marginTop: 3 },
@@ -50,48 +57,73 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", bottom: 20, left: 40, right: 40, fontSize: 7.5, color: "#888888", textAlign: "center" },
 });
 
-/** One diagram, oriented from the solver's side, with file/rank labels. */
-function Board({ fen, square }: { fen: string; square: number }) {
-  const flip = sideToMove(fen) === "black";
-  const board = fenToBoard(fen);
-  const ranks = flip ? [...board].reverse().map((r) => [...r].reverse()) : board;
+/**
+ * One diagram, oriented from the solver's side, with file/rank labels.
+ * `from`/`to` (fenToBoard [row, col]) outline the squares a move used: thin
+ * for where the piece left, bold for where it landed.
+ */
+function Board({
+  board,
+  flip,
+  square,
+  from,
+  to,
+}: {
+  board: ChessBoard;
+  flip: boolean;
+  square: number;
+  from?: [number, number];
+  to?: [number, number];
+}) {
+  const view = (r: number, c: number): [number, number] => (flip ? [7 - r, 7 - c] : [r, c]);
   const rankLabels = flip ? ["1", "2", "3", "4", "5", "6", "7", "8"] : ["8", "7", "6", "5", "4", "3", "2", "1"];
   const fileLabels = flip ? [...FILES].reverse() : [...FILES];
-  const label = 10;
+  const label = Math.max(6, square * 0.35);
+  const coord = { ...styles.coord, fontSize: Math.max(4.5, Math.min(7, square * 0.28)) };
+  const outline = (r: number, c: number) => {
+    if (to && r === to[0] && c === to[1]) return { border: `${Math.max(1.2, square * 0.12)}pt solid #000000` };
+    if (from && r === from[0] && c === from[1]) return { border: "0.8pt solid #000000" };
+    return {};
+  };
   return (
     <View>
-      {ranks.map((row, r) => (
-        <View key={r} style={{ flexDirection: "row" }}>
+      {Array.from({ length: 8 }, (_, vr) => (
+        <View key={vr} style={{ flexDirection: "row" }}>
           <View style={{ width: label, height: square, justifyContent: "center" }}>
-            <Text style={styles.coord}>{rankLabels[r]}</Text>
+            <Text style={coord}>{rankLabels[vr]}</Text>
           </View>
-          {row.map((piece, c) => (
-            <View
-              key={c}
-              style={{
-                width: square,
-                height: square,
-                backgroundColor: (r + c) % 2 === 1 ? DARK_SQUARE : "#ffffff",
-                justifyContent: "center",
-                alignItems: "center",
-                borderTop: r === 0 ? "1pt solid #000000" : undefined,
-                borderBottom: r === 7 ? "1pt solid #000000" : undefined,
-                borderLeft: c === 0 ? "1pt solid #000000" : undefined,
-                borderRight: c === 7 ? "1pt solid #000000" : undefined,
-              }}
-            >
-              {piece && (
-                <Text style={{ fontFamily: "DejaVuChess", fontSize: square * 0.82, lineHeight: 1 }}>
-                  {GLYPHS[piece]}
-                </Text>
-              )}
-            </View>
-          ))}
+          {Array.from({ length: 8 }, (_, vc) => {
+            const [r, c] = view(vr, vc);
+            const piece = board[r][c];
+            return (
+              <View
+                key={vc}
+                style={{
+                  width: square,
+                  height: square,
+                  backgroundColor: (r + c) % 2 === 1 ? DARK_SQUARE : "#ffffff",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  borderTop: vr === 0 ? "1pt solid #000000" : undefined,
+                  borderBottom: vr === 7 ? "1pt solid #000000" : undefined,
+                  borderLeft: vc === 0 ? "1pt solid #000000" : undefined,
+                  borderRight: vc === 7 ? "1pt solid #000000" : undefined,
+                  ...outline(r, c),
+                }}
+              >
+                {piece && (
+                  <Text style={{ fontFamily: "DejaVuChess", fontSize: square * 0.82, lineHeight: 1 }}>
+                    {GLYPHS[piece]}
+                  </Text>
+                )}
+              </View>
+            );
+          })}
         </View>
       ))}
-      <View style={{ flexDirection: "row", marginLeft: label, marginTop: 2 }}>
+      <View style={{ flexDirection: "row", marginLeft: label, marginTop: 1 }}>
         {fileLabels.map((f) => (
-          <Text key={f} style={[styles.coord, { width: square }]}>
+          <Text key={f} style={{ ...coord, width: square }}>
             {f}
           </Text>
         ))}
@@ -108,8 +140,9 @@ function PuzzleCell({ puzzle, n, square }: { puzzle: ChessPuzzle; n: number; squ
         Puzzle {n} · {side} to move
       </Text>
       <Text style={styles.puzzleTask}>{puzzle.hint}</Text>
-      <Board fen={puzzle.fen} square={square} />
-      <Text style={styles.answerLine}>Your move</Text>
+      <Board board={fenToBoard(puzzle.fen)} flip={sideToMove(puzzle.fen) === "black"} square={square} />
+      <Text style={styles.answerPrompt}>Feel free to draw your moves, or note them below</Text>
+      <View style={styles.answerLine} />
     </View>
   );
 }
@@ -173,11 +206,32 @@ function ChessDocument({
       </Page>
       <Page size="A4" style={pageStyle}>
         <Text style={styles.masthead}>Chess Puzzles — Solutions</Text>
-        <Text style={[styles.date, { marginBottom: 16 }]}>{formatLongDate(date)}</Text>
+        <Text style={[styles.date, { marginBottom: 10 }]}>{formatLongDate(date)}</Text>
+        <Text style={styles.key}>
+          Reading the moves: each move names the piece (K king, Q queen, R rook, B bishop, N knight; no
+          letter for a pawn) and the square it lands on, column a–h then row 1–8. &quot;x&quot; is a
+          capture, &quot;+&quot; check, &quot;#&quot; checkmate, &quot;O-O&quot; castling. &quot;15.&quot; is
+          White&apos;s 15th move and &quot;15...&quot; is Black&apos;s. On each board below, the bold square is
+          where the piece landed and the thin one is where it came from.
+        </Text>
         {puzzles.map((p, i) => (
           <View key={p.id} style={styles.answerRow} wrap={false}>
             <Text style={styles.answerHeading}>Puzzle {i + 1}</Text>
             <Text style={styles.answerMoves}>{formatSolution(p.fen, p.solution)}</Text>
+            <View style={styles.steps}>
+              {solutionSteps(p).map((step, j) => (
+                <View key={j} style={styles.step}>
+                  <Board
+                    board={step.board}
+                    flip={sideToMove(p.fen) === "black"}
+                    square={12}
+                    from={step.from}
+                    to={step.to}
+                  />
+                  <Text style={styles.stepLabel}>{step.label}</Text>
+                </View>
+              ))}
+            </View>
             <Text style={styles.answerMeta}>
               Rated {p.rating} ·{" "}
               <Link src={`https://lichess.org/training/${p.id}`} style={styles.link}>

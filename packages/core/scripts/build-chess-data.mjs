@@ -13,8 +13,9 @@
  * Each Lichess row's FEN is the position *before* the opponent's move, and its
  * first UCI move is that opponent move. This script applies it (chess.js, a
  * dev-only dependency) so the stored FEN is the position the solver sees, and
- * converts the rest of the line to SAN for the answer key. The app itself
- * never needs a chess library.
+ * converts the rest of the line to SAN for the answer key. The UCI line is
+ * kept too, so the app can replay it for the solution diagrams with a tiny
+ * move applier (plugins/chess.ts) instead of a chess library.
  *
  * Selection: well-tested, well-liked puzzles only (low rating deviation, high
  * popularity, many plays), solutions short enough to write by hand, then a
@@ -112,7 +113,7 @@ for (const band of BANDS) {
     game.move(uciToMove(setup));
     const fen = game.fen();
     const san = solution.map((uci) => game.move(uciToMove(uci)).san);
-    return { id: row.id, fen, solution: san, rating: row.rating, hint: hintFor(row.themes) };
+    return { id: row.id, fen, solution: san, uci: solution, rating: row.rating, hint: hintFor(row.themes) };
   });
   console.error(`${band.key}: ${rows.length} of ${reservoirs.get(band.key).seen} eligible`);
 }
