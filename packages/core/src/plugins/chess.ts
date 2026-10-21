@@ -2,8 +2,8 @@ import { CHESS_DIFFICULTIES, CHESS_PUZZLES, type ChessDifficulty, type ChessPuzz
 
 const MIN_PER_DAY = 1;
 export const MAX_CHESS_PER_DAY = 4;
-const DEFAULT_PER_DAY = 2;
-const DEFAULT_DIFFICULTY: ChessDifficulty = "intermediate";
+const DEFAULT_PER_DAY = 1;
+const DEFAULT_DIFFICULTY: ChessDifficulty = "beginner";
 
 /** Dashboard labels, with the Lichess rating range each band was cut from. */
 export const CHESS_DIFFICULTY_LABELS: Record<ChessDifficulty, string> = {

@@ -11,14 +11,14 @@ const pool: ChessPuzzle[] = Array.from({ length: 10 }, (_, i) => ({
 }));
 
 describe("parseChessConfig", () => {
-  it("defaults to 2 intermediate puzzles", () => {
-    expect(parseChessConfig(undefined)).toEqual({ puzzlesPerDay: 2, difficulty: "intermediate" });
+  it("defaults to 1 beginner puzzle", () => {
+    expect(parseChessConfig(undefined)).toEqual({ puzzlesPerDay: 1, difficulty: "beginner" });
   });
 
   it("clamps the count and rejects unknown difficulties", () => {
     expect(parseChessConfig({ puzzlesPerDay: 99, difficulty: "grandmaster" })).toEqual({
       puzzlesPerDay: 4,
-      difficulty: "intermediate",
+      difficulty: "beginner",
     });
     expect(parseChessConfig({ puzzlesPerDay: 0, difficulty: "expert" })).toEqual({
       puzzlesPerDay: 1,

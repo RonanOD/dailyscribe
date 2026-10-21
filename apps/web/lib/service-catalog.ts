@@ -91,7 +91,7 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     // spoiler, but it sits behind its own spacer page.
     id: "chess",
     label: "Chess Puzzles",
-    icon: "♞",
+    icon: "♜",
     iconSrc: "/icons/chess.svg",
     blurb:
       "Daily chess puzzles from Lichess at your level, with the board, the task, and the solutions behind a spacer page.",

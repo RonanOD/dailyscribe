@@ -265,8 +265,8 @@ export function DashboardForm({
   };
 
   const initialChess = {
-    puzzlesPerDay: chess?.config.puzzlesPerDay ?? 2,
-    difficulty: chess?.config.difficulty ?? "intermediate",
+    puzzlesPerDay: chess?.config.puzzlesPerDay ?? 1,
+    difficulty: chess?.config.difficulty ?? "beginner",
     enabled: chess?.enabled ?? false,
   };
 
@@ -622,6 +622,9 @@ export function DashboardForm({
 
   const sendTest = (service: string, key: string) =>
     run(key, async () => {
+      // The test sends what's saved, not what's on screen: a test with unsaved
+      // changes silently sends the old settings (or skips a just-enabled service).
+      if (isDirty) throw new Error("You have unsaved changes. Save first, then send a test.");
       const data = await postJson("/api/deliver-now", { service });
       const result = data.result as { status?: string; error?: string } | undefined;
       if (result?.status === "success") ok("Sent! Check your Kindle inbox.");
