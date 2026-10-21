@@ -7,16 +7,24 @@
  *
  * Skipped: @kindle.com addresses (a Kindle can't show a plain email), users who
  * chose "Stop all deliveries" (accountFeedback kind "stop-all"), and --exclude.
+ * --active-only also skips invitees who never used the service (no email
+ * sign-in, no linked OAuth account, no subscriptions): they've already had
+ * the invite and activation nudges, and spam complaints hurt the shared sender.
  *
- *   npx tsx scripts/announce.mjs chess --dry-run              # who would get it
- *   npx tsx scripts/announce.mjs chess --test-to me@x.com     # one sample, no DB writes
- *   npx tsx scripts/announce.mjs chess [--exclude a@x.com,b@y.com]
+ * Every email here counts against the same Resend daily quota as the Kindle
+ * deliveries, so a real send requires --limit: check today's usage in Resend,
+ * leave room for the rest of the day's editions, and resume tomorrow (stamped
+ * users are skipped on re-runs).
+ *
+ *   npx tsx scripts/announce.mjs chess --dry-run [--active-only]   # who would get it
+ *   npx tsx scripts/announce.mjs chess --test-to me@x.com          # one sample, no DB writes
+ *   npx tsx scripts/announce.mjs chess --limit 40 [--active-only] [--exclude a@x.com,b@y.com]
  */
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { collections, isEmailShaped, isKindleAddress, nudgeSenderFromEnv, sendPlainEmail } from "@dailyscribe/core";
+import { collections, getDb, isEmailShaped, isKindleAddress, nudgeSenderFromEnv, sendPlainEmail } from "@dailyscribe/core";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -65,6 +73,8 @@ async function main() {
     return i === -1 ? undefined : args[i + 1];
   };
   const dryRun = args.includes("--dry-run");
+  const activeOnly = args.includes("--active-only");
+  const limit = Number(flag("--limit"));
   const testTo = flag("--test-to");
   const exclude = new Set((flag("--exclude") ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean));
 
@@ -74,14 +84,17 @@ async function main() {
     return;
   }
 
-  const { users, accountFeedback } = await collections();
+  const { users, accountFeedback, subscriptions } = await collections();
+  const db = await getDb();
+  const oauthLinked = new Set((await db.collection("accounts").distinct("userId")).map(String));
+  const withSubs = new Set((await subscriptions.distinct("userId")).map(String));
   const stopped = new Set(
     (await accountFeedback.find({ kind: "stop-all", userId: { $exists: true } }).toArray()).map((f) => f.userId),
   );
   const field = `announcements.${key}`;
   const all = await users.find({ [field]: { $exists: false } }).toArray();
 
-  const skipped = { kindle: 0, stopped: 0, excluded: 0, invalid: 0 };
+  const skipped = { kindle: 0, stopped: 0, excluded: 0, invalid: 0, neverActive: 0 };
   const recipients = [];
   for (const u of all) {
     const email = (u.email ?? "").trim().toLowerCase();
@@ -89,22 +102,34 @@ async function main() {
     else if (isKindleAddress(email)) skipped.kindle++;
     else if (stopped.has(String(u._id))) skipped.stopped++;
     else if (exclude.has(email)) skipped.excluded++;
-    else recipients.push({ user: u, email, signedIn: Boolean(u.emailVerified) });
+    else {
+      const id = String(u._id);
+      const active = Boolean(u.emailVerified) || oauthLinked.has(id) || withSubs.has(id);
+      if (activeOnly && !active) skipped.neverActive++;
+      else recipients.push({ user: u, email, active });
+    }
   }
-  const signedIn = recipients.filter((r) => r.signedIn).length;
+  const active = recipients.filter((r) => r.active).length;
   console.log(
-    `${recipients.length} recipients (${signedIn} have signed in, ${recipients.length - signedIn} never have). ` +
+    `${recipients.length} recipients (${active} have used the service, ${recipients.length - active} never have). ` +
       `Skipped: ${JSON.stringify(skipped)}.`,
   );
 
   if (dryRun) {
-    for (const r of recipients) console.log(`  ${r.email}${r.signedIn ? "" : "  (never signed in)"}`);
+    for (const r of recipients) console.log(`  ${r.email}${r.active ? "" : "  (never used the service)"}`);
     return;
+  }
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("Real sends need --limit N: these share the Resend daily quota with Kindle deliveries.");
   }
 
   const sender = nudgeSenderFromEnv();
   let sent = 0;
   for (const r of recipients) {
+    if (sent >= limit) {
+      console.log(`Stopped at --limit ${limit}; ${recipients.length - sent} left for a later run.`);
+      break;
+    }
     const claim = await users.updateOne(
       { _id: r.user._id, [field]: { $exists: false } },
       { $set: { [field]: new Date() } },
