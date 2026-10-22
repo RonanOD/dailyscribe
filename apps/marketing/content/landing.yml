@@ -83,9 +83,9 @@ features:
   - media_right: true
     body: Up to four chess puzzles a day, picked for your level from the Lichess
       puzzle database, from beginner tactics to expert combinations. Each one has
-      the board from your side, whose move it is, and the task. Pencil in your
-      line, then turn past a spacer page for the full solution and a link to
-      replay it on Lichess.
+      the board from your side, whose move it is, and the task. Draw or pencil in
+      your line, then turn past a spacer page for the solution, with a small
+      board after every move so you can learn the notation as you go.
     image_alt: Illustration of a chessboard with a rook
     note: Puzzles from the free Lichess puzzle database. No account needed.
     kicker: Strategy

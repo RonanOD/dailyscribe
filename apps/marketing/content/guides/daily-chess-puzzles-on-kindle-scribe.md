@@ -39,8 +39,10 @@ puzzle shows:
 - a line to write your answer on
 
 The solutions come after a spacer page, so you won't see them by accident. Each
-solution gives the full line in standard notation and a link to replay the puzzle
-on Lichess.
+solution gives the full line in standard notation, a small board after every move
+with the squares it used outlined, and a link to replay the puzzle on Lichess. A
+short key explains how to read the notation, so it works even if you've never
+read chess moves before.
 
 The puzzles come from the [Lichess puzzle database](https://database.lichess.org/#puzzles),
 which Lichess releases free for anyone to use. Daily Scribe only picks puzzles that
