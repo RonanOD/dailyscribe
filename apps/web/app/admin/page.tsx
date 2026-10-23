@@ -119,7 +119,7 @@ export default async function AdminPage() {
   // since turned off, or that got auto-disabled on a bounce).
   const servicePopularity = new Map<string, number>();
   for (const sub of allSubs) {
-    if (!sub.enabled) continue;
+    if (!sub.enabled || sub.service === "digest") continue;
     servicePopularity.set(sub.service, (servicePopularity.get(sub.service) ?? 0) + 1);
   }
   const pieSlices = [...servicePopularity.entries()]
@@ -212,7 +212,7 @@ export default async function AdminPage() {
 
       <section className="section">
         <h2>Service popularity</h2>
-        <p className="hint">Enabled subscriptions by service, across all users.</p>
+        <p className="hint">Services switched on, across all users (the digest setting isn't a service, so it's left out).</p>
         {pieTotal === 0 ? (
           <p className="hint">No active subscriptions yet.</p>
         ) : (
