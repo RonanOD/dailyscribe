@@ -131,7 +131,14 @@ export default async function AdminPage() {
       color: PIE_PALETTE[i % PIE_PALETTE.length],
     }));
   const pieTotal = pieSlices.reduce((sum, s) => sum + s.count, 0);
-  const activeSubscriptions = allSubs.filter((s) => s.enabled).length;
+  // The digest is a delivery mode, not a service, so it's left out of the
+  // services count. Emails/day mirrors the dispatcher: a digest user gets one
+  // email for all their services; everyone else gets one per service.
+  const enabledSubs = allSubs.filter((s) => s.enabled);
+  const servicesOn = enabledSubs.filter((s) => s.service !== "digest");
+  const usersWithServices = new Set(servicesOn.map((s) => s.userId)).size;
+  const digestUsers = new Set(enabledSubs.filter((s) => s.service === "digest").map((s) => s.userId));
+  const emailsPerDay = enabledSubs.filter((s) => s.service === "digest" || !digestUsers.has(s.userId)).length;
   // "Active" = got a successful delivery in the last 7 days: people actually
   // receiving editions, not just anyone with a service switched on (which
   // would also count failing setups and digests with no member services).
@@ -179,8 +186,23 @@ export default async function AdminPage() {
           <span className="stat-label">Pending waitlist</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value">{activeSubscriptions}</span>
-          <span className="stat-label">Active subscriptions</span>
+          <span className="stat-value">{servicesOn.length}</span>
+          <span
+            className="stat-label"
+            title="Services switched on across all users, not counting the digest setting"
+          >
+            Services on
+            {usersWithServices > 0 && ` (${(servicesOn.length / usersWithServices).toFixed(1)} per user)`}
+          </span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">{emailsPerDay}</span>
+          <span
+            className="stat-label"
+            title="Scheduled emails per day: one per digest user, one per service for everyone else. Resend's free tier allows 100/day, shared with sign-in and alert emails."
+          >
+            Emails / day
+          </span>
         </div>
         <div className="stat-card">
           <span className="stat-value">{deliveries7d}</span>
