@@ -132,6 +132,11 @@ export default async function AdminPage() {
     }));
   const pieTotal = pieSlices.reduce((sum, s) => sum + s.count, 0);
   const activeSubscriptions = allSubs.filter((s) => s.enabled).length;
+  // "Active" = got a successful delivery in the last 7 days: people actually
+  // receiving editions, not just anyone with a service switched on (which
+  // would also count failing setups and digests with no member services).
+  const activeSince = Date.now() - SEVEN_DAYS_MS;
+  const activeUsers = deliveryStats.filter((d) => d.last && d.last.getTime() >= activeSince).length;
 
   // Donut geometry: one filled wedge path per slice, in service-popularity order.
   const CX = 80;
@@ -162,8 +167,12 @@ export default async function AdminPage() {
 
       <div className="stat-grid">
         <div className="stat-card">
-          <span className="stat-value">{allUsers.length}</span>
-          <span className="stat-label">Users</span>
+          <span className="stat-value">
+            {activeUsers}/{allUsers.length}
+          </span>
+          <span className="stat-label" title="Users with a successful delivery in the last 7 days, out of all users">
+            Active / total users
+          </span>
         </div>
         <div className="stat-card">
           <span className="stat-value">{pendingWaitlistCount}</span>
