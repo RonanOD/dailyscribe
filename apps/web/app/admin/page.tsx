@@ -114,8 +114,8 @@ export default async function AdminPage() {
       (deliveriesByUser.get(String(a._id))?.count ?? 0),
   );
 
-  // Popularity + the "active subscriptions" stat card reflect only enabled
-  // rows — the users table below shows every row (including ones a user has
+  // Popularity reflects only enabled, non-digest rows (like the "Services on"
+  // card) — the users table below shows every row (including ones a user has
   // since turned off, or that got auto-disabled on a bounce).
   const servicePopularity = new Map<string, number>();
   for (const sub of allSubs) {
