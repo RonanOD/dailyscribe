@@ -43,6 +43,10 @@ function consumePotion(inventory: string[], idx: number): string[] {
   return next;
 }
 
+function fmtBonus(n: number): string {
+  return n === 0 ? "" : n > 0 ? `+${n}` : `${n}`;
+}
+
 function findRoll(move: DndMoveInput, keyword: string): number | null {
   for (const roll of move.diceRolls ?? []) {
     if ((roll.label ?? "").toLowerCase().includes(keyword)) return roll.total;
@@ -62,6 +66,16 @@ function ensureMonsters(node: DndCampaignNode, monsterHp: Record<string, number>
 
 function monsterPassivePerception(m: DndMonster): number {
   return m.passivePerception ?? 10;
+}
+
+/** Highest total a dice expression like "1d4+1" or "2d6-1" can roll, or null
+ *  if there's none in the string. Used to reject handwriting misreads: there
+ *  are no critical hits in this ruleset, so nothing can legitimately exceed it. */
+export function maxDiceTotal(expr: string): number | null {
+  const m = /(\d+)\s*d\s*(\d+)\s*(?:([+-])\s*(\d+))?/i.exec(expr);
+  if (!m) return null;
+  const bonus = m[3] ? (m[3] === "-" ? -1 : 1) * Number(m[4]) : 0;
+  return Number(m[1]) * Number(m[2]) + bonus;
 }
 
 /** Deterministic "take 10" initiative for the monster (no engine dice). */
@@ -113,6 +127,16 @@ export function applyMove(state: DndPlayState, campaign: DndCampaignDefinition, 
 
   const living = livingIn(node, monsterHp);
   const target = living[0] ?? null;
+
+  // Most a turn's numbers could legitimately be, from the dice on the page.
+  // Anything higher is a misread (e.g. a "0" with a tail read as "6"), so
+  // it's reported back instead of applied.
+  const monsterMaxes = living
+    .map((m) => ({ m, max: maxDiceTotal(m.attack) }))
+    .filter((x): x is { m: DndMonster; max: number } => x.max != null);
+  const worstHitter = monsterMaxes.sort((a, b) => b.max - a.max)[0] ?? null;
+  const weaponMax = maxDiceTotal(ch.damageDie);
+  const playerDamageMax = weaponMax == null ? null : weaponMax + (ch.modifiers[ch.attackAbility] ?? 0);
   const chosen = (move.chosenExit ?? "").trim().toLowerCase() || null;
 
   const sneak = Boolean(target) && (marked("sneak") || marked("stealth"));
@@ -146,6 +170,13 @@ export function applyMove(state: DndPlayState, campaign: DndCampaignDefinition, 
 
   function applyDamageTaken(note = ""): void {
     const taken = move.damageTaken;
+    if (taken && worstHitter && taken > worstHitter.max) {
+      const dice = /\d+\s*d\s*\d+(\s*[+-]\s*\d+)?/i.exec(worstHitter.m.attack)?.[0] ?? "";
+      events.push(
+        `Damage Taken read as ${taken}, but ${worstHitter.m.name} deals at most ${worstHitter.max} (${dice}), so I didn't apply it. If I misread you, nothing to do; otherwise write the right number next turn.`,
+      );
+      return;
+    }
     if (taken) {
       ch.currentHp = Math.max(0, ch.currentHp - taken);
       const suffix = note ? ` ${note}` : "";
@@ -187,6 +218,10 @@ export function applyMove(state: DndPlayState, campaign: DndCampaignDefinition, 
     const ac = target.ac;
     if (toHit != null && ac != null && toHit < ac) {
       events.push(`Missed ${target.name} (rolled ${toHit} vs AC ${ac}).`);
+    } else if (damage != null && playerDamageMax != null && damage > playerDamageMax) {
+      events.push(
+        `Damage read as ${damage}, but your ${ch.weapon} deals at most ${playerDamageMax} (${ch.damageDie}${fmtBonus(ch.modifiers[ch.attackAbility] ?? 0)}), so I didn't apply it. Attack again next turn.`,
+      );
     } else {
       const dealt = damage ?? 0;
       monsterHp[target.id] = Math.max(0, (monsterHp[target.id] ?? target.hp) - dealt);

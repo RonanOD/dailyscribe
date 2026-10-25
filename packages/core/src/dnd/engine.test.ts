@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyCharacterSheet, applyMove } from "./engine";
+import { applyCharacterSheet, applyMove, maxDiceTotal } from "./engine";
 import { deriveCharacter } from "./rules";
 import type { DndCampaignDefinition, DndPlayState } from "./types";
 
@@ -91,7 +91,7 @@ describe("applyMove — combat", () => {
   it("marks the monster defeated at 0 HP and allows movement through the cleared room", () => {
     const { state, events } = applyMove(freshState(), testCampaign, {
       diceRolls: [{ label: "to hit", total: 18 }],
-      damageDealt: 10,
+      damageDealt: 8, // a max longsword roll vs the goblin's 7 HP
       chosenExit: "north",
     });
     expect(state.gameState.defeatedMonsters).toContain("goblin");
@@ -242,7 +242,9 @@ describe("applyMove — potions and search", () => {
 describe("applyMove — death", () => {
   it("ends the campaign when HP drops to zero or below", () => {
     const state = freshState();
-    const { state: next, events } = applyMove(state, testCampaign, { damageTaken: 999 });
+    state.character.currentHp = 5;
+    // Within the goblin's 1d6+2 range, so the misread guard lets it through.
+    const { state: next, events } = applyMove(state, testCampaign, { damageTaken: 7 });
     expect(next.character.currentHp).toBe(0);
     expect(next.gameState.status).toBe("dead");
     expect(events.some((e) => e.includes("You have fallen"))).toBe(true);
@@ -259,5 +261,54 @@ describe("applyMove — initiative", () => {
     const second = applyMove(first.state, testCampaign, { initiativeRoll: 1 });
     expect(second.state.gameState.combat.playerFirst).toBe(true);
     expect(second.events.some((e) => e.includes("Initiative:"))).toBe(false);
+  });
+});
+
+describe("applyMove — misread guards", () => {
+  // The test goblin hits for 1d6+2 (max 8); the default fighter swings a
+  // 1d8 longsword with a +0 modifier (max 8).
+  it("doesn't apply a Damage Taken higher than the monster can deal", () => {
+    const { state, events } = applyMove(freshState(), testCampaign, { checkboxesMarked: ["Dodge"], damageTaken: 9 });
+    expect(state.character.currentHp).toBe(state.character.maxHp);
+    expect(events.some((e) => e.includes("Damage Taken read as 9, but Goblin deals at most 8 (1d6+2)"))).toBe(true);
+  });
+
+  it("still applies the monster's maximum damage", () => {
+    const { state } = applyMove(freshState(), testCampaign, { checkboxesMarked: ["Dodge"], damageTaken: 8 });
+    expect(state.character.currentHp).toBe(state.character.maxHp - 8);
+  });
+
+  it("doesn't kill a hero over an impossible misread (a 0 read as 6 against a 1d4+1 monster)", () => {
+    const weak: DndCampaignDefinition = structuredClone(testCampaign);
+    weak.nodes.start.monsters = [
+      { id: "blight", name: "Twig Blight", hp: 4, ac: 13, attack: "+3 to hit, 1d4+1 piercing", dexMod: 1, passivePerception: 8 },
+    ];
+    const base = freshState();
+    base.character.currentHp = 2;
+    const { state } = applyMove(base, weak, { checkboxesMarked: ["Attack"], diceRolls: [{ label: "to hit", total: 3 }], damageTaken: 6 });
+    expect(state.gameState.status).toBe("active");
+    expect(state.character.currentHp).toBe(2);
+  });
+
+  it("doesn't apply a Damage dealt higher than the hero's weapon can roll, but the monster still swings", () => {
+    const { state, events } = applyMove(freshState(), testCampaign, {
+      checkboxesMarked: ["Attack"],
+      diceRolls: [{ label: "to hit", total: 17 }],
+      damageDealt: 9,
+      damageTaken: 3,
+    });
+    expect(state.gameState.monsterHp.goblin).toBe(7);
+    expect(events.some((e) => e.includes("Damage read as 9, but your Longsword deals at most 8 (1d8)"))).toBe(true);
+    expect(state.character.currentHp).toBe(state.character.maxHp - 3);
+  });
+});
+
+describe("maxDiceTotal", () => {
+  it("reads the dice out of an attack string", () => {
+    expect(maxDiceTotal("+3 to hit, 1d4+1 piercing")).toBe(5);
+    expect(maxDiceTotal("+4 to hit, 1d6+2 slashing (scimitar)")).toBe(8);
+    expect(maxDiceTotal("1d8")).toBe(8);
+    expect(maxDiceTotal("2d6-1")).toBe(11);
+    expect(maxDiceTotal("a bite")).toBeNull();
   });
 });
