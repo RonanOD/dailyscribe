@@ -78,6 +78,19 @@ export function maxDiceTotal(expr: string): number | null {
   return Number(m[1]) * Number(m[2]) + bonus;
 }
 
+/** Lowest total a dice expression can roll (every die showing 1), or null. */
+export function minDiceTotal(expr: string): number | null {
+  const m = /(\d+)\s*d\s*(\d+)\s*(?:([+-])\s*(\d+))?/i.exec(expr);
+  if (!m) return null;
+  const bonus = m[3] ? (m[3] === "-" ? -1 : 1) * Number(m[4]) : 0;
+  return Number(m[1]) + bonus;
+}
+
+/** A potion heals a flat 2d4+2 (no ability bonus), so the Heal box can only hold 4-10. */
+const POTION_HEAL = "2d4+2";
+const POTION_MIN = minDiceTotal(POTION_HEAL)!;
+const POTION_MAX = maxDiceTotal(POTION_HEAL)!;
+
 /** Deterministic "take 10" initiative for the monster (no engine dice). */
 function monsterInitiative(m: DndMonster): number {
   return 10 + (m.dexMod ?? 0);
@@ -242,14 +255,19 @@ export function applyMove(state: DndPlayState, campaign: DndCampaignDefinition, 
     applyDamageTaken();
   }
 
-  // --- Drink a potion (player rolls 2d4+2 and writes the total) ----------
+  // --- Drink a potion (player rolls POTION_HEAL and writes the total) -----
   if (marked("potion")) {
     const idx = ch.inventory.findIndex((it) => it.toLowerCase().includes("potion"));
     const heal = move.healAmount;
     if (idx === -1) {
       events.push("You reach for a potion, but have none left.");
     } else if (heal == null) {
-      events.push("You ready a potion, but no healing roll was read — write your 2d4+2 total in the Heal box.");
+      events.push(`You ready a potion, but no healing roll was read — write your ${POTION_HEAL} total in the Heal box.`);
+    } else if (heal < POTION_MIN || heal > POTION_MAX) {
+      // Same misread guard as damage: the potion stays in the pack.
+      events.push(
+        `Heal read as ${heal}, but a potion heals ${POTION_MIN}-${POTION_MAX} (${POTION_HEAL}), so I didn't drink it. Write the right total next turn.`,
+      );
     } else {
       const before = ch.currentHp;
       const newHp = Math.min(ch.maxHp, before + heal);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyCharacterSheet, applyMove, maxDiceTotal } from "./engine";
+import { applyCharacterSheet, applyMove, maxDiceTotal, minDiceTotal } from "./engine";
 import { deriveCharacter } from "./rules";
 import type { DndCampaignDefinition, DndPlayState } from "./types";
 
@@ -188,7 +188,7 @@ describe("applyMove — potions and search", () => {
     hurt.character.currentHp = 4;
     const { state, events } = applyMove(hurt, testCampaign, {
       checkboxesMarked: ["Potion"],
-      healAmount: 20, // overheal, should clamp
+      healAmount: 10, // a max 2d4+2 roll from 4 HP overheals, so it should clamp
     });
     expect(state.character.currentHp).toBe(state.character.maxHp);
     expect(state.character.inventory.some((i) => i.toLowerCase().includes("potion"))).toBe(false);
@@ -303,6 +303,25 @@ describe("applyMove — misread guards", () => {
   });
 });
 
+describe("applyMove — potion misread guard", () => {
+  it.each([3, 11])("doesn't drink a potion when the Heal box reads %i (outside 2d4+2's 4-10)", (heal) => {
+    const base = freshState();
+    base.character.currentHp = 2;
+    const potionsBefore = base.character.inventory.filter((i) => i.toLowerCase().includes("potion"));
+    const { state, events } = applyMove(base, testCampaign, { checkboxesMarked: ["Drink Potion"], healAmount: heal });
+    expect(state.character.currentHp).toBe(2);
+    expect(state.character.inventory.filter((i) => i.toLowerCase().includes("potion"))).toEqual(potionsBefore);
+    expect(events.some((e) => e.includes(`Heal read as ${heal}, but a potion heals 4-10 (2d4+2)`))).toBe(true);
+  });
+
+  it.each([4, 10])("drinks the potion at the edges of the range (%i)", (heal) => {
+    const base = freshState();
+    base.character.currentHp = 1;
+    const { state } = applyMove(base, testCampaign, { checkboxesMarked: ["Drink Potion"], healAmount: heal });
+    expect(state.character.currentHp).toBe(Math.min(state.character.maxHp, 1 + heal));
+  });
+});
+
 describe("maxDiceTotal", () => {
   it("reads the dice out of an attack string", () => {
     expect(maxDiceTotal("+3 to hit, 1d4+1 piercing")).toBe(5);
@@ -310,5 +329,11 @@ describe("maxDiceTotal", () => {
     expect(maxDiceTotal("1d8")).toBe(8);
     expect(maxDiceTotal("2d6-1")).toBe(11);
     expect(maxDiceTotal("a bite")).toBeNull();
+  });
+
+  it("has a matching minimum", () => {
+    expect(minDiceTotal("2d4+2")).toBe(4);
+    expect(minDiceTotal("1d6-1")).toBe(0);
+    expect(minDiceTotal("a bite")).toBeNull();
   });
 });
