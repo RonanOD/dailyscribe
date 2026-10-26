@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { DIGEST_MEMBER_SERVICES } from "@/lib/digest";
 import { runSubscription } from "@/lib/runner";
 import { rateLimitAll } from "@/lib/rate-limit";
-import { requireUserId } from "@/lib/session";
+import { isAdmin, requireUserId } from "@/lib/session";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -31,8 +31,11 @@ export async function POST(req: Request) {
 
   // "Send test now" fans out real email from the shared sender — cap it so an
   // authed user can't loop it and blow through Resend's daily send budget.
-  const limited = await rateLimitAll([{ key: `deliver-now-day:${userId}`, limit: 1, windowMs: 24 * HOUR }]);
-  if (!limited.ok) {
+  // The admin is exempt, to test new services without resetting the limit.
+  const limited = (await isAdmin())
+    ? null
+    : await rateLimitAll([{ key: `deliver-now-day:${userId}`, limit: 1, windowMs: 24 * HOUR }]);
+  if (limited && !limited.ok) {
     return NextResponse.json(
       { error: "Test sends are restricted to one per day. Try again tomorrow." },
       { status: 429, headers: { "Retry-After": String(Math.ceil((limited.resetAt.getTime() - Date.now()) / 1000)) } },
