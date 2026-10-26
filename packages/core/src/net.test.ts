@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertPublicHttpUrl, isPrivateIp } from "./net";
+import { assertPublicHttpUrl, fetchPublicUrl, isPrivateIp } from "./net";
 
 describe("isPrivateIp", () => {
   it("flags loopback, private, link-local and CGNAT IPv4", () => {
@@ -59,5 +59,52 @@ describe("assertPublicHttpUrl", () => {
         throw new Error("ENOTFOUND");
       }),
     ).rejects.toThrow(/resolve/);
+  });
+});
+
+describe("fetchPublicUrl", () => {
+  // Hosts named "internal-*" resolve privately; everything else publicly.
+  const resolve = async (host: string) => (host.startsWith("internal") ? ["10.0.0.5"] : ["93.184.216.34"]);
+  const respond =
+    (routes: Record<string, () => Response>): typeof fetch =>
+    async (input) => {
+      const href = input instanceof URL ? input.toString() : String(input);
+      const route = routes[href];
+      if (!route) throw new Error(`unexpected fetch ${href}`);
+      return route();
+    };
+
+  it("follows public redirects and reports the final URL", async () => {
+    const fetchImpl = respond({
+      "https://example.com/feed": () => new Response(null, { status: 301, headers: { location: "/rss.xml" } }),
+      "https://example.com/rss.xml": () =>
+        new Response("<rss/>", { status: 200, headers: { "content-type": "application/rss+xml" } }),
+    });
+    const res = await fetchPublicUrl("https://example.com/feed", { resolve, fetchImpl });
+    expect(res.url).toBe("https://example.com/rss.xml");
+    expect(res.body).toBe("<rss/>");
+    expect(res.contentType).toBe("application/rss+xml");
+  });
+
+  it("refuses a redirect into a private network", async () => {
+    const fetchImpl = respond({
+      "https://example.com/feed": () =>
+        new Response(null, { status: 302, headers: { location: "http://internal-metadata/latest" } }),
+    });
+    await expect(fetchPublicUrl("https://example.com/feed", { resolve, fetchImpl })).rejects.toThrow(/private|local/);
+  });
+
+  it("gives up after too many redirects", async () => {
+    const fetchImpl: typeof fetch = async () => new Response(null, { status: 302, headers: { location: "/again" } });
+    await expect(fetchPublicUrl("https://example.com/", { resolve, fetchImpl, maxRedirects: 3 })).rejects.toThrow(
+      /redirects/,
+    );
+  });
+
+  it("stops reading a body over the size cap", async () => {
+    const fetchImpl = respond({ "https://example.com/big": () => new Response("x".repeat(2048)) });
+    await expect(fetchPublicUrl("https://example.com/big", { resolve, fetchImpl, maxBytes: 1024 })).rejects.toThrow(
+      /larger/,
+    );
   });
 });

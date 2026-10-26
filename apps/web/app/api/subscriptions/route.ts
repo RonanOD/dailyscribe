@@ -3,9 +3,11 @@ import {
   isEmailShaped,
   isKindleAddress,
   parseChessConfig,
+  parseFeedsConfig,
   type BbcNewsConfig,
   type CbcNewsConfig,
   type ChessServiceConfig,
+  type CustomFeedsConfig,
   type CrosswordVersion,
   type DigestConfig,
   type DndServiceConfig,
@@ -68,6 +70,7 @@ export async function POST(req: Request) {
     maxJlptLevel?: unknown;
     puzzlesPerDay?: unknown;
     difficulty?: unknown;
+    fullText?: unknown;
     deliveryTime?: string;
     timezone?: string;
     kindleEmail?: string;
@@ -133,6 +136,13 @@ export async function POST(req: Request) {
     config = { ...base } satisfies DndServiceConfig;
   } else if (service === "chess") {
     config = { ...base, ...parseChessConfig(body) } satisfies ChessServiceConfig;
+  } else if (service === "feeds") {
+    const parsed = parseFeedsConfig(body);
+    // Saving it switched on with no feeds would just fail every morning.
+    if ((body.enabled ?? true) && parsed.feeds.length === 0) {
+      return NextResponse.json({ error: "Add at least one feed to Your Feeds, or switch it off." }, { status: 400 });
+    }
+    config = { ...base, ...parsed } satisfies CustomFeedsConfig;
   } else if (service === "digest") {
     config = { ...base } satisfies DigestConfig;
   } else {

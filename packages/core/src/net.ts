@@ -81,3 +81,75 @@ export async function assertPublicHttpUrl(raw: string, resolve: HostResolver = d
   }
   return url;
 }
+
+export interface PublicFetchResult {
+  /** The URL that finally answered, after any redirects. */
+  url: string;
+  status: number;
+  contentType: string;
+  body: string;
+}
+
+export interface PublicFetchOptions {
+  headers?: Record<string, string>;
+  timeoutMs?: number;
+  maxBytes?: number;
+  maxRedirects?: number;
+  resolve?: HostResolver;
+  fetchImpl?: typeof fetch;
+}
+
+/**
+ * GET a user-supplied URL without letting it reach a private network. Every
+ * hop is checked with assertPublicHttpUrl, since fetch's own redirect
+ * following would happily go from a public host to 169.254.169.254. The body
+ * is read up to `maxBytes` and then abandoned, so a huge or endless response
+ * can't exhaust the function's memory.
+ */
+export async function fetchPublicUrl(raw: string, opts: PublicFetchOptions = {}): Promise<PublicFetchResult> {
+  const {
+    headers,
+    timeoutMs = 15000,
+    maxBytes = 5 * 1024 * 1024,
+    maxRedirects = 5,
+    resolve = defaultResolver,
+    fetchImpl = fetch,
+  } = opts;
+  const signal = AbortSignal.timeout(timeoutMs);
+  let current = raw;
+  for (let hop = 0; ; hop++) {
+    const url = await assertPublicHttpUrl(current, resolve);
+    const res = await fetchImpl(url, { headers, redirect: "manual", signal });
+    const location = res.headers.get("location");
+    if (res.status >= 300 && res.status < 400 && location) {
+      if (hop >= maxRedirects) throw new Error("Too many redirects.");
+      await res.body?.cancel();
+      current = new URL(location, url).toString();
+      continue;
+    }
+    return {
+      url: url.toString(),
+      status: res.status,
+      contentType: res.headers.get("content-type") ?? "",
+      body: await readCapped(res, maxBytes),
+    };
+  }
+}
+
+async function readCapped(res: Response, maxBytes: number): Promise<string> {
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new Error(`Response is larger than ${Math.round(maxBytes / 1024 / 1024)} MB.`);
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}

@@ -782,3 +782,48 @@ a {
   background: var(--err);
   color: var(--accent-ink);
 }
+
+/* Your Feeds: URL input + Add button, then the added feeds. */
+.feed-add {
+  display: flex;
+  gap: 10px;
+}
+
+.feed-add input {
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.feed-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.feed-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.feed-list-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.feed-list-url {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

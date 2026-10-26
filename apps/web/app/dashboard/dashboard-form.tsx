@@ -83,6 +83,20 @@ interface ChessConfig {
   kindleEmail?: string;
 }
 
+interface FeedEntry {
+  url: string;
+  title: string;
+}
+
+interface FeedsConfig {
+  feeds?: FeedEntry[];
+  maxPerFeed?: number;
+  fullText?: boolean;
+  deliveryTime?: string;
+  timezone?: string;
+  kindleEmail?: string;
+}
+
 interface DndConfig {
   deliveryTime?: string;
   timezone?: string;
@@ -102,6 +116,9 @@ const CHESS_LEVELS = [
   { key: "expert", label: "Expert (2400+)" },
 ] as const;
 const MAX_CHESS_PER_DAY = 4;
+// Keep in sync with MAX_CUSTOM_FEEDS / MAX_FEED_POSTS in packages/core/src/plugins/feeds.ts.
+const MAX_CUSTOM_FEEDS = 10;
+const MAX_FEED_POSTS = 15;
 
 function clampToAvailableJlpt(level: number | undefined): number {
   if (level !== undefined && (JLPT_LEVELS as readonly number[]).includes(level)) return level;
@@ -117,6 +134,7 @@ interface Props {
   crossword?: { config: CrosswordConfig; enabled: boolean } | null;
   dnd?: { config: DndConfig; enabled: boolean } | null;
   chess?: { config: ChessConfig; enabled: boolean } | null;
+  feeds?: { config: FeedsConfig; enabled: boolean } | null;
   /** Whether "send all enabled services as one PDF" is on. Membership is
    *  implicit — whichever services are enabled elsewhere — so there's no
    *  separate config to pass here. */
@@ -158,6 +176,7 @@ export function DashboardForm({
   crossword,
   dnd,
   chess,
+  feeds,
   digestEnabled: initialDigestEnabled,
   configured,
   deliveryAlert,
@@ -190,6 +209,7 @@ export function DashboardForm({
     crossword?.config.kindleEmail ??
     dnd?.config.kindleEmail ??
     chess?.config.kindleEmail ??
+    feeds?.config.kindleEmail ??
     "";
   const initialHaUrl = configured?.haUrl ?? "";
 
@@ -203,6 +223,7 @@ export function DashboardForm({
       crossword?.config.deliveryTime ??
       dnd?.config.deliveryTime ??
       chess?.config.deliveryTime ??
+      feeds?.config.deliveryTime ??
       "08:00",
     timezone:
       cbc?.config.timezone ??
@@ -213,6 +234,7 @@ export function DashboardForm({
       crossword?.config.timezone ??
       dnd?.config.timezone ??
       chess?.config.timezone ??
+      feeds?.config.timezone ??
       browserTz,
   };
 
@@ -270,6 +292,13 @@ export function DashboardForm({
     enabled: chess?.enabled ?? false,
   };
 
+  const initialFeeds = {
+    feeds: feeds?.config.feeds ?? [],
+    maxPerFeed: feeds?.config.maxPerFeed ?? 5,
+    fullText: feeds?.config.fullText ?? false,
+    enabled: feeds?.enabled ?? false,
+  };
+
   // State
   const [kindleEmail, setKindleEmail] = useState(initialKindleEmail);
   const [deliveryTime, setDeliveryTime] = useState(initialDelivery.time);
@@ -316,6 +345,13 @@ export function DashboardForm({
   const [chessDifficulty, setChessDifficulty] = useState(initialChess.difficulty);
   const [chessEnabled, setChessEnabled] = useState(initialChess.enabled);
 
+  // Your Feeds State
+  const [customFeeds, setCustomFeeds] = useState<FeedEntry[]>(initialFeeds.feeds);
+  const [feedsMax, setFeedsMax] = useState(initialFeeds.maxPerFeed);
+  const [feedsFullText, setFeedsFullText] = useState(initialFeeds.fullText);
+  const [feedsEnabled, setFeedsEnabled] = useState(initialFeeds.enabled);
+  const [feedUrl, setFeedUrl] = useState("");
+
   // Digest State — "send all enabled services as one PDF", using the same
   // shared delivery time/timezone/kindle email as everything else.
   const [digestEnabled, setDigestEnabled] = useState(initialDigestEnabled ?? false);
@@ -332,6 +368,7 @@ export function DashboardForm({
   const [baseCrossword, setBaseCrossword] = useState(initialCrossword);
   const [baseDnd, setBaseDnd] = useState(initialDnd);
   const [baseChess, setBaseChess] = useState(initialChess);
+  const [baseFeeds, setBaseFeeds] = useState(initialFeeds);
   const [baseDigestEnabled, setBaseDigestEnabled] = useState(initialDigestEnabled ?? false);
 
   const [busy, setBusy] = useState<string | null>(null);
@@ -383,6 +420,12 @@ export function DashboardForm({
     chessDifficulty !== baseChess.difficulty ||
     chessEnabled !== baseChess.enabled;
 
+  const isFeedsDirty =
+    customFeeds.map((f) => f.url).join("\n") !== baseFeeds.feeds.map((f) => f.url).join("\n") ||
+    feedsMax !== baseFeeds.maxPerFeed ||
+    feedsFullText !== baseFeeds.fullText ||
+    feedsEnabled !== baseFeeds.enabled;
+
   const isDigestDirty = digestEnabled !== baseDigestEnabled;
 
   const isDirty =
@@ -397,6 +440,7 @@ export function DashboardForm({
     isCrosswordDirty ||
     isDndDirty ||
     isChessDirty ||
+    isFeedsDirty ||
     isDigestDirty;
 
   const tabs: TabDef[] = [
@@ -409,6 +453,7 @@ export function DashboardForm({
     { key: "rte", ...tabMeta("rte"), dirty: isRteDirty },
     { key: "cbc", ...tabMeta("cbc"), dirty: isCbcDirty },
     { key: "bbc", ...tabMeta("bbc"), dirty: isBbcDirty },
+    { key: "feeds", ...tabMeta("feeds"), dirty: isFeedsDirty },
     { key: "home-assistant", ...tabMeta("ha-summary"), dirty: isHaCredsDirty || isHaSettingsDirty },
     { key: "kanji", ...tabMeta("kanji"), dirty: isKanjiDirty },
     { key: "universal-crossword", ...tabMeta("universal-crossword"), dirty: isCrosswordDirty },
@@ -462,10 +507,31 @@ export function DashboardForm({
     });
   }
 
+  const addFeed = () =>
+    run("add-feed", async () => {
+      if (!feedUrl.trim()) throw new Error("Paste a feed or website address first.");
+      if (customFeeds.length >= MAX_CUSTOM_FEEDS) {
+        throw new Error(`You can have up to ${MAX_CUSTOM_FEEDS} feeds. Remove one to add another.`);
+      }
+      const data = await postJson("/api/feeds/check", { url: feedUrl });
+      const url = data.url as string;
+      const title = data.title as string;
+      if (customFeeds.some((f) => f.url === url)) throw new Error(`"${title}" is already in your feeds.`);
+      setCustomFeeds((prev) => [...prev, { url, title }]);
+      setFeedUrl("");
+      // Adding the first feed is a clear sign they want the service on.
+      if (customFeeds.length === 0) setFeedsEnabled(true);
+      const latest = data.latest ? ` Latest post: "${data.latest as string}".` : "";
+      ok(`Found "${title}".${latest} Save to keep it.`);
+    });
+
   const saveAll = () =>
     run("save-all", async () => {
       if (!kindleEmail.includes("@")) {
         throw new Error("A valid Send-to-Kindle email is required under Delivery setup.");
+      }
+      if (feedsEnabled && customFeeds.length === 0) {
+        throw new Error("Your Feeds is on but has no feeds. Add one, or switch it off.");
       }
 
       // 1. Save HA credentials if changed or entered
@@ -564,7 +630,19 @@ export function DashboardForm({
         enabled: chessEnabled,
       });
 
-      // 10. Save Digest setting (bundles whichever services above are enabled)
+      // 10. Save Your Feeds settings
+      await postJson("/api/subscriptions", {
+        service: "feeds",
+        feeds: customFeeds,
+        maxPerFeed: feedsMax,
+        fullText: feedsFullText,
+        deliveryTime,
+        timezone: deliveryTz,
+        kindleEmail: kindleEmail.trim(),
+        enabled: feedsEnabled,
+      });
+
+      // 11. Save Digest setting (bundles whichever services above are enabled)
       await postJson("/api/subscriptions", {
         service: "digest",
         deliveryTime,
@@ -613,6 +691,12 @@ export function DashboardForm({
         puzzlesPerDay: chessPerDay,
         difficulty: chessDifficulty,
         enabled: chessEnabled,
+      });
+      setBaseFeeds({
+        feeds: customFeeds,
+        maxPerFeed: feedsMax,
+        fullText: feedsFullText,
+        enabled: feedsEnabled,
       });
       setBaseDigestEnabled(digestEnabled);
 
@@ -888,6 +972,124 @@ export function DashboardForm({
           {digestEnabled && (
             <p className="hint">
               Digest is on — this sends your bundled digest, not a standalone BBC PDF.
+            </p>
+          )}
+        </section>
+      </div>
+
+      {/* Your Feeds Section */}
+      <div hidden={activeTab !== "feeds"}>
+        <section className="section">
+          <h2>Your Feeds</h2>
+          <p className="hint">
+            Add any site with an RSS or Atom feed: your local paper or TV station, a Substack, a blog.
+            Paste the feed address, or just the site&apos;s homepage and Daily Scribe will look for
+            its feed. Each edition carries posts from the last day, so a quiet day sends nothing.
+          </p>
+
+          <div className="field">
+            <label htmlFor="feed-url">Add a feed</label>
+            <div className="feed-add">
+              <input
+                id="feed-url"
+                type="url"
+                inputMode="url"
+                placeholder="e.g. yourwriter.substack.com or a news site's RSS link"
+                value={feedUrl}
+                onChange={(e) => setFeedUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addFeed();
+                  }
+                }}
+              />
+              <button
+                className="button button--secondary"
+                onClick={addFeed}
+                disabled={busy !== null || customFeeds.length >= MAX_CUSTOM_FEEDS}
+              >
+                {busy === "add-feed" ? "Checking…" : "Add"}
+              </button>
+            </div>
+          </div>
+
+          {customFeeds.length > 0 ? (
+            <ul className="feed-list">
+              {customFeeds.map((f) => (
+                <li key={f.url}>
+                  <span className="feed-list-text">
+                    <strong>{f.title}</strong>
+                    <span className="feed-list-url">{f.url}</span>
+                  </span>
+                  <button
+                    className="link"
+                    onClick={() => setCustomFeeds((prev) => prev.filter((x) => x.url !== f.url))}
+                    aria-label={`Remove ${f.title}`}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="hint">No feeds yet.</p>
+          )}
+          <p className="hint">
+            {customFeeds.length} of {MAX_CUSTOM_FEEDS} feeds. Images and embeds are left out; each
+            headline links to the original.
+          </p>
+
+          <div className="row">
+            <div className="field" style={{ maxWidth: 220 }}>
+              <label htmlFor="feeds-max">Posts per feed</label>
+              <input
+                id="feeds-max"
+                type="number"
+                min={1}
+                max={MAX_FEED_POSTS}
+                value={feedsMax}
+                onChange={(e) =>
+                  setFeedsMax(Math.min(Math.max(Number(e.target.value) || 1, 1), MAX_FEED_POSTS))
+                }
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="feeds-fulltext">Show</label>
+              <select
+                id="feeds-fulltext"
+                value={feedsFullText ? "full" : "summary"}
+                onChange={(e) => setFeedsFullText(e.target.value === "full")}
+              >
+                <option value="summary">Headlines and short summaries</option>
+                <option value="full">Whole posts, when the feed includes them</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="actions">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={feedsEnabled}
+                onChange={(e) => setFeedsEnabled(e.target.checked)}
+              />
+              Enabled
+            </label>
+            <button
+              className="link"
+              onClick={() => sendTest("feeds", "test-feeds")}
+              disabled={busy !== null}
+            >
+              {busy === "test-feeds" ? "Sending…" : "Send test now"}
+            </button>
+          </div>
+          <p className="hint">
+            A test sends your feeds&apos; latest posts even if they&apos;re older than a day.
+          </p>
+          {digestEnabled && (
+            <p className="hint">
+              Digest is on — this sends your bundled digest, not a standalone Your Feeds PDF.
             </p>
           )}
         </section>

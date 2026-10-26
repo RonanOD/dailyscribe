@@ -38,6 +38,7 @@ import { kanjiPlugin } from "@/lib/plugins/kanji";
 import { rteNewsPlugin } from "@/lib/plugins/rte";
 import { universalCrosswordPlugin } from "@/lib/plugins/universal-crossword";
 import { chessPlugin } from "@/lib/plugins/chess";
+import { feedsPlugin } from "@/lib/plugins/feeds";
 import { DIGEST_MEMBER_SERVICES } from "@/lib/digest";
 
 // Register the available service plugins once per runtime.
@@ -50,6 +51,7 @@ registerPlugin(kanjiPlugin);
 registerPlugin(universalCrosswordPlugin);
 registerPlugin(dndPlugin);
 registerPlugin(chessPlugin);
+registerPlugin(feedsPlugin);
 
 /**
  * App-wide deliverer: Resend, sending from Daily Scribe's single verified address.
@@ -107,6 +109,9 @@ interface DigestSectionResult {
    *  services didn't make it in today, instead of the digest just quietly
    *  shrinking. */
   failedLabels: string[];
+  /** Members that ran fine but had nothing to send today (Your Feeds with no
+   *  new posts). Not a failure: a digest of only these is skipped quietly. */
+  emptyCount: number;
 }
 
 /**
@@ -127,10 +132,12 @@ async function collectDigestSections(
   userId: string,
   utcMidnight: Date,
   secrets: Record<string, string>,
+  preview: boolean,
 ): Promise<DigestSectionResult> {
   const { subscriptions } = await collections();
   const sections: DigestSection[] = [];
   const failedLabels: string[] = [];
+  let emptyCount = 0;
   for (const memberId of DIGEST_MEMBER_SERVICES) {
     const member = await subscriptions.findOne({ userId, service: memberId, enabled: true });
     const plugin = member && getPlugin(memberId);
@@ -142,8 +149,12 @@ async function collectDigestSections(
         config: member!.config,
         secrets,
         digest: true,
+        preview,
       });
-      if (memberAssets.length === 0) continue;
+      if (memberAssets.length === 0) {
+        emptyCount++;
+        continue;
+      }
       const asset =
         memberAssets.length === 1 ? memberAssets[0] : await mergePdfAssets(memberAssets, `${memberId}.pdf`);
       sections.push({ label: plugin.label, asset });
@@ -155,7 +166,7 @@ async function collectDigestSections(
       failedLabels.push(plugin.label);
     }
   }
-  return { sections, failedLabels };
+  return { sections, failedLabels, emptyCount };
 }
 
 /**
@@ -260,7 +271,15 @@ export async function runSubscription(
     let noteSuffix = "";
     if (sub.service === "digest") {
       label = "Daily Scribe Digest";
-      const { sections, failedLabels } = await collectDigestSections(sub.userId, utcMidnight, secrets);
+      const { sections, failedLabels, emptyCount } = await collectDigestSections(
+        sub.userId,
+        utcMidnight,
+        secrets,
+        Boolean(opts.force),
+      );
+      if (sections.length === 0 && failedLabels.length === 0 && emptyCount > 0) {
+        return await nothingToSend(subscriptionId, sub.service, attempt && key, now);
+      }
       if (sections.length === 0) {
         const reason =
           failedLabels.length > 0
@@ -285,7 +304,14 @@ export async function runSubscription(
       const plugin = getPlugin(sub.service);
       if (!plugin) throw new Error(`Unknown service: ${sub.service}`);
       label = plugin.label;
-      assets = await plugin.run({ userId: sub.userId, date: utcMidnight, config: sub.config, secrets });
+      assets = await plugin.run({
+        userId: sub.userId,
+        date: utcMidnight,
+        config: sub.config,
+        secrets,
+        preview: Boolean(opts.force),
+      });
+      if (assets.length === 0) return await nothingToSend(subscriptionId, sub.service, attempt && key, now);
     }
 
     await getDeliverer().deliver({
@@ -320,6 +346,19 @@ export async function runSubscription(
     }
     return { subscriptionId, service: sub.service, status: "failed", error };
   }
+}
+
+/** A run that worked but had nothing to send (no new posts in Your Feeds).
+ *  Counts as done for the day, so the dispatcher doesn't retry it and the
+ *  user isn't told it failed; no email goes out and no delivery is logged. */
+async function nothingToSend(
+  subscriptionId: string,
+  service: string,
+  key: AttemptKey | null,
+  now: Date,
+): Promise<RunResult> {
+  if (key) await recordDispatchSuccess(key, now);
+  return { subscriptionId, service, status: "skipped", error: "Nothing new to send today." };
 }
 
 function isDue(sub: Subscription, now: Date): boolean {

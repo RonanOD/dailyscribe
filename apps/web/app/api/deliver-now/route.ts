@@ -20,6 +20,7 @@ const SERVICES: ServiceId[] = [
   "universal-crossword",
   "dnd",
   "chess",
+  "feeds",
   "digest",
 ];
 

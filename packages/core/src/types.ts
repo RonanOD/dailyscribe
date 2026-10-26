@@ -60,6 +60,7 @@ export type ServiceId =
   | "universal-crossword"
   | "dnd"
   | "chess"
+  | "feeds"
   | "digest";
 
 /** NYT crossword print layouts (ported from the reference repo's CROSSWORD_VERSION). */
@@ -129,6 +130,21 @@ export interface ChessServiceConfig extends BaseSubscriptionConfig {
   difficulty: ChessDifficulty;
 }
 
+/** One feed a user added to "Your Feeds", with the title read from it when added. */
+export interface CustomFeed {
+  url: string;
+  title: string;
+}
+
+/** "Your Feeds": any RSS/Atom feeds the user adds (local news, Substack, blogs). */
+export interface CustomFeedsConfig extends BaseSubscriptionConfig {
+  feeds: CustomFeed[];
+  /** Max posts per feed (default 5, clamped 1-15). */
+  maxPerFeed: number;
+  /** Print the whole post when the feed carries it, instead of a short summary. */
+  fullText: boolean;
+}
+
 /** A service that can be bundled into a digest — every real service except the digest itself. */
 export type BundleableServiceId = Exclude<ServiceId, "digest">;
 
@@ -150,6 +166,7 @@ export type SubscriptionConfig =
   | UniversalCrosswordConfig
   | DndServiceConfig
   | ChessServiceConfig
+  | CustomFeedsConfig
   | DigestConfig;
 
 export interface Subscription {

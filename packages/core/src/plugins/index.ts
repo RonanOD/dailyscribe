@@ -19,6 +19,10 @@ export interface RunContext {
    *  (which would only be correct relative to its own PDF) since the digest
    *  assembly draws a single, correct page count across the whole bundle. */
   digest?: boolean;
+  /** True for an on-demand "Send test now" rather than the scheduled
+   *  edition. Lets a plugin that only prints what's new (Your Feeds) show
+   *  recent content anyway, so a test on a quiet day isn't empty. */
+  preview?: boolean;
 }
 
 /**

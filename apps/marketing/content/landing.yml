@@ -19,8 +19,8 @@ teasers:
     anchor: play
   - kicker: Read
     title: The news, bound like a newspaper.
-    body: RTÉ, BBC, and CBC headlines curated into one quiet read — no feed, no
-      scroll. Classic novels arrive next.
+    body: RTÉ, BBC, and CBC headlines, plus any site with an RSS feed (your local
+      paper, a favourite Substack), curated into one quiet read. No scroll.
     anchor: read
   - kicker: Live
     title: Your house, summarized.
@@ -108,8 +108,10 @@ features:
   - media_right: true
     body: Daily Scribe pulls the day's stories from RTÉ News, BBC, and CBC and sets
       them like a real newspaper — headlines and bodies you choose by section,
-      nothing chasing your attention. Prefer fiction to current events? A
-      classic novel will arrive one chapter at a time.
+      nothing chasing your attention. Add your own feeds too, from your local
+      paper to the independent writers you follow on Substack, and each edition
+      carries their new posts, in full if you like. Prefer fiction to current
+      events? A classic novel will arrive one chapter at a time.
     image_alt: Illustration of a stack of newspaper clippings
     note: Serialized classic novels, one chapter per edition
     kicker: Read

@@ -1,7 +1,15 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { ObjectId } from "mongodb";
-import { collections, decryptSecret, type KanjiSubmission } from "@dailyscribe/core";
+import {
+  collections,
+  decryptSecret,
+  type BbcNewsConfig,
+  type CbcNewsConfig,
+  type CustomFeedsConfig,
+  type KanjiSubmission,
+  type RteNewsConfig,
+} from "@dailyscribe/core";
 import { auth, signIn, signOut } from "@/auth";
 import { BUY_ME_A_COFFEE_URL } from "@/lib/site";
 import { AccountActions } from "./account-actions";
@@ -101,6 +109,7 @@ export default async function DashboardPage() {
   const crosswordSub = subByService.get("universal-crossword") ?? null;
   const dndSub = subByService.get("dnd") ?? null;
   const chessSub = subByService.get("chess") ?? null;
+  const feedsSub = subByService.get("feeds") ?? null;
   const digestSub = subByService.get("digest") ?? null;
   const disabledSub = allSubs.find((s) => s.disabledReason) ?? null;
   const secretDocs = await userSecrets.find({ userId }).toArray();
@@ -179,14 +188,15 @@ export default async function DashboardPage() {
 
       <Suspense fallback={null}>
       <DashboardForm
-        cbc={cbcSub ? { config: cbcSub.config, enabled: cbcSub.enabled } : null}
-        bbc={bbcSub ? { config: bbcSub.config, enabled: bbcSub.enabled } : null}
-        rte={rteSub ? { config: rteSub.config, enabled: rteSub.enabled } : null}
+        cbc={cbcSub ? { config: cbcSub.config as CbcNewsConfig, enabled: cbcSub.enabled } : null}
+        bbc={bbcSub ? { config: bbcSub.config as BbcNewsConfig, enabled: bbcSub.enabled } : null}
+        rte={rteSub ? { config: rteSub.config as RteNewsConfig, enabled: rteSub.enabled } : null}
         ha={haSub ? { config: haSub.config, enabled: haSub.enabled } : null}
         kanji={kanjiSub ? { config: kanjiSub.config, enabled: kanjiSub.enabled } : null}
         crossword={crosswordSub ? { config: crosswordSub.config, enabled: crosswordSub.enabled } : null}
         dnd={dndSub ? { config: dndSub.config, enabled: dndSub.enabled } : null}
         chess={chessSub ? { config: chessSub.config, enabled: chessSub.enabled } : null}
+        feeds={feedsSub ? { config: feedsSub.config as CustomFeedsConfig, enabled: feedsSub.enabled } : null}
         digestEnabled={digestSub?.enabled ?? false}
         configured={configured}
         deliveryAlert={disabledSub?.disabledReason ?? undefined}

@@ -2,7 +2,7 @@
 slug: send-news-to-kindle-scribe
 title: How to send the news to your Kindle Scribe automatically
 description: Get a newspaper-style digest of the day's headlines delivered to your Kindle Scribe by email — the manual options, their limits, and how to put it on a schedule.
-updated: 2026-09-08
+updated: 2026-10-26
 order: 1
 ---
 
@@ -39,11 +39,20 @@ these tools output a wall of text rather than something laid out to be read.
 
 ## What Daily Scribe does
 
-Daily Scribe is that pipeline, run for you. You choose the sources you want — RTÉ, BBC
-and CBC today, by section — and every morning it fetches the day's stories, sets them
-like a newspaper page (headline, standfirst, body), and emails a single PDF to your
-Scribe at the time you pick. You whitelist one address once and never touch the
-plumbing again.
+Daily Scribe is that pipeline, run for you. You choose the sources you want (RTÉ, BBC
+and CBC by section, plus any RSS or Atom feed you add yourself), and every morning it
+fetches the day's stories, sets them like a newspaper page (headline, standfirst, body),
+and emails a single PDF to your Scribe at the time you pick. You whitelist one address
+once and never touch the plumbing again.
+
+## Your own feeds: local news and Substack
+
+The **Your Feeds** section takes up to ten feeds of your own. Most local newspapers, TV
+stations and public radio stations publish one, and so does every Substack: paste the
+publication's address (say `yourwriter.substack.com`) and Daily Scribe finds the feed for
+you. Each edition carries only what's new since the last one, so a weekly newsletter shows
+up once, not every morning, and you choose between headlines with short summaries or the
+whole post, set as clean text with a link back to the original.
 
 It can also bundle the news with other daily sections — a crossword, a Kanji sheet, a
 summary of your smart home — into one **digest** edition, so you get one email instead

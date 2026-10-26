@@ -10,6 +10,7 @@ export * from "./plugins/index";
 export * from "./plugins/nyt-crossword";
 export * from "./plugins/kanji";
 export * from "./plugins/chess";
+export * from "./plugins/feeds";
 export * from "./delivery/email";
 export * from "./delivery/merge";
 export * from "./data/kanji";

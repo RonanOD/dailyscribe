@@ -36,6 +36,15 @@ export default function FaqPage() {
         Home&nbsp;Assistant briefing &mdash; need no outside accounts or logins.
       </p>
 
+      <h2>Can I get news from somewhere other than RT&Eacute;, BBC and CBC?</h2>
+      <p>
+        Yes. Your Feeds takes any site with an RSS or Atom feed: your local paper or TV
+        station, a blog, or a Substack (paste the publication&rsquo;s address and Daily Scribe
+        finds its feed). Each edition carries the posts from the last day, as headlines with
+        short summaries or as whole posts, and skips a day when there&rsquo;s nothing new.
+        Paid-only posts show just the preview the feed includes.
+      </p>
+
       <h2>What is a &ldquo;write-in&rdquo; crossword?</h2>
       <p>
         A fresh crossword in every edition, with the answer key on the next page so nothing is
