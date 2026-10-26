@@ -24,6 +24,7 @@ import { requireUserId } from "@/lib/session";
 import { ALL_BBC_FEEDS } from "@/lib/bbc-feeds";
 import { ALL_CBC_FEEDS } from "@/lib/cbc-feeds";
 import { ALL_RTE_FEEDS } from "@/lib/rte-feeds";
+import { DIGEST_MEMBER_SERVICES } from "@/lib/digest";
 import { SERVICE_CATALOG } from "@/lib/service-catalog";
 
 export const runtime = "nodejs";
@@ -163,5 +164,20 @@ export async function POST(req: Request) {
     },
     { upsert: true },
   );
-  return NextResponse.json({ ok: true, kindleEmailWarning });
+
+  // A digest with nothing to bundle would fail every morning and, after a
+  // week, get auto-paused with a confusing "your Digest failed" email. So
+  // once no member service is on (the last one switched off, or the digest
+  // switched on with none), turn the digest off too and tell the caller.
+  const anyMemberOn = await subscriptions.findOne({
+    userId,
+    service: { $in: DIGEST_MEMBER_SERVICES },
+    enabled: true,
+  });
+  let digestSwitchedOff = false;
+  if (!anyMemberOn) {
+    const res = await subscriptions.updateOne({ userId, service: "digest", enabled: true }, { $set: { enabled: false } });
+    digestSwitchedOff = res.modifiedCount > 0;
+  }
+  return NextResponse.json({ ok: true, kindleEmailWarning, digestSwitchedOff });
 }

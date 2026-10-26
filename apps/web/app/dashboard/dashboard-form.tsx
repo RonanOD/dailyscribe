@@ -637,8 +637,9 @@ export function DashboardForm({
         enabled: feedsEnabled,
       });
 
-      // 11. Save Digest setting (bundles whichever services above are enabled)
-      await postJson("/api/subscriptions", {
+      // 11. Save Digest setting (bundles whichever services above are enabled).
+      //     The server switches it off when none of them are.
+      const digestSave = await postJson("/api/subscriptions", {
         service: "digest",
         deliveryTime,
         timezone: deliveryTz,
@@ -692,10 +693,16 @@ export function DashboardForm({
         maxPerFeed: feedsMax,
         enabled: feedsEnabled,
       });
-      setBaseDigestEnabled(digestEnabled);
+      const digestOff = Boolean(digestSave.digestSwitchedOff);
+      if (digestOff) setDigestEnabled(false);
+      setBaseDigestEnabled(digestEnabled && !digestOff);
 
       const warning = firstSave.kindleEmailWarning as string | undefined;
-      ok(warning ? `Settings saved. ${warning}` : "All settings saved successfully.");
+      const notes = [
+        warning,
+        digestOff ? "Digest is now off too, since none of your services are on to bundle." : undefined,
+      ].filter(Boolean);
+      ok(notes.length > 0 ? `Settings saved. ${notes.join(" ")}` : "All settings saved successfully.");
     });
 
   const sendTest = (service: string, key: string) =>
