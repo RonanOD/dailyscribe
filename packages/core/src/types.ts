@@ -141,8 +141,6 @@ export interface CustomFeedsConfig extends BaseSubscriptionConfig {
   feeds: CustomFeed[];
   /** Max posts per feed (default 5, clamped 1-15). */
   maxPerFeed: number;
-  /** Print the whole post when the feed carries it, instead of a short summary. */
-  fullText: boolean;
 }
 
 /** A service that can be bundled into a digest — every real service except the digest itself. */

@@ -3,8 +3,9 @@ import { XMLParser } from "fast-xml-parser";
 /**
  * Feed parsing for the news services. The CBC/BBC/RTÉ feeds are known RSS 2.0,
  * but "Your Feeds" takes whatever URL a user pastes in, so this also reads
- * Atom (many blogs and newer sites) and RSS 1.0/RDF (some older ones), turns
- * full-post HTML into paragraphs, and finds the feed behind a homepage URL.
+ * Atom (many blogs and newer sites) and RSS 1.0/RDF (some older ones), and
+ * finds the feed behind a homepage URL. Items are printed as headline + short
+ * plain-text summary only: post HTML is never laid out.
  */
 
 export interface FeedItem {
@@ -185,75 +186,6 @@ export function toPlainText(html: string): string {
   return decodeEntities(html.replace(/<[^>]*>/g, " "))
     .replace(/\s+/g, " ")
     .trim();
-}
-
-export interface TextBlock {
-  kind: "p" | "h" | "li" | "quote";
-  text: string;
-}
-
-/** Elements whose content is dropped: code, media, and the subscribe/share
- *  widgets newsletter platforms put in the post body. */
-const SKIP = new Set(["script", "style", "noscript", "figure", "picture", "video", "audio", "iframe", "svg", "form", "button", "table"]);
-/** Elements dropped by class: Substack's share/subscribe buttons and widgets,
- *  and the like on other platforms. */
-const SKIP_CLASS = /\b(button|button-wrapper|subscription-widget[\w-]*|share[\w-]*|social[\w-]*|footnote-anchor)\b/i;
-/** Elements that end the current paragraph. */
-const BLOCK = new Set([
-  "p", "div", "br", "hr", "li", "ul", "ol", "blockquote", "pre", "section", "article", "header", "footer",
-  "h1", "h2", "h3", "h4", "h5", "h6",
-]);
-
-/**
- * A post body as paragraphs, headings, list items and quotes, for printing.
- * Images, embeds, tables and widgets are dropped: the PDF is text, and a link
- * to the original sits on the headline. A small tokenizer rather than a DOM,
- * since feed HTML only needs to be read, never trusted or re-emitted.
- */
-export function htmlToBlocks(html: string): TextBlock[] {
-  const blocks: TextBlock[] = [];
-  let buf = "";
-  // While inside a dropped element: its tag name, and how deeply that tag
-  // is nested inside itself (so the right closing tag ends the skip).
-  let skipName: string | null = null;
-  let skipDepth = 0;
-  let heading = 0;
-  let listItem = 0;
-  let quote = 0;
-  const flush = () => {
-    const text = decodeEntities(buf).replace(/\s+/g, " ").trim();
-    buf = "";
-    if (!text) return;
-    const kind = heading > 0 ? "h" : listItem > 0 ? "li" : quote > 0 ? "quote" : "p";
-    blocks.push({ kind, text });
-  };
-  for (const m of html.matchAll(/<(\/?)([a-z][a-z0-9]*)\b([^>]*?)(\/?)>|<!--[\s\S]*?-->|[^<]+|</g)) {
-    const [token, closing, rawName, attrs, selfClosing] = m;
-    if (!rawName) {
-      if (!skipName && !token.startsWith("<!--")) buf += token;
-      continue;
-    }
-    const name = rawName.toLowerCase();
-    if (skipName) {
-      if (name === skipName && !selfClosing) skipDepth += closing ? -1 : 1;
-      if (skipDepth === 0) skipName = null;
-      continue;
-    }
-    const cls = attrs.match(/\bclass\s*=\s*["']([^"']*)["']/i)?.[1] ?? "";
-    if (!closing && !selfClosing && (SKIP.has(name) || SKIP_CLASS.test(cls))) {
-      skipName = name;
-      skipDepth = 1;
-      continue;
-    }
-    if (SKIP.has(name) || !BLOCK.has(name)) continue;
-    flush();
-    const delta = closing ? -1 : selfClosing || name === "br" || name === "hr" ? 0 : 1;
-    if (/^h[1-6]$/.test(name)) heading = Math.max(0, heading + delta);
-    else if (name === "li") listItem = Math.max(0, listItem + delta);
-    else if (name === "blockquote") quote = Math.max(0, quote + delta);
-  }
-  flush();
-  return blocks;
 }
 
 // The PDF's built-in Helvetica only covers Windows-1252, so anything outside

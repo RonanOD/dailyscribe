@@ -17,8 +17,8 @@ describe("normalizeFeedUrl", () => {
 });
 
 describe("parseFeedsConfig", () => {
-  it("defaults to no feeds, 5 posts, summaries", () => {
-    expect(parseFeedsConfig(undefined)).toEqual({ feeds: [], maxPerFeed: 5, fullText: false });
+  it("defaults to no feeds and 5 posts", () => {
+    expect(parseFeedsConfig(undefined)).toEqual({ feeds: [], maxPerFeed: 5 });
   });
 
   it("drops bad and duplicate feeds, caps the list, and fills a missing title", () => {
@@ -29,12 +29,11 @@ describe("parseFeedsConfig", () => {
       { url: "https://b.example.com/rss" },
       ...Array.from({ length: 20 }, (_, i) => ({ url: `https://c${i}.example.com/feed`, title: `C${i}` })),
     ];
-    const cfg = parseFeedsConfig({ feeds, maxPerFeed: 99, fullText: true });
+    const cfg = parseFeedsConfig({ feeds, maxPerFeed: 99 });
     expect(cfg.feeds).toHaveLength(10);
     expect(cfg.feeds[0]).toEqual({ url: "https://a.example.com/feed", title: "A" });
     expect(cfg.feeds[1]).toEqual({ url: "https://b.example.com/rss", title: "b.example.com" });
     expect(cfg.maxPerFeed).toBe(15);
-    expect(cfg.fullText).toBe(true);
   });
 });
 

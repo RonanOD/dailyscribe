@@ -51,8 +51,8 @@ The **Your Feeds** section takes up to ten feeds of your own. Most local newspap
 stations and public radio stations publish one, and so does every Substack: paste the
 publication's address (say `yourwriter.substack.com`) and Daily Scribe finds the feed for
 you. Each edition carries only what's new since the last one, so a weekly newsletter shows
-up once, not every morning, and you choose between headlines with short summaries or the
-whole post, set as clean text with a link back to the original.
+up once, not every morning, as a headline with a short summary linked back to the
+original.
 
 It can also bundle the news with other daily sections — a crossword, a Kanji sheet, a
 summary of your smart home — into one **digest** edition, so you get one email instead

@@ -44,7 +44,7 @@ export async function loadFeed(url: string): Promise<{ url: string; feed: Parsed
 async function fetchSections(
   feeds: CustomFeed[],
   now: Date,
-  opts: { maxPerFeed: number; fullText: boolean; preview: boolean },
+  opts: { maxPerFeed: number; preview: boolean },
 ): Promise<{ sections: NewsSection[]; failed: number }> {
   let failed = 0;
   const sections = await Promise.all(
@@ -73,7 +73,6 @@ export const feedsPlugin: ServicePlugin = {
     }
     const { sections, failed } = await fetchSections(cfg.feeds, new Date(), {
       maxPerFeed: cfg.maxPerFeed,
-      fullText: cfg.fullText,
       preview: Boolean(ctx.preview),
     });
     if (sections.length === 0 && failed === cfg.feeds.length) {

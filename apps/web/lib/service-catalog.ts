@@ -37,6 +37,18 @@ export interface ServiceCatalogEntry {
  */
 export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
   {
+    // First: the sources the user picked themselves lead the digest's table
+    // of contents. Not offered in onboarding: it needs feed addresses before it can send
+    // anything, which the dashboard tab collects.
+    id: "feeds",
+    label: "Your Feeds",
+    icon: "📡",
+    iconSrc: "/icons/feeds.svg",
+    blurb:
+      "Any news site, blog or Substack with an RSS feed: local news, independent writers, whatever you read. New posts only.",
+    showInOnboarding: false,
+  },
+  {
     id: "rte",
     label: "RTÉ News",
     icon: "📰",
@@ -59,18 +71,6 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     iconSrc: "/icons/bbc.svg",
     blurb: "A daily PDF of BBC headlines and summaries. Choose your sections.",
     showInOnboarding: true,
-  },
-  {
-    // After the fixed news catalogs, so news stays together in the digest.
-    // Not offered in onboarding: it needs feed addresses before it can send
-    // anything, which the dashboard tab collects.
-    id: "feeds",
-    label: "Your Feeds",
-    icon: "📡",
-    iconSrc: "/icons/feeds.svg",
-    blurb:
-      "Any news site, blog or Substack with an RSS feed: local news, independent writers, whatever you read. New posts only.",
-    showInOnboarding: false,
   },
   {
     id: "ha-summary",

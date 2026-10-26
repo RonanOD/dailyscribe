@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { discoverFeedUrls, htmlToBlocks, parseFeed, pdfSafe, toPlainText } from "./feed-parse";
+import { discoverFeedUrls, parseFeed, pdfSafe, toPlainText } from "./feed-parse";
 
 describe("parseFeed", () => {
   it("reads RSS 2.0, including a Substack-style full post", () => {
@@ -82,31 +82,6 @@ describe("discoverFeedUrls", () => {
     expect(discoverFeedUrls(html, "https://writer.substack.com/")).toEqual([
       "https://writer.substack.com/feed",
       "https://cdn.example.com/atom.xml?a=1&b=2",
-    ]);
-  });
-});
-
-describe("htmlToBlocks", () => {
-  it("splits paragraphs, headings, list items and quotes, dropping media and widgets", () => {
-    const blocks = htmlToBlocks(`
-      <h2>The vote</h2>
-      <p>Council met on <strong>Tuesday</strong>&nbsp;night.<br>It ran late.</p>
-      <figure><img src="x.jpg"><figcaption>Photo caption</figcaption></figure>
-      <ul><li>Roads: $2M</li><li>Parks</li></ul>
-      <blockquote><p>We did our best.</p></blockquote>
-      <div class="subscription-widget"><form><input type="email"><button>Subscribe</button></form></div>
-      <script>alert(1)</script>
-      <p class="button-wrapper"><a class="button primary" href="https://x.substack.com/p/1?action=share"><span>Share</span></a></p>
-      <div><div class="share-dialog"><p>Share this</p></div></div>
-      <p>Thanks for reading &mdash; see you next week.</p>`);
-    expect(blocks).toEqual([
-      { kind: "h", text: "The vote" },
-      { kind: "p", text: "Council met on Tuesday night." },
-      { kind: "p", text: "It ran late." },
-      { kind: "li", text: "Roads: $2M" },
-      { kind: "li", text: "Parks" },
-      { kind: "quote", text: "We did our best." },
-      { kind: "p", text: "Thanks for reading — see you next week." },
     ]);
   });
 });

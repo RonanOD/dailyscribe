@@ -12,7 +12,6 @@ const MAX_TITLE_LENGTH = 120;
 export interface FeedsConfig {
   feeds: CustomFeed[];
   maxPerFeed: number;
-  fullText: boolean;
 }
 
 /** An http(s) URL in canonical form, or null. Doesn't check where it points:
@@ -34,7 +33,7 @@ export function normalizeFeedUrl(raw: unknown): string | null {
 /** Validate untyped config (a saved subscription or a request body): drops bad
  *  and duplicate URLs, caps the list, and clamps the post count. */
 export function parseFeedsConfig(config: unknown): FeedsConfig {
-  const raw = (config ?? {}) as { feeds?: unknown; maxPerFeed?: unknown; fullText?: unknown };
+  const raw = (config ?? {}) as { feeds?: unknown; maxPerFeed?: unknown };
   const seen = new Set<string>();
   const feeds: CustomFeed[] = [];
   for (const entry of Array.isArray(raw.feeds) ? raw.feeds : []) {
@@ -50,7 +49,6 @@ export function parseFeedsConfig(config: unknown): FeedsConfig {
   return {
     feeds,
     maxPerFeed: Math.min(MAX_FEED_POSTS, Math.max(1, n)),
-    fullText: raw.fullText === true,
   };
 }
 

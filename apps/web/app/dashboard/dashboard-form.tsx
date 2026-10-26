@@ -91,7 +91,6 @@ interface FeedEntry {
 interface FeedsConfig {
   feeds?: FeedEntry[];
   maxPerFeed?: number;
-  fullText?: boolean;
   deliveryTime?: string;
   timezone?: string;
   kindleEmail?: string;
@@ -295,7 +294,6 @@ export function DashboardForm({
   const initialFeeds = {
     feeds: feeds?.config.feeds ?? [],
     maxPerFeed: feeds?.config.maxPerFeed ?? 5,
-    fullText: feeds?.config.fullText ?? false,
     enabled: feeds?.enabled ?? false,
   };
 
@@ -348,7 +346,6 @@ export function DashboardForm({
   // Your Feeds State
   const [customFeeds, setCustomFeeds] = useState<FeedEntry[]>(initialFeeds.feeds);
   const [feedsMax, setFeedsMax] = useState(initialFeeds.maxPerFeed);
-  const [feedsFullText, setFeedsFullText] = useState(initialFeeds.fullText);
   const [feedsEnabled, setFeedsEnabled] = useState(initialFeeds.enabled);
   const [feedUrl, setFeedUrl] = useState("");
 
@@ -423,7 +420,6 @@ export function DashboardForm({
   const isFeedsDirty =
     customFeeds.map((f) => f.url).join("\n") !== baseFeeds.feeds.map((f) => f.url).join("\n") ||
     feedsMax !== baseFeeds.maxPerFeed ||
-    feedsFullText !== baseFeeds.fullText ||
     feedsEnabled !== baseFeeds.enabled;
 
   const isDigestDirty = digestEnabled !== baseDigestEnabled;
@@ -450,10 +446,10 @@ export function DashboardForm({
       icon: "📬",
       dirty: isKindleDirty || isDeliveryDirty || isDigestDirty,
     },
+    { key: "feeds", ...tabMeta("feeds"), dirty: isFeedsDirty },
     { key: "rte", ...tabMeta("rte"), dirty: isRteDirty },
     { key: "cbc", ...tabMeta("cbc"), dirty: isCbcDirty },
     { key: "bbc", ...tabMeta("bbc"), dirty: isBbcDirty },
-    { key: "feeds", ...tabMeta("feeds"), dirty: isFeedsDirty },
     { key: "home-assistant", ...tabMeta("ha-summary"), dirty: isHaCredsDirty || isHaSettingsDirty },
     { key: "kanji", ...tabMeta("kanji"), dirty: isKanjiDirty },
     { key: "universal-crossword", ...tabMeta("universal-crossword"), dirty: isCrosswordDirty },
@@ -635,7 +631,6 @@ export function DashboardForm({
         service: "feeds",
         feeds: customFeeds,
         maxPerFeed: feedsMax,
-        fullText: feedsFullText,
         deliveryTime,
         timezone: deliveryTz,
         kindleEmail: kindleEmail.trim(),
@@ -695,7 +690,6 @@ export function DashboardForm({
       setBaseFeeds({
         feeds: customFeeds,
         maxPerFeed: feedsMax,
-        fullText: feedsFullText,
         enabled: feedsEnabled,
       });
       setBaseDigestEnabled(digestEnabled);
@@ -986,6 +980,11 @@ export function DashboardForm({
             Paste the feed address, or just the site&apos;s homepage and Daily Scribe will look for
             its feed. Each edition carries posts from the last day, so a quiet day sends nothing.
           </p>
+          <p className="hint">
+            Some sites (like the New York Times) need JavaScript to work, so their homepage
+            can&apos;t be read here. If a site won&apos;t add, look on it for an RSS link and paste
+            that instead.
+          </p>
 
           <div className="field">
             <label htmlFor="feed-url">Add a feed</label>
@@ -1036,35 +1035,22 @@ export function DashboardForm({
             <p className="hint">No feeds yet.</p>
           )}
           <p className="hint">
-            {customFeeds.length} of {MAX_CUSTOM_FEEDS} feeds. Images and embeds are left out; each
-            headline links to the original.
+            {customFeeds.length} of {MAX_CUSTOM_FEEDS} feeds. Each post prints as a headline and a
+            short summary, like the other news sections, and the headline links to the original.
           </p>
 
-          <div className="row">
-            <div className="field" style={{ maxWidth: 220 }}>
-              <label htmlFor="feeds-max">Posts per feed</label>
-              <input
-                id="feeds-max"
-                type="number"
-                min={1}
-                max={MAX_FEED_POSTS}
-                value={feedsMax}
-                onChange={(e) =>
-                  setFeedsMax(Math.min(Math.max(Number(e.target.value) || 1, 1), MAX_FEED_POSTS))
-                }
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="feeds-fulltext">Show</label>
-              <select
-                id="feeds-fulltext"
-                value={feedsFullText ? "full" : "summary"}
-                onChange={(e) => setFeedsFullText(e.target.value === "full")}
-              >
-                <option value="summary">Headlines and short summaries</option>
-                <option value="full">Whole posts, when the feed includes them</option>
-              </select>
-            </div>
+          <div className="field" style={{ maxWidth: 220 }}>
+            <label htmlFor="feeds-max">Posts per feed</label>
+            <input
+              id="feeds-max"
+              type="number"
+              min={1}
+              max={MAX_FEED_POSTS}
+              value={feedsMax}
+              onChange={(e) =>
+                setFeedsMax(Math.min(Math.max(Number(e.target.value) || 1, 1), MAX_FEED_POSTS))
+              }
+            />
           </div>
 
           <div className="actions">

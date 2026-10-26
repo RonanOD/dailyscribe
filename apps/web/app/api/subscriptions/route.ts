@@ -70,7 +70,6 @@ export async function POST(req: Request) {
     maxJlptLevel?: unknown;
     puzzlesPerDay?: unknown;
     difficulty?: unknown;
-    fullText?: unknown;
     deliveryTime?: string;
     timezone?: string;
     kindleEmail?: string;

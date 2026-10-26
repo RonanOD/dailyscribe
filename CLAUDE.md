@@ -127,8 +127,9 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       which also finds the feed behind a pasted homepage; every fetch goes through
       `fetchPublicUrl`, which re-checks each redirect against the SSRF guard and caps size;
       daily editions carry only posts from the last ~day and send nothing on a quiet day,
-      while "Send test now" ignores that window; headlines + summaries or whole posts as clean
-      text. CBC/BBC/RTÉ now share its fetch/parse/render code in `apps/web/lib/plugins/news.tsx`) —
+      while "Send test now" ignores that window; headlines + short summaries only, like the
+      other news services, never laid-out post HTML, to keep PDFs small; first in the catalog,
+      so it leads the digest's table of contents. CBC/BBC/RTÉ now share its fetch/parse/render code in `apps/web/lib/plugins/news.tsx`) —
       plus a **Digest** pseudo-service (`runner.ts`) that bundles whichever of a user's other
       services are enabled into one PDF/email, with a branded cover + linked table of contents
       page and per-member failure isolation (one service erroring drops just its section, not

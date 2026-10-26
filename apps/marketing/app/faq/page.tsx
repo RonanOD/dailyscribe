@@ -40,9 +40,9 @@ export default function FaqPage() {
       <p>
         Yes. Your Feeds takes any site with an RSS or Atom feed: your local paper or TV
         station, a blog, or a Substack (paste the publication&rsquo;s address and Daily Scribe
-        finds its feed). Each edition carries the posts from the last day, as headlines with
-        short summaries or as whole posts, and skips a day when there&rsquo;s nothing new.
-        Paid-only posts show just the preview the feed includes.
+        finds its feed). Each edition carries the posts from the last day as headlines with
+        short summaries, linked to the originals, and skips a day when there&rsquo;s nothing
+        new. Sites that only work with JavaScript turned on can&rsquo;t be read this way.
       </p>
 
       <h2>What is a &ldquo;write-in&rdquo; crossword?</h2>
