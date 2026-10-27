@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { applyCharacterSheet, applyMove, maxDiceTotal, minDiceTotal } from "./engine";
+import { DND_CAMPAIGNS, MOUNTAIN_FORGE_CAMPAIGN, SUNKEN_VAULT_CAMPAIGN } from "./campaign";
+import {
+  addToInventory,
+  applyCharacterSheet,
+  applyMove,
+  completedCampaignIds,
+  continueWithHero,
+  defaultNextCampaign,
+  maxDiceTotal,
+  minDiceTotal,
+} from "./engine";
 import { deriveCharacter } from "./rules";
 import type { DndCampaignDefinition, DndPlayState } from "./types";
 
@@ -7,7 +17,9 @@ import type { DndCampaignDefinition, DndPlayState } from "./types";
  *  built-in adventure, so combat-math assertions don't depend on its balance
  *  numbers changing later. */
 const testCampaign: DndCampaignDefinition = {
+  id: "test",
   campaignName: "Test Campaign",
+  blurb: "A test.",
   schemaVersion: 1,
   grid: { cols: 2, rows: 1 },
   startNode: "start",
@@ -335,5 +347,90 @@ describe("maxDiceTotal", () => {
     expect(minDiceTotal("2d4+2")).toBe(4);
     expect(minDiceTotal("1d6-1")).toBe(0);
     expect(minDiceTotal("a bite")).toBeNull();
+  });
+});
+
+describe("after a win", () => {
+  function wonState(): DndPlayState {
+    const base = freshState();
+    return {
+      ...base,
+      character: { ...base.character, currentHp: 3, inventory: [...base.character.inventory, "Shiny Coin"] },
+      gameState: { ...base.gameState, campaignId: "sunken_vault", status: "won", turnCount: 12 },
+    };
+  }
+
+  it("records the adventure as won", () => {
+    const { state } = applyMove(freshState({ gameState: { ...freshState().gameState, monsterHp: { goblin: 0 } } }), testCampaign, {
+      chosenExit: "north",
+    });
+    expect(state.gameState.status).toBe("won");
+    expect(state.gameState.completedCampaigns).toEqual(["test"]);
+  });
+
+  it("keeps the hero: a level up, full HP, same inventory, fresh run in the chosen adventure", () => {
+    const { state } = continueWithHero(wonState(), MOUNTAIN_FORGE_CAMPAIGN);
+    // Fighter, CON 10: d10 average (6) + 0 on top of level 1's 10.
+    expect(state.character.level).toBe(2);
+    expect(state.character.maxHp).toBe(16);
+    expect(state.character.currentHp).toBe(16);
+    expect(state.character.inventory).toContain("Shiny Coin");
+    expect(state.gameState).toMatchObject({
+      campaignId: "mountain_forge",
+      completedCampaigns: ["sunken_vault"],
+      currentNode: MOUNTAIN_FORGE_CAMPAIGN.startNode,
+      status: "active",
+      turnCount: 0,
+    });
+    expect(state.turnLog).toHaveLength(1);
+  });
+
+  it("counts a win from before wins were recorded, and defaults to the next unwon adventure", () => {
+    const legacy = { ...wonState().gameState, campaignId: undefined };
+    expect(completedCampaignIds(legacy)).toEqual(["sunken_vault"]);
+    expect(defaultNextCampaign(DND_CAMPAIGNS, legacy).id).toBe("mountain_forge");
+    const allWon = { ...legacy, completedCampaigns: DND_CAMPAIGNS.map((c) => c.id) };
+    expect(defaultNextCampaign(DND_CAMPAIGNS, allWon).id).toBe(SUNKEN_VAULT_CAMPAIGN.id);
+  });
+
+  it("a new hero starts with no wins", () => {
+    const { state } = applyCharacterSheet(MOUNTAIN_FORGE_CAMPAIGN, { name: "Bryn", class: "rogue", scores: {} });
+    expect(state.gameState.campaignId).toBe("mountain_forge");
+    expect(state.gameState.completedCampaigns).toEqual([]);
+  });
+});
+
+describe("addToInventory", () => {
+  it("stacks counted items onto one already carried", () => {
+    expect(addToInventory(["Longsword", "Health Potion x1"], ["Health Potion x1", "Silver key"])).toEqual([
+      "Longsword",
+      "Health Potion x2",
+      "Silver key",
+    ]);
+  });
+
+  it("adds a counted item fresh when none is carried", () => {
+    expect(addToInventory(["Longsword"], ["Health Potion x1"])).toEqual(["Longsword", "Health Potion x1"]);
+  });
+});
+
+describe("built-in adventures", () => {
+  it("every exit leads to a real room, and the goal is reachable", () => {
+    for (const c of DND_CAMPAIGNS) {
+      for (const [id, node] of Object.entries(c.nodes)) {
+        for (const dest of Object.values(node.exits)) expect(c.nodes[dest], `${c.id}/${id} -> ${dest}`).toBeDefined();
+      }
+      const seen = new Set([c.startNode]);
+      const queue = [c.startNode];
+      while (queue.length > 0) {
+        for (const dest of Object.values(c.nodes[queue.shift()!].exits)) {
+          if (seen.has(dest)) continue;
+          seen.add(dest);
+          queue.push(dest);
+        }
+      }
+      expect(seen.has(c.goalNode), c.id).toBe(true);
+      expect(c.nodes[c.goalNode].isGoal).toBe(true);
+    }
   });
 });

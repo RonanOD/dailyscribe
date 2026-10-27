@@ -43,7 +43,11 @@ export interface DndCampaignNode {
 }
 
 export interface DndCampaignDefinition {
+  /** Stable key, stored on each player's game state (`DndGameState.campaignId`). */
+  id: string;
   campaignName: string;
+  /** One line for the "choose your next adventure" page. */
+  blurb: string;
   schemaVersion: number;
   grid: { cols: number; rows: number };
   startNode: string;
@@ -59,6 +63,11 @@ export interface DndCombatTracker {
 export type DndGameStatus = "awaiting_character" | "active" | "dead" | "won";
 
 export interface DndGameState {
+  /** Which adventure this run is in. Absent on docs from before there was a
+   *  choice, which were all in the first one (see getDndCampaign). */
+  campaignId?: string;
+  /** Adventures this hero has won, carried over when they keep their hero. */
+  completedCampaigns?: string[];
   currentNode: string;
   discoveredNodes: string[];
   defeatedMonsters: string[];

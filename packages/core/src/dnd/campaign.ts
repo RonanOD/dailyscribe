@@ -1,10 +1,13 @@
 import type { DndCampaignDefinition } from "./types";
 
-/** The built-in adventure, ported verbatim from the old repo's `dnd/campaign.json`.
+/** The first adventure, ported verbatim from the old repo's `dnd/campaign.json`.
  *  A fixed, shared dungeon — every user plays the same one, with independent
- *  per-user progress (the same shape as the Kanji curriculum + per-user cursor). */
+ *  per-user progress (the same shape as the Kanji curriculum + per-user cursor).
+ *  A loose, original-text homage to The Sunless Citadel. */
 export const SUNKEN_VAULT_CAMPAIGN: DndCampaignDefinition = {
+  id: "sunken_vault",
   campaignName: "The Sunken Vault (Solo Edition)",
+  blurb: "Climb down into a citadel swallowed by the earth, past rats and goblins, to a grove that should not exist.",
   schemaVersion: 1,
   grid: { cols: 5, rows: 5 },
   startNode: "ravine_ledge",
@@ -126,3 +129,134 @@ export const SUNKEN_VAULT_CAMPAIGN: DndCampaignDefinition = {
     },
   },
 };
+
+/** The second adventure: an original-text homage to The Forge of Fury, the
+ *  Sunless Citadel's sequel in Tales from the Yawning Portal. Pitched a step
+ *  harder than the vault for a hero kept from it (still level 1), with a
+ *  potion to find on the side. */
+export const MOUNTAIN_FORGE_CAMPAIGN: DndCampaignDefinition = {
+  id: "mountain_forge",
+  campaignName: "The Mountain Forge (Solo Edition)",
+  blurb: "Force the doors of a dwarven stronghold held by orcs, and find what still guards its legendary forge.",
+  schemaVersion: 1,
+  grid: { cols: 5, rows: 5 },
+  startNode: "stone_doors",
+  goalNode: "black_forge",
+  nodes: {
+    stone_doors: {
+      title: "The Stone Doors",
+      x: 2,
+      y: 0,
+      description:
+        "A switchback trail ends at a pair of great doors carved into the mountainside, each taller than three men. One stands ajar. Narrow arrow slits flank them, dark and silent.",
+      monsters: [],
+      exits: { in: "arrow_hall" },
+    },
+    arrow_hall: {
+      title: "The Arrow Hall",
+      x: 2,
+      y: 1,
+      description:
+        "A long hall runs behind the arrow slits, its floor littered with broken shafts and gnawed bones. An orc sentry looks up from a smoky brazier and reaches for its axe.",
+      monsters: [
+        {
+          id: "orc_sentry",
+          name: "Orc Sentry",
+          hp: 11,
+          ac: 13,
+          attack: "+5 to hit, 1d6+3 slashing (handaxe)",
+          dexMod: 1,
+          passivePerception: 10,
+        },
+      ],
+      exits: { down: "crystal_cavern", east: "orc_barracks", out: "stone_doors" },
+    },
+    orc_barracks: {
+      title: "The Orc Barracks",
+      x: 3,
+      y: 1,
+      description:
+        "Filthy bedrolls and a toppled cookpot fill a low chamber. Two stirges hang from the ceiling like ripe fruit, then drop toward the warmth of your blood.",
+      monsters: [
+        {
+          id: "stirge_a",
+          name: "Stirge",
+          hp: 2,
+          ac: 14,
+          attack: "+5 to hit, 1d4+3 piercing",
+          dexMod: 3,
+          passivePerception: 9,
+        },
+        {
+          id: "stirge_b",
+          name: "Stirge",
+          hp: 2,
+          ac: 14,
+          attack: "+5 to hit, 1d4+3 piercing",
+          dexMod: 3,
+          passivePerception: 9,
+        },
+      ],
+      loot: ["Health Potion x1"],
+      exits: { west: "arrow_hall" },
+    },
+    crystal_cavern: {
+      title: "The Crystal Cavern",
+      x: 2,
+      y: 2,
+      description:
+        "A wide stair spills into a natural cavern whose walls glitter with crystal veins. Something long and many-legged unfolds from a crack in the rock.",
+      monsters: [
+        {
+          id: "centipede_a",
+          name: "Giant Centipede",
+          hp: 4,
+          ac: 13,
+          attack: "+4 to hit, 1d4+2 piercing",
+          dexMod: 2,
+          passivePerception: 8,
+        },
+      ],
+      exits: { south: "black_forge", west: "dwarven_shrine", up: "arrow_hall" },
+    },
+    dwarven_shrine: {
+      title: "The Dwarven Shrine",
+      x: 1,
+      y: 2,
+      description:
+        "A small shrine to a forge god, its altar split by a fallen stone. Offerings of tools and coins lie scattered where looters left them.",
+      monsters: [],
+      loot: ["Dwarven smith's hammer"],
+      exits: { east: "crystal_cavern" },
+    },
+    black_forge: {
+      title: "The Black Forge",
+      x: 2,
+      y: 3,
+      description:
+        "Heat still breathes from a vast forge cut into the living rock, its anvil black with age. A dwarf skeleton in rusted mail stands before it, and turns its empty eyes on you.",
+      monsters: [
+        {
+          id: "forge_skeleton",
+          name: "Skeleton",
+          hp: 13,
+          ac: 13,
+          attack: "+4 to hit, 1d6+2 piercing (shortsword)",
+          dexMod: 2,
+          passivePerception: 9,
+        },
+      ],
+      isGoal: true,
+      exits: { north: "crystal_cavern" },
+    },
+  },
+};
+
+/** Every adventure, in the order the "next adventure" page lists them. */
+export const DND_CAMPAIGNS: DndCampaignDefinition[] = [SUNKEN_VAULT_CAMPAIGN, MOUNTAIN_FORGE_CAMPAIGN];
+
+/** An adventure by id. Unknown or missing ids (docs from before there was a
+ *  choice) are the first adventure, which is all there was. */
+export function getDndCampaign(id: string | null | undefined): DndCampaignDefinition {
+  return DND_CAMPAIGNS.find((c) => c.id === id) ?? SUNKEN_VAULT_CAMPAIGN;
+}

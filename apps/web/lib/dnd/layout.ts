@@ -72,6 +72,26 @@ export function moveExitOptions(node: { exits: Record<string, string> } | undefi
   return Object.keys(node?.exits ?? {}).slice(0, DND_MOVE_EXIT_SLOTS.length);
 }
 
+/**
+ * The "Your Next Adventure" page, sent after a win or a death: keep the hero
+ * (only offered after a win) or make a new one, and tick an adventure. Same
+ * fixed-position contract as the move page, so these boxes are read by pixel
+ * darkness with no AI; only a new hero's sheet (drawn below them) needs the
+ * whole-page vision read.
+ */
+export const DND_NEXT_HERO_CHECKBOXES: DndFieldBox[] = [
+  { id: "keep_hero", label: "Keep my hero", kind: "checkbox", top: 150, left: 56, width: 14, height: 14 },
+  { id: "new_hero", label: "Start a new hero", kind: "checkbox", top: 176, left: 56, width: 14, height: 14 },
+];
+
+/** One slot per adventure, labelled in `DND_CAMPAIGNS` order. */
+export const DND_NEXT_ADVENTURE_SLOTS: DndFieldBox[] = [
+  { id: "adventure_0", label: "Adventure 1", kind: "checkbox", top: 236, left: 56, width: 14, height: 14 },
+  { id: "adventure_1", label: "Adventure 2", kind: "checkbox", top: 270, left: 56, width: 14, height: 14 },
+  { id: "adventure_2", label: "Adventure 3", kind: "checkbox", top: 304, left: 56, width: 14, height: 14 },
+  { id: "adventure_3", label: "Adventure 4", kind: "checkbox", top: 338, left: 56, width: 14, height: 14 },
+];
+
 export const DND_MOVE_FIELD_LAYOUT: DndFieldBox[] = [...DND_MOVE_CHECKBOXES, ...DND_MOVE_FILL_INS, ...DND_MOVE_EXIT_SLOTS];
 
 export function fieldById(id: string): DndFieldBox {

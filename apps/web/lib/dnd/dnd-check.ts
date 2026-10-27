@@ -7,14 +7,21 @@ import {
   type DndMoveInput,
 } from "@dailyscribe/core";
 import { getDocument } from "pdfjs-serverless";
-import { DND_MOVE_CHECKBOXES, DND_MOVE_EXIT_SLOTS, DND_MOVE_FILL_INS } from "./layout";
+import {
+  DND_MOVE_CHECKBOXES,
+  DND_MOVE_EXIT_SLOTS,
+  DND_MOVE_FILL_INS,
+  DND_NEXT_ADVENTURE_SLOTS,
+  DND_NEXT_HERO_CHECKBOXES,
+} from "./layout";
 import { readCheckboxes, type CheckboxRead } from "./mark-reader";
 import { cropFieldToPng, renderPageToRaster, type RasterPage } from "./rasterize";
 
 const MOVE_PAGE_MARKER = "Your Move"; // DndDocument's MovePage masthead text (lib/plugins/dnd.tsx).
+const NEXT_PAGE_MARKER = "Your Next Adventure"; // NextAdventurePage's masthead text.
 
 /**
- * Finds and rasterizes the move-input page from a possibly multi-page
+ * Finds and rasterizes the page with `marker` (e.g. the move-input page) from a possibly multi-page
  * trimmed submission — the player may have mailed back just that one page,
  * or the whole 3-page packet (adventure/move/character-sheet), so its
  * position isn't fixed; a cheap text-content scan finds it (same technique
@@ -27,7 +34,7 @@ const MOVE_PAGE_MARKER = "Your Move"; // DndDocument's MovePage masthead text (l
  * pdfjs-serverless's simulated worker "loopback port"). See rasterize.ts's
  * `rasterizePage` doc comment for the full story.
  */
-async function findAndRasterizeMovePage(pdfBytes: Uint8Array): Promise<RasterPage | null> {
+async function findAndRasterizePage(pdfBytes: Uint8Array, marker: string): Promise<RasterPage | null> {
   // See the matching comment in rasterize.ts's rasterizePage — pdfjs-serverless
   // rejects a Node `Buffer` even though it's a Uint8Array subclass.
   const data = pdfBytes instanceof Buffer ? new Uint8Array(pdfBytes) : pdfBytes;
@@ -38,7 +45,7 @@ async function findAndRasterizeMovePage(pdfBytes: Uint8Array): Promise<RasterPag
       const page = await doc.getPage(i);
       const content = await page.getTextContent();
       const text = content.items.map((it) => ("str" in it ? it.str : "")).join(" ");
-      if (text.includes(MOVE_PAGE_MARKER)) return await renderPageToRaster(page);
+      if (text.includes(marker)) return await renderPageToRaster(page);
     }
     return null;
   } finally {
@@ -84,14 +91,25 @@ export interface DndMoveReadResult {
 export interface DndCharacterReadResult {
   kind: "character";
   sheet: DndCharacterSheetInput;
+  /** From the "next adventure" page: the adventure slot ticked, if any. */
+  adventureSlot?: number | null;
 }
 
-export type DndReplyRead = DndMoveReadResult | DndCharacterReadResult;
+/** "Keep my hero" ticked on the next-adventure page: no vision read needed. */
+export interface DndKeepHeroReadResult {
+  kind: "keep";
+  adventureSlot: number | null;
+  diagnostics: { checkboxes: CheckboxRead[] };
+}
+
+export type DndReplyRead = DndMoveReadResult | DndCharacterReadResult | DndKeepHeroReadResult;
 
 export interface ReadDndReplyParams {
   /** The trimmed submission — just this service's own pages (see extractPdfPages in route.ts). */
   pdfBytes: Uint8Array;
-  expectedShape: "move" | "character";
+  expectedShape: "move" | "character" | "next";
+  /** "next" only: whether "Keep my hero" is on offer (after a win, not a death). */
+  canKeepHero?: boolean;
   /** The current room's exits in slot order (`moveExitOptions`), so a marked
    *  exit checkbox can be mapped back to its direction. */
   exitOptions?: string[];
@@ -106,18 +124,41 @@ export interface ReadDndReplyParams {
  * - "move" (the frequent path — every ordinary turn): deterministic
  *   checkbox detection (no AI) plus one batched Gemini call over small
  *   per-field crops for the handful of numeric/word fill-ins.
- * - "character" (the rare path — campaign start or after death, at most a
- *   couple of times per user): one whole-page Gemini vision call, same as
- *   the old repo's process_vision.py — cost doesn't matter at this volume.
+ * - "character" (the rare path — campaign start, at most a couple of times
+ *   per user): one whole-page Gemini vision call, same as the old repo's
+ *   process_vision.py — cost doesn't matter at this volume.
+ * - "next" (after a win or a death): the keep-hero and adventure boxes are
+ *   read by pixel darkness like a move; only a new hero costs the
+ *   whole-page vision call.
  */
 export async function readDndReply(params: ReadDndReplyParams): Promise<DndReplyRead> {
-  if (params.expectedShape === "character") {
+  const readSheet = async () => {
     const client = createDndCharacterSheetOcrClient({ apiKey: params.apiKey, model: params.model });
-    const sheet = await client.read({ pdfBytes: Buffer.from(params.pdfBytes), contentType: "application/pdf" });
-    return { kind: "character", sheet };
+    return client.read({ pdfBytes: Buffer.from(params.pdfBytes), contentType: "application/pdf" });
+  };
+
+  if (params.expectedShape === "character") {
+    return { kind: "character", sheet: await readSheet() };
   }
 
-  const raster = await findAndRasterizeMovePage(params.pdfBytes);
+  if (params.expectedShape === "next") {
+    const page = await findAndRasterizePage(params.pdfBytes, NEXT_PAGE_MARKER);
+    // An older victory/defeat page (just a creation sheet) mailed back after
+    // this shipped: read it as a new hero in the default adventure.
+    if (!page) return { kind: "character", sheet: await readSheet() };
+
+    const checkboxes = readCheckboxes(page, [...DND_NEXT_HERO_CHECKBOXES, ...DND_NEXT_ADVENTURE_SLOTS]);
+    const marked = (id: string) => checkboxes.find((c) => c.id === id)?.marked ?? false;
+    const slot = DND_NEXT_ADVENTURE_SLOTS.findIndex((f) => marked(f.id));
+    const adventureSlot = slot === -1 ? null : slot;
+    // Ticking both reads as a new hero: a filled-in sheet is the stronger signal.
+    if (params.canKeepHero && marked("keep_hero") && !marked("new_hero")) {
+      return { kind: "keep", adventureSlot, diagnostics: { checkboxes } };
+    }
+    return { kind: "character", sheet: await readSheet(), adventureSlot };
+  }
+
+  const raster = await findAndRasterizePage(params.pdfBytes, MOVE_PAGE_MARKER);
   if (!raster) {
     throw new Error('Mailed-back PDF has no page matching the "Your Move" page — nothing to read.');
   }

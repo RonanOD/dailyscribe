@@ -319,9 +319,10 @@ export interface DndCampaign {
 export type DndSubmissionStatus = "received" | "processed" | "failed";
 
 /** Which reply shape was expected at receipt time — a filled character sheet
- *  (new campaign / after death) or an ordinary move — snapshotted from
+ *  (new campaign), an ordinary move, or the "next adventure" page (after a
+ *  win or a death: keep the hero or make a new one, and pick an adventure) — snapshotted from
  *  gameState.status so grading doesn't need to re-derive it later. */
-export type DndSubmissionShape = "character" | "move";
+export type DndSubmissionShape = "character" | "move" | "next";
 
 /** One inbound email captured for a user's DnD reply — an event log (one row
  *  per email), unlike DndCampaign which is a per-user singleton. Mirrors

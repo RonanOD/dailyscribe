@@ -105,3 +105,18 @@ export function deriveCharacter(sheet: DndCharacterSheetInput): DndCharacter {
     skillProficiencies: [...profile.skills],
   };
 }
+
+/** Max HP gained per level: the 5e fixed average (half the hit die, plus 1)
+ *  plus the CON modifier, at least 1. Fixed rather than rolled, since the
+ *  engine never rolls dice. */
+export function hpPerLevel(character: DndCharacter): number {
+  const hitDie = CLASS_PROFILES[normalizeClass(character.class)].hitDie;
+  return Math.max(1, hitDie / 2 + 1 + character.modifiers.constitution);
+}
+
+/** One level up (the reward for winning an adventure): more max HP, healed
+ *  to full. The proficiency bonus follows the level (see proficiencyBonus). */
+export function levelUp(character: DndCharacter): DndCharacter {
+  const maxHp = character.maxHp + hpPerLevel(character);
+  return { ...structuredClone(character), level: character.level + 1, maxHp, currentHp: maxHp };
+}

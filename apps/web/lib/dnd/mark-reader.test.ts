@@ -2,7 +2,15 @@ import { SUNKEN_VAULT_CAMPAIGN, type DndCampaign } from "@dailyscribe/core";
 import { PDFDocument, rgb } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import { renderDndPdf } from "../plugins/dnd";
-import { DND_MOVE_CHECKBOXES, DND_MOVE_EXIT_SLOTS, DND_MOVE_PAGE_SIZE, moveExitOptions, type DndFieldBox } from "./layout";
+import {
+  DND_MOVE_CHECKBOXES,
+  DND_MOVE_EXIT_SLOTS,
+  DND_MOVE_PAGE_SIZE,
+  DND_NEXT_ADVENTURE_SLOTS,
+  DND_NEXT_HERO_CHECKBOXES,
+  moveExitOptions,
+  type DndFieldBox,
+} from "./layout";
 import { readCheckboxes } from "./mark-reader";
 import { rasterizePage } from "./rasterize";
 
@@ -12,7 +20,7 @@ import { rasterizePage } from "./rasterize";
  * drifts from `DND_MOVE_FIELD_LAYOUT` — exactly the desync this shared-layout
  * design is meant to prevent (see layout.ts's doc comment).
  */
-async function renderMovePagePdf(): Promise<Uint8Array> {
+async function renderMovePagePdf(status: "active" | "won" = "active"): Promise<Uint8Array> {
   const campaignDoc: DndCampaign = {
     userId: "test-user",
     inboundToken: "0123456789abcdef",
@@ -38,7 +46,7 @@ async function renderMovePagePdf(): Promise<Uint8Array> {
       monsterHp: {},
       searchedNodes: [],
       combat: { node: "tower_entry", playerFirst: null },
-      status: "active",
+      status,
       turnCount: 1,
     },
     turnLog: [],
@@ -98,5 +106,36 @@ describe("readCheckboxes", () => {
     }
     // Slot order is the room's exit order: tower_entry is north, east, west.
     expect(moveExitOptions(SUNKEN_VAULT_CAMPAIGN.nodes.tower_entry)[1]).toBe("east");
+  });
+});
+
+describe("readCheckboxes on the next-adventure page", () => {
+  const fields = [...DND_NEXT_HERO_CHECKBOXES, ...DND_NEXT_ADVENTURE_SLOTS];
+
+  async function readNextWithMarks(marks: DndFieldBox[]) {
+    const pdfDoc = await PDFDocument.load(await renderMovePagePdf("won"));
+    const page = pdfDoc.getPage(0); // the won document is this one page
+    for (const field of marks) {
+      const x0 = field.left + 2;
+      const y0 = toPdfY(field.top, field.height) + 2;
+      const x1 = field.left + field.width - 2;
+      const y1 = toPdfY(field.top, field.height) + field.height - 2;
+      page.drawLine({ start: { x: x0, y: y0 }, end: { x: x1, y: y1 }, thickness: 2, color: rgb(0.1, 0.1, 0.1) });
+      page.drawLine({ start: { x: x1, y: y0 }, end: { x: x0, y: y1 }, thickness: 2, color: rgb(0.1, 0.1, 0.1) });
+    }
+    const raster = await rasterizePage(await pdfDoc.save(), 0);
+    return new Map(readCheckboxes(raster, fields).map((r) => [r.id, r.marked]));
+  }
+
+  it("reads an untouched page as nothing ticked", async () => {
+    const byId = await readNextWithMarks([]);
+    for (const field of fields) expect(byId.get(field.id), field.id).toBe(false);
+  });
+
+  it("reads keep-my-hero plus the second adventure, and nothing else", async () => {
+    const byId = await readNextWithMarks([DND_NEXT_HERO_CHECKBOXES[0], DND_NEXT_ADVENTURE_SLOTS[1]]);
+    for (const field of fields) {
+      expect(byId.get(field.id), field.id).toBe(field.id === "keep_hero" || field.id === "adventure_1");
+    }
   });
 });

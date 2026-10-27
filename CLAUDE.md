@@ -165,7 +165,12 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       and listed in the admin `signup-report`. **DnD 5e (Sep 2026):** the last
       deferred catalog service landed and is now public — dashboard tab, onboarding card, and
       its own marketing feature block, after a stint behind `comingSoon: true` while its
-      mail-back loop was verified against real production submissions. Still to do: build the
+      mail-back loop was verified against real production submissions. **Oct 2026:** a second
+      adventure, The Mountain Forge (an original-text homage to The Forge of Fury, as the vault
+      is to The Sunless Citadel; `DND_CAMPAIGNS` in `packages/core/src/dnd/campaign.ts`), and a
+      "Your Next Adventure" page after a win or a death: keep the hero (wins only: one level up,
+      +hit-die average + CON max HP, healed to full, inventory kept) or make a new one, and tick an adventure, read by pixel darkness like the move
+      page so keeping a hero needs no Gemini call. Still to do: build the
       remaining deferred catalog services (classic novels, eating tracking). **Kindle check
       (Oct 2026, DAI-8):** onboarding's "I've approved the sender" checkbox became a real test
       send (`/api/onboarding/test-send`, a one-page welcome PDF) the user confirms arrived,

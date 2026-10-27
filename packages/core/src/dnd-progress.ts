@@ -7,6 +7,7 @@ import type { DndCampaign } from "./types";
 
 function initialGameState(): DndGameState {
   return {
+    campaignId: SUNKEN_VAULT_CAMPAIGN.id,
     currentNode: SUNKEN_VAULT_CAMPAIGN.startNode,
     discoveredNodes: [SUNKEN_VAULT_CAMPAIGN.startNode],
     defeatedMonsters: [],

@@ -2,10 +2,13 @@ import {
   applyCharacterSheet,
   applyMove,
   collections,
+  continueWithHero,
   createGeminiKanjiCheckClient,
+  defaultNextCampaign,
+  DND_CAMPAIGNS,
   extractPdfPages,
+  getDndCampaign,
   KANJI_CURRICULUM,
-  SUNKEN_VAULT_CAMPAIGN,
   type DndGameStatus,
   type DndSubmissionShape,
   type KanjiCharCheckResult,
@@ -163,12 +166,12 @@ async function resolveSubmissionBytes(
   return { ok: false, transient: false };
 }
 
-/** A filled character-creation sheet is expected while there's no active hero
- *  yet (a new campaign) or after the previous run ended (won/dead — the
- *  terminal pages offer a restart); every other status expects an ordinary
- *  move reply. */
+/** A filled character-creation sheet is expected while there's no hero yet
+ *  (a new campaign); after a run ends (won/dead) the "next adventure" page
+ *  (keep or replace the hero, pick an adventure); otherwise an ordinary move. */
 function dndExpectedShape(status: DndGameStatus): DndSubmissionShape {
-  return status === "active" ? "move" : "character";
+  if (status === "active") return "move";
+  return status === "awaiting_character" ? "character" : "next";
 }
 
 /**
@@ -225,18 +228,28 @@ async function handleDndSubmission(input: {
   }
 
   try {
+    const current = getDndCampaign(campaign.gameState.campaignId);
     const read = await readDndReply({
       pdfBytes: input.attachmentBytes,
       expectedShape: expectedShapeAtReceipt,
-      exitOptions: moveExitOptions(SUNKEN_VAULT_CAMPAIGN.nodes[campaign.gameState.currentNode]),
+      canKeepHero: campaign.gameState.status === "won",
+      exitOptions: moveExitOptions(current.nodes[campaign.gameState.currentNode]),
       apiKey: geminiApiKey,
       model: process.env.DND_GEMINI_MODEL || undefined,
     });
 
+    const state = { character: campaign.character, gameState: campaign.gameState, turnLog: campaign.turnLog };
+    // The adventure ticked on the next-adventure page, else the first one not yet won.
+    const nextCampaign = () => {
+      const slot = read.kind === "move" ? null : read.adventureSlot;
+      return (slot != null ? DND_CAMPAIGNS[slot] : undefined) ?? defaultNextCampaign(DND_CAMPAIGNS, campaign.gameState);
+    };
     const result =
-      read.kind === "character"
-        ? applyCharacterSheet(SUNKEN_VAULT_CAMPAIGN, read.sheet)
-        : applyMove({ character: campaign.character, gameState: campaign.gameState, turnLog: campaign.turnLog }, SUNKEN_VAULT_CAMPAIGN, read.move);
+      read.kind === "move"
+        ? applyMove(state, current, read.move)
+        : read.kind === "keep"
+          ? continueWithHero(state, nextCampaign())
+          : applyCharacterSheet(expectedShapeAtReceipt === "next" ? nextCampaign() : current, read.sheet);
 
     await dndCampaigns.updateOne(
       { _id: campaign._id },
@@ -254,7 +267,7 @@ async function handleDndSubmission(input: {
       {
         $set: {
           status: "processed",
-          visionResult: read.kind === "move" ? read.diagnostics : read.sheet,
+          visionResult: read.kind === "character" ? read.sheet : read.diagnostics,
           processedAt: new Date(),
         },
       },

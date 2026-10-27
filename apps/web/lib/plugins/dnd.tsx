@@ -1,8 +1,11 @@
 import {
+  completedCampaignIds,
+  DND_CAMPAIGNS,
   formatIsoDate,
+  getDndCampaign,
   getOrCreateDndCampaign,
+  hpPerLevel,
   proficiencyBonus,
-  SUNKEN_VAULT_CAMPAIGN,
   type Asset,
   type DndCampaign,
   type DndCampaignDefinition,
@@ -17,6 +20,8 @@ import {
   DND_MOVE_CHECKBOXES,
   DND_MOVE_EXIT_SLOTS,
   DND_MOVE_FILL_INS,
+  DND_NEXT_ADVENTURE_SLOTS,
+  DND_NEXT_HERO_CHECKBOXES,
   moveExitOptions,
   type DndFieldBox,
 } from "@/lib/dnd/layout";
@@ -523,40 +528,84 @@ function CreationPage({ campaign, campaignDoc, date, digest }: { campaign: DndCa
   );
 }
 
-function TerminalPage({
+// "Your Next Adventure" page: the summary sits between the masthead and the
+// first checkbox (DND_NEXT_HERO_CHECKBOXES, top 150), and the adventure
+// heading above the first slot (DND_NEXT_ADVENTURE_SLOTS, top 236).
+const NEXT_SUMMARY_TOP = 78;
+const NEXT_ADVENTURE_HEADING_TOP = 210;
+
+/**
+ * Sent after a win or a death. Like MovePage, every box is drawn at a fixed
+ * position (lib/dnd/layout.ts) so the mail-back reader can tell "keep my
+ * hero" and the adventure pick from pixel darkness alone. Only a win offers
+ * keeping the hero; a fallen one has to be replaced.
+ */
+function NextAdventurePage({
   campaign,
   campaignDoc,
-  date,
   digest,
   won,
 }: {
   campaign: DndCampaignDefinition;
   campaignDoc: DndCampaign;
-  date: Date;
   digest?: boolean;
   won: boolean;
 }) {
   const { character, gameState } = campaignDoc;
+  const done = completedCampaignIds(gameState);
+  const [keepBox, newBox] = DND_NEXT_HERO_CHECKBOXES;
+  const adventures = DND_CAMPAIGNS.slice(0, DND_NEXT_ADVENTURE_SLOTS.length);
+  // The creation sheet is read by whole-page vision, not position, so it can
+  // sit just under the last adventure drawn rather than the last slot.
+  const creationTop = DND_NEXT_ADVENTURE_SLOTS[adventures.length - 1].top + 44;
   return (
-    <Page size="A4" style={styles.page} wrap>
-      <Text style={styles.masthead}>{campaign.campaignName}</Text>
-      <Text style={styles.date}>{formatLongDate(date)}</Text>
-      {!digest && (
-        <Link src={BUY_ME_A_COFFEE_URL} style={styles.coffee}>
-          Enjoy this with your coffee? Consider buying the creator one, it helps cover the running costs.
-        </Link>
+    <Page size="A4" style={styles.page}>
+      <Text style={styles.masthead}>Your Next Adventure</Text>
+      <View style={{ position: "absolute", top: NEXT_SUMMARY_TOP, left: 48, right: 48 }}>
+        <Text style={styles.body}>
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>{won ? "Victory! " : "You have fallen. "}</Text>
+          {won
+            ? `${character.name} the ${character.class} cleared ${campaign.campaignName} in ${gameState.turnCount} turns.`
+            : `${character.name} the ${character.class} fell in ${campaign.campaignName} after ${gameState.turnCount} turns.`}
+        </Text>
+        <Text style={[styles.mailBack, { marginTop: 6 }]}>
+          {won ? "Tick your choices" : "Fill in a new hero and tick an adventure"}, then email this page to{" "}
+          <Text style={styles.mailBackAddr}>{MAIL_BACK_ADDRESS}</Text>.
+        </Text>
+      </View>
+
+      {won ? (
+        <>
+          <AbsCheckbox
+            field={keepBox}
+            label={`Keep ${character.name}: rise to level ${character.level + 1} (HP ${character.maxHp} to ${
+              character.maxHp + hpPerLevel(character)
+            }), healed to full, with everything you carry`}
+            labelWidth={440}
+          />
+          <AbsCheckbox field={newBox} label="Start a new hero (fill in the sheet below)" labelWidth={440} />
+        </>
+      ) : (
+        <Text style={{ position: "absolute", top: keepBox.top + 1.5, left: 56, fontSize: 9.5, width: 460 }}>
+          Every adventure needs a hero. Fill in the sheet below to make a new one.
+        </Text>
       )}
-      <Text style={styles.h2}>{won ? "Victory!" : "You Have Fallen"}</Text>
-      <Text style={styles.body}>
-        {won
-          ? `${character.name} the ${character.class} cleared the vault in ${gameState.turnCount} turns. The campaign is complete.`
-          : `${character.name} the ${character.class} fell after ${gameState.turnCount} turns. The campaign ends here.`}
+
+      <Text style={{ position: "absolute", top: NEXT_ADVENTURE_HEADING_TOP, left: 56, fontSize: 11, fontFamily: "Helvetica-Bold" }}>
+        Choose your adventure (tick one)
       </Text>
-      <Text style={[styles.body, { marginTop: 10 }]}>
-        Ready for another run? Fill in a new hero below and mail this page back to start over.
-      </Text>
-      <MailBackNote verb="Fill in your new hero" />
-      <CharacterCreationSection />
+      {adventures.map((c, i) => (
+        <AbsCheckbox
+          key={c.id}
+          field={DND_NEXT_ADVENTURE_SLOTS[i]}
+          label={`${c.campaignName}${done.includes(c.id) ? " (won)" : ""}: ${c.blurb}`}
+          labelWidth={440}
+        />
+      ))}
+
+      <View style={{ position: "absolute", top: creationTop, left: 48, right: 48 }}>
+        <CharacterCreationSection />
+      </View>
       <RefFooter inboundToken={campaignDoc.inboundToken} digest={digest} />
     </Page>
   );
@@ -577,8 +626,8 @@ function DndDocument({
   return (
     <Document title={`${campaign.campaignName} — ${formatIsoDate(date)}`} author="Daily Scribe">
       {status === "awaiting_character" && <CreationPage campaign={campaign} campaignDoc={campaignDoc} date={date} digest={digest} />}
-      {status === "won" && <TerminalPage campaign={campaign} campaignDoc={campaignDoc} date={date} digest={digest} won />}
-      {status === "dead" && <TerminalPage campaign={campaign} campaignDoc={campaignDoc} date={date} digest={digest} won={false} />}
+      {status === "won" && <NextAdventurePage campaign={campaign} campaignDoc={campaignDoc} digest={digest} won />}
+      {status === "dead" && <NextAdventurePage campaign={campaign} campaignDoc={campaignDoc} digest={digest} won={false} />}
       {status === "active" && (
         <>
           <AdventurePage campaign={campaign} campaignDoc={campaignDoc} date={date} digest={digest} />
@@ -598,7 +647,8 @@ export const dndPlugin: ServicePlugin = {
   label: "DnD 5e Campaign",
   async run(ctx: RunContext): Promise<Asset[]> {
     const campaignDoc = await getOrCreateDndCampaign(ctx.userId);
-    const bytes = await renderDndPdf(SUNKEN_VAULT_CAMPAIGN, campaignDoc, ctx.date, ctx.digest);
+    const campaign = getDndCampaign(campaignDoc.gameState.campaignId);
+    const bytes = await renderDndPdf(campaign, campaignDoc, ctx.date, ctx.digest);
     return [
       {
         filename: `dnd-${formatIsoDate(ctx.date)}.pdf`,

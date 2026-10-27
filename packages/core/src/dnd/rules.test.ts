@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abilityMod, deriveCharacter, normalizeClass, proficiencyBonus } from "./rules";
+import { abilityMod, deriveCharacter, hpPerLevel, levelUp, normalizeClass, proficiencyBonus } from "./rules";
 
 describe("abilityMod", () => {
   it("matches standard 5e ability modifier table", () => {
@@ -66,5 +66,20 @@ describe("deriveCharacter", () => {
     const ch = deriveCharacter({ name: "  ", class: "wizard", scores: {} });
     expect(ch.class).toBe("Fighter");
     expect(ch.name).toBe("Hero");
+  });
+});
+
+describe("levelUp", () => {
+  it("adds the hit-die average plus CON per level, heals to full, and keeps the gear", () => {
+    const barbarian = { ...deriveCharacter({ name: "Ash", class: "barbarian", scores: { constitution: 14 } }), currentHp: 1 };
+    expect(barbarian.maxHp).toBe(14); // d12 + 2
+    expect(hpPerLevel(barbarian)).toBe(9); // 12 / 2 + 1 + 2
+    const up = levelUp(barbarian);
+    expect(up).toMatchObject({ level: 2, maxHp: 23, currentHp: 23, inventory: barbarian.inventory });
+  });
+
+  it("always gains at least 1 HP", () => {
+    const frail = deriveCharacter({ name: "Pip", class: "rogue", scores: { constitution: 1 } });
+    expect(hpPerLevel(frail)).toBe(1); // 8 / 2 + 1 - 5, floored at 1
   });
 });

@@ -1,4 +1,4 @@
-import { deriveCharacter } from "./rules";
+import { deriveCharacter, levelUp } from "./rules";
 import type {
   DndCampaignDefinition,
   DndCampaignNode,
@@ -39,6 +39,27 @@ function consumePotion(inventory: string[], idx: number): string[] {
     }
   } else {
     next.splice(idx, 1);
+  }
+  return next;
+}
+
+/** Add found loot to an inventory, stacking "Name xN" items onto one already
+ *  carried (a found "Health Potion x1" makes "Health Potion x2"), since
+ *  drinking a potion uses the first potion entry it finds. */
+export function addToInventory(inventory: string[], items: string[]): string[] {
+  const stack = (item: string) => {
+    const m = /^(.*?)\s*x\s*(\d+)$/i.exec(item);
+    return m ? { name: m[1], count: Number(m[2]) } : null;
+  };
+  const next = [...inventory];
+  for (const item of items) {
+    const found = stack(item);
+    const idx = found ? next.findIndex((it) => stack(it)?.name.toLowerCase() === found.name.toLowerCase()) : -1;
+    if (found && idx !== -1) {
+      next[idx] = `${found.name} x${stack(next[idx])!.count + found.count}`;
+    } else {
+      next.push(item);
+    }
   }
   return next;
 }
@@ -288,7 +309,7 @@ export function applyMove(state: DndPlayState, campaign: DndCampaignDefinition, 
       gs.searchedNodes.push(gs.currentNode);
       events.push(`You search but don't find anything (Perception ${move.perceptionRoll} vs DC ${SEARCH_DC}).`);
     } else if (loot.length > 0) {
-      ch.inventory = [...ch.inventory, ...loot];
+      ch.inventory = addToInventory(ch.inventory, loot);
       gs.searchedNodes.push(gs.currentNode);
       events.push(`You search and find: ${loot.join(", ")} (Perception ${move.perceptionRoll} vs DC ${SEARCH_DC}).`);
     } else {
@@ -322,6 +343,7 @@ export function applyMove(state: DndPlayState, campaign: DndCampaignDefinition, 
   const cur = campaign.nodes[gs.currentNode];
   if (gs.status === "active" && cur.isGoal && livingIn(cur, monsterHp).length === 0) {
     gs.status = "won";
+    gs.completedCampaigns = [...new Set([...(gs.completedCampaigns ?? []), campaign.id])];
     events.push(`You have cleared ${cur.title}. Victory!`);
   }
 
@@ -348,6 +370,8 @@ export function applyCharacterSheet(campaign: DndCampaignDefinition, sheet: DndC
   const start = campaign.startNode ?? Object.keys(campaign.nodes)[0];
 
   const gameState: DndGameState = {
+    campaignId: campaign.id,
+    completedCampaigns: [],
     currentNode: start,
     discoveredNodes: [start],
     defeatedMonsters: [],
@@ -366,6 +390,54 @@ export function applyCharacterSheet(campaign: DndCampaignDefinition, sheet: DndC
       read: `New hero: ${character.name} the ${character.class}.`,
       result: intro,
       confidence: sheet.confidence ?? null,
+      misreadFlag: false,
+    },
+  ];
+
+  return { state: { character, gameState, turnLog }, events: [intro] };
+}
+
+/** The adventures this hero has won. A run won before wins were recorded
+ *  (status "won", no list) counts its own adventure. */
+export function completedCampaignIds(gameState: DndGameState): string[] {
+  const done = new Set(gameState.completedCampaigns ?? []);
+  if (gameState.status === "won") done.add(gameState.campaignId ?? "sunken_vault");
+  return [...done];
+}
+
+/** Which adventure to start when the player didn't tick one: the first they
+ *  haven't won, or (all won) the first in the list. */
+export function defaultNextCampaign(campaigns: DndCampaignDefinition[], gameState: DndGameState): DndCampaignDefinition {
+  const done = completedCampaignIds(gameState);
+  return campaigns.find((c) => !done.includes(c.id)) ?? campaigns[0];
+}
+
+/** After a win: the same hero, a level up and healed to full, keeping
+ *  everything they carry, starts `campaign` at its first room. */
+export function continueWithHero(state: DndPlayState, campaign: DndCampaignDefinition): DndEngineResult {
+  const character = levelUp(state.character);
+  const start = campaign.startNode ?? Object.keys(campaign.nodes)[0];
+
+  const gameState: DndGameState = {
+    campaignId: campaign.id,
+    completedCampaigns: completedCampaignIds(state.gameState),
+    currentNode: start,
+    discoveredNodes: [start],
+    defeatedMonsters: [],
+    monsterHp: {},
+    searchedNodes: [],
+    combat: { node: null, playerFirst: null },
+    status: "active",
+    turnCount: 0,
+  };
+
+  const intro = `${character.name} the ${character.class} rises to level ${character.level} (HP ${character.maxHp}), rests, and sets out for ${campaign.campaignName}.`;
+  const turnLog = [
+    {
+      turn: 0,
+      read: `Kept ${character.name} the ${character.class}.`,
+      result: intro,
+      confidence: null,
       misreadFlag: false,
     },
   ];

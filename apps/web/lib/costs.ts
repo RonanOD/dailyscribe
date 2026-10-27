@@ -107,7 +107,9 @@ export async function getDailyGeminiCostEstimate(days = 30): Promise<DailyGemini
   const dndMoveByDate = new Map<string, number>();
   const dndCharacterByDate = new Map<string, number>();
   for (const row of dndRows) {
-    const target = row._id.shape === "character" ? dndCharacterByDate : dndMoveByDate;
+    // A "next adventure" reply costs a whole-page read when it makes a new
+    // hero and nothing when it keeps one, so count it at the upper bound.
+    const target = row._id.shape === "move" ? dndMoveByDate : dndCharacterByDate;
     target.set(row._id.date, (target.get(row._id.date) ?? 0) + row.count);
   }
 
