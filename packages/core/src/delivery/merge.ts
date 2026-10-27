@@ -63,14 +63,24 @@ export interface DigestSection {
  * writes a matching PDF outline (bookmarks) — one entry per section — so
  * e-readers that build their own Contents view from /Outlines rather than
  * in-page links (Kindle, reMarkable) can still navigate the digest.
+ *
+ * `opts.front` is placed before the cover, e.g. a "What's new" page; it shifts
+ * the TOC to page 2 + its page count, and isn't listed in the TOC itself.
  */
 export async function assembleDigestPdf(
   cover: Asset,
   sections: DigestSection[],
   tocLinkRects: [number, number, number, number][],
   filename: string,
+  opts: { front?: Asset } = {},
 ): Promise<Asset> {
   const merged = await PDFDocument.create();
+
+  if (opts.front) {
+    const frontDoc = await PDFDocument.load(opts.front.bytes);
+    for (const page of await merged.copyPages(frontDoc, frontDoc.getPageIndices())) merged.addPage(page);
+  }
+  const tocPageIndex = merged.getPageCount() + 1;
 
   const coverDoc = await PDFDocument.load(cover.bytes);
   const coverPages = await merged.copyPages(coverDoc, coverDoc.getPageIndices());
@@ -85,8 +95,8 @@ export async function assembleDigestPdf(
   }
 
   // pdf-lib has no high-level "add link" helper, so each TOC row's link is
-  // built as a raw Link annotation on the TOC page (index 1 — page 2).
-  const tocPage = merged.getPage(1);
+  // built as a raw Link annotation on the TOC page (the cover's second page).
+  const tocPage = merged.getPage(tocPageIndex);
   const annots = (tocPage.node.Annots()?.asArray() ?? []).slice();
   for (let i = 0; i < sections.length; i++) {
     const targetPage = merged.getPage(sectionStartIndices[i]);
@@ -138,9 +148,9 @@ export async function assembleDigestPdf(
     merged.catalog.set(PDFName.of("PageMode"), PDFName.of("UseOutlines"));
   }
 
-  // A back-to-contents button, bottom-left, on every page except the cover
-  // (index 0, no reason to jump anywhere from it) and the TOC page itself
-  // (index 1, already there). Top-left was tried first, but on a Kindle Scribe
+  // A back-to-contents button, bottom-left, on every page after the TOC: not
+  // on the cover (or a front page before it; no reason to jump anywhere from
+  // them) nor the TOC page itself (already there). Top-left was tried first, but on a Kindle Scribe
   // a tap that high on the screen opens the device's own reading toolbar
   // before it ever reaches the PDF's link annotation — bottom-left doesn't
   // collide with that. A drawn label + a Link annotation over it (same
@@ -160,7 +170,7 @@ export async function assembleDigestPdf(
   const BACK_PAD_Y = 10;
   const PAGE_NUM_FONT_SIZE = 8;
   const totalPages = merged.getPageCount();
-  for (let i = 2; i < totalPages; i++) {
+  for (let i = tocPageIndex + 1; i < totalPages; i++) {
     const page = merged.getPage(i);
     const { width } = page.getSize();
     const x = BACK_INSET;

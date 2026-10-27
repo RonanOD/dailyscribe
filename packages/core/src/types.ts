@@ -39,7 +39,8 @@ export interface AppUser {
   /** When each activation email went out (see onboarding-nudges.ts). Claimed
    *  before sending, so each kind reaches a user at most once. */
   nudges?: Partial<Record<NudgeKind, Date>>;
-  /** One-off product announcements already sent (apps/web/scripts/announce.mjs), by key. */
+  /** Product announcements already sent, by key: emails from apps/web/scripts/announce.mjs,
+   *  and "edition:<id>" for an in-edition "What's new" page (announcements.ts). */
   announcements?: Record<string, Date>;
 }
 

@@ -117,6 +117,22 @@ describe("assembleDigestPdf", () => {
     }
   });
 
+  it("puts a front page before the cover and wires the TOC links on the shifted TOC page", async () => {
+    const { cover, sections, tocLinkRects } = await buildFixture();
+    const front = await fakePdfAsset("whats-new.pdf", 1, [50, 50]);
+    const assembled = await assembleDigestPdf(cover, sections, tocLinkRects, "digest.pdf", { front });
+    const doc = await PDFDocument.load(assembled.bytes);
+
+    expect(doc.getPageCount()).toBe(6);
+    expect(doc.getPage(0).getWidth()).toBe(50); // the front page, ahead of the cover
+    expect(doc.getPage(1).getWidth()).toBe(100); // cover
+    expect(doc.getPage(0).node.Annots()).toBeUndefined();
+    const annots = doc.getPage(2).node.Annots(); // TOC
+    expect(annots?.size()).toBe(2);
+    const dest = doc.context.lookup(annots!.get(0), PDFDict).lookup(PDFName.of("Dest"), PDFArray);
+    expect(doc.context.lookup(dest.get(0), PDFDict)).toBe(doc.getPage(3).node); // section A
+  });
+
   it("writes a PDF outline with one bookmark per section, in order, pointing at each section's first page", async () => {
     const { cover, sections, tocLinkRects } = await buildFixture();
     const assembled = await assembleDigestPdf(cover, sections, tocLinkRects, "digest.pdf");

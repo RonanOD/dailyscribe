@@ -162,7 +162,12 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       every service off but keeps the account; "Delete my account" (type "delete") removes the
       user and every row keyed to them (`packages/core/src/account.ts`). Both take an optional
       "what didn't work?" answer, stored in `accountFeedback` (delete rows keep no id/email)
-      and listed in the admin `signup-report`. **DnD 5e (Sep 2026):** the last
+      and listed in the admin `signup-report`. **"What's new" pages (Oct 2026):** while an
+      entry in `EDITION_ANNOUNCEMENTS` (`packages/core/src/announcements.ts`) is running, each
+      user's next scheduled edition opens with a one-page announcement of the items that apply to
+      them (new sections they don't have, or news for ones they do), once per existing subscriber
+      (`users.announcements["edition:<id>"]`). The same page is the win-back PDF that
+      `announce.mjs --kindle-pdf` sends to lapsed users' Kindles. **DnD 5e (Sep 2026):** the last
       deferred catalog service landed and is now public — dashboard tab, onboarding card, and
       its own marketing feature block, after a stint behind `comingSoon: true` while its
       mail-back loop was verified against real production submissions. **Oct 2026:** a second

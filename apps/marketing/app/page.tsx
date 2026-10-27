@@ -265,7 +265,8 @@ function FeatureBody({
         {feature.body}
       </ReactMarkdown>
       <p className="feature-note">
-        {feature.coming_soon && <span className="stamp">Coming Soon</span>} {feature.note}
+        {feature.coming_soon && <span className="stamp">Coming Soon</span>}
+        {feature.is_new && <span className="stamp">New</span>} {feature.note}
       </p>
     </div>
   );

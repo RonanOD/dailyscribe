@@ -7,6 +7,8 @@ import {
   decryptSecret,
   deliveryFailureEmail,
   failureStreak,
+  markEditionAnnouncementSeen,
+  pendingEditionAnnouncement,
   getPdfPageCount,
   getPlugin,
   isKindleAddress,
@@ -26,11 +28,13 @@ import {
   type Deliverer,
   type DigestSection,
   type DispatchAttempt,
+  type EditionAnnouncement,
   type Subscription,
 } from "@dailyscribe/core";
 import { ObjectId } from "mongodb";
 import { bbcNewsPlugin } from "@/lib/plugins/bbc";
 import { cbcNewsPlugin } from "@/lib/plugins/cbc";
+import { renderAnnouncementPdf } from "@/lib/plugins/announcement-page";
 import { renderDigestCoverPdf } from "@/lib/plugins/digest-cover";
 import { dndPlugin } from "@/lib/plugins/dnd";
 import { haSummaryPlugin } from "@/lib/plugins/ha";
@@ -229,6 +233,26 @@ async function handleGaveUp(sub: Subscription, key: AttemptKey, label: string, e
 }
 
 /**
+ * The "What's new" page for this edition, if an announcement is running that
+ * this user hasn't had yet. Scheduled editions only, so a "send now" test
+ * doesn't use it up. Best effort: a failure here never holds up the edition.
+ */
+async function announcementPage(
+  userId: string,
+  now: Date,
+  scheduled: boolean,
+): Promise<{ announcement: EditionAnnouncement; asset: Asset } | null> {
+  if (!scheduled) return null;
+  try {
+    const announcement = await pendingEditionAnnouncement(userId, now);
+    return announcement ? { announcement, asset: await renderAnnouncementPdf(announcement) } : null;
+  } catch (err) {
+    console.error(`announcement page for user ${userId} failed, sending the edition without it:`, err);
+    return null;
+  }
+}
+
+/**
  * Run one subscription: fetch the service assets, email them to the Kindle, and
  * log the outcome. Never throws: failures are caught and recorded as a "failed"
  * delivery.
@@ -269,6 +293,7 @@ export async function runSubscription(
 
     let assets: Asset[];
     let noteSuffix = "";
+    let announced: EditionAnnouncement | null = null;
     if (sub.service === "digest") {
       label = "Daily Scribe Digest";
       const { sections, failedLabels, emptyCount } = await collectDigestSections(
@@ -288,7 +313,12 @@ export async function runSubscription(
         throw new Error(`Digest has ${reason}.`);
       }
 
-      let startPage = 3; // 2-page front matter (cover, then table of contents)
+      // A running announcement is the very first page, ahead of the cover.
+      const whatsNew = await announcementPage(sub.userId, now, Boolean(attempt));
+      if (whatsNew) announced = whatsNew.announcement;
+
+      // 2-page front matter (cover, then table of contents), after any announcement page.
+      let startPage = 3 + (whatsNew ? await getPdfPageCount(whatsNew.asset.bytes) : 0);
       const withStartPages = [];
       for (const section of sections) {
         withStartPages.push({ label: section.label, startPage });
@@ -296,7 +326,11 @@ export async function runSubscription(
       }
 
       const { asset: cover, tocLinkRects } = await renderDigestCoverPdf(withStartPages, utcMidnight);
-      assets = [await assembleDigestPdf(cover, sections, tocLinkRects, `daily-scribe-digest-${isoDate}.pdf`)];
+      assets = [
+        await assembleDigestPdf(cover, sections, tocLinkRects, `daily-scribe-digest-${isoDate}.pdf`, {
+          front: whatsNew?.asset,
+        }),
+      ];
       if (failedLabels.length > 0) {
         noteSuffix = ` Note: ${failedLabels.join(", ")} couldn't be included today — it'll be back once resolved.`;
       }
@@ -312,6 +346,11 @@ export async function runSubscription(
         preview: Boolean(opts.force),
       });
       if (assets.length === 0) return await nothingToSend(subscriptionId, sub.service, attempt && key, now);
+      const whatsNew = await announcementPage(sub.userId, now, Boolean(attempt));
+      if (whatsNew) {
+        assets = [await mergePdfAssets([whatsNew.asset, assets[0]], assets[0].filename), ...assets.slice(1)];
+        announced = whatsNew.announcement;
+      }
     }
 
     await getDeliverer().deliver({
@@ -329,6 +368,11 @@ export async function runSubscription(
       deliveredAt: new Date(),
     });
     if (attempt) await recordDispatchSuccess(key, now);
+    if (announced) {
+      await markEditionAnnouncementSeen(sub.userId, announced, now).catch((err) =>
+        console.error(`stamping announcement for user ${sub.userId} failed:`, err),
+      );
+    }
     return { subscriptionId, service: sub.service, status: "success" };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);

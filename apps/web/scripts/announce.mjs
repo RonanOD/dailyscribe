@@ -19,12 +19,33 @@
  *   npx tsx scripts/announce.mjs chess --dry-run [--active-only]   # who would get it
  *   npx tsx scripts/announce.mjs chess --test-to me@x.com          # one sample, no DB writes
  *   npx tsx scripts/announce.mjs chess --limit 40 [--active-only] [--exclude a@x.com,b@y.com]
+ *
+ * --kindle-pdf <edition-announcement-id> is a win-back mode instead: it sends the
+ * one-page "What's new" PDF (EDITION_ANNOUNCEMENTS in packages/core/src/
+ * announcements.ts) to the Kindle of every lapsed user, meaning they've had at
+ * least one edition but have no service switched on now. Same skips as above,
+ * plus Kindle addresses that ever bounced or complained. Stamped as
+ * `announcements.kindle:<id>`, so each user gets it once. It renders the PDF
+ * with the app's .tsx renderer, so run it through the scripts tsconfig:
+ *
+ *   TSX_TSCONFIG_PATH=scripts/tsconfig.json npx tsx scripts/announce.mjs --kindle-pdf 2026-10-feeds-chess --dry-run
+ *   TSX_TSCONFIG_PATH=scripts/tsconfig.json npx tsx scripts/announce.mjs --kindle-pdf 2026-10-feeds-chess --test-to you@kindle.com
+ *   TSX_TSCONFIG_PATH=scripts/tsconfig.json npx tsx scripts/announce.mjs --kindle-pdf 2026-10-feeds-chess --limit 20
  */
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { collections, getDb, isEmailShaped, isKindleAddress, nudgeSenderFromEnv, sendPlainEmail } from "@dailyscribe/core";
+import {
+  collections,
+  createResendDeliverer,
+  EDITION_ANNOUNCEMENTS,
+  getDb,
+  isEmailShaped,
+  isKindleAddress,
+  nudgeSenderFromEnv,
+  sendPlainEmail,
+} from "@dailyscribe/core";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -62,9 +83,124 @@ P.S. Just hit reply if you have feedback, or if you'd rather not get emails like
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const WIN_BACK_INTRO =
+  "Since your last edition, a few things have arrived. If any of them appeal, your account is still there.";
+const WIN_BACK_FOOTER =
+  "To start your edition again, sign in at my.dailyscribe.ca and switch a section on. This is a one-off page; we won't send another.";
+
+/** The win-back PDF: just the new sections (a lapsed user has none on). "with"
+ *  items are left out: subscription rows exist for services a user never
+ *  switched on, so they can't tell us what someone actually used. */
+function winBackAnnouncement(announcement) {
+  const items = announcement.items.filter((i) => (i.audience ?? "without") === "without");
+  return { ...announcement, intro: WIN_BACK_INTRO, items };
+}
+
+async function kindlePdf(id, args, flag) {
+  const announcement = EDITION_ANNOUNCEMENTS.find((a) => a.id === id);
+  if (!announcement) {
+    throw new Error(`Unknown announcement "${id}". Known: ${EDITION_ANNOUNCEMENTS.map((a) => a.id).join(", ")}`);
+  }
+  const { renderAnnouncementPdf } = await import("../lib/plugins/announcement-page.tsx");
+  const dryRun = args.includes("--dry-run");
+  const limit = Number(flag("--limit"));
+  const testTo = flag("--test-to");
+  const exclude = new Set((flag("--exclude") ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean));
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error("RESEND_API_KEY is not set.");
+  const deliverer = createResendDeliverer({
+    apiKey,
+    from: process.env.MAIL_FROM_DEFAULT ?? "Daily Scribe <my@dailyscribe.ca>",
+  });
+  const send = async (to) => {
+    const asset = await renderAnnouncementPdf(winBackAnnouncement(announcement), { footer: WIN_BACK_FOOTER });
+    await deliverer.deliver({
+      to,
+      subject: `${announcement.heading}`,
+      text: "What's new in Daily Scribe, on one page.",
+      assets: [{ ...asset, filename: "whats-new-in-daily-scribe.pdf" }],
+    });
+  };
+
+  if (testTo) {
+    await send(testTo);
+    console.log(`Sent a sample "${id}" win-back PDF to ${testTo}.`);
+    return;
+  }
+
+  const { users, accountFeedback, subscriptions, deliveries, deliveryEvents } = await collections();
+  const delivered = new Set(await deliveries.distinct("userId", { status: "success" }));
+  const enabled = new Set(await subscriptions.distinct("userId", { enabled: true }));
+  const stopped = new Set(
+    (await accountFeedback.find({ kind: "stop-all", userId: { $exists: true } }).toArray()).map((f) => f.userId),
+  );
+  const badAddresses = new Set(
+    (await deliveryEvents.distinct("to", { type: { $in: ["email.bounced", "email.complained"] } })).map((e) =>
+      String(e).toLowerCase(),
+    ),
+  );
+  const field = `announcements.kindle:${id}`;
+
+  const skipped = { stopped: 0, excluded: 0, noKindle: 0, bounced: 0 };
+  const recipients = [];
+  for (const u of await users.find({ [field]: { $exists: false } }).toArray()) {
+    const userId = String(u._id);
+    if (!delivered.has(userId) || enabled.has(userId)) continue; // not lapsed
+    if (stopped.has(userId)) {
+      skipped.stopped++;
+      continue;
+    }
+    const subs = await subscriptions.find({ userId }).sort({ createdAt: -1 }).toArray();
+    const kindle = subs.map((s) => s.config?.kindleEmail?.trim().toLowerCase()).find(Boolean);
+    if (!kindle || !isEmailShaped(kindle)) skipped.noKindle++;
+    else if (badAddresses.has(kindle)) skipped.bounced++;
+    else if (exclude.has(kindle) || exclude.has((u.email ?? "").toLowerCase())) skipped.excluded++;
+    else recipients.push({ user: u, kindle });
+  }
+  console.log(`${recipients.length} lapsed users to win back. Skipped: ${JSON.stringify(skipped)}.`);
+
+  if (dryRun) {
+    for (const r of recipients) console.log(`  ${r.user.email ?? "(no email)"} -> ${r.kindle}`);
+    return;
+  }
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("Real sends need --limit N: these share the Resend daily quota with Kindle deliveries.");
+  }
+
+  let sent = 0;
+  for (const r of recipients) {
+    if (sent >= limit) {
+      console.log(`Stopped at --limit ${limit}; ${recipients.length - sent} left for a later run.`);
+      break;
+    }
+    const claim = await users.updateOne(
+      { _id: r.user._id, [field]: { $exists: false } },
+      { $set: { [field]: new Date() } },
+    );
+    if (claim.modifiedCount === 0) continue;
+    try {
+      await send(r.kindle);
+      sent++;
+      console.log(`  sent ${r.kindle}`);
+    } catch (e) {
+      await users.updateOne({ _id: r.user._id }, { $unset: { [field]: "" } });
+      console.error(`  FAILED ${r.kindle}: ${e instanceof Error ? e.message : e}`);
+    }
+    await sleep(600); // stay under Resend's per-second rate limit
+  }
+  console.log(`Done: ${sent} sent.`);
+}
+
 async function main() {
   loadEnvLocal();
   const args = process.argv.slice(2);
+  if (args[0] === "--kindle-pdf") {
+    const flag = (name) => {
+      const i = args.indexOf(name);
+      return i === -1 ? undefined : args[i + 1];
+    };
+    return kindlePdf(args[1], args, flag);
+  }
   const key = args[0];
   const announcement = ANNOUNCEMENTS[key];
   if (!announcement) throw new Error(`Usage: announce.mjs <${Object.keys(ANNOUNCEMENTS).join("|")}> [flags]`);

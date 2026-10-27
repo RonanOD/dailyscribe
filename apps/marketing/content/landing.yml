@@ -1,7 +1,8 @@
 dateline: Morning Edition
 hero_heading: Your morning edition, written for your Kindle Scribe.
-hero_subheading: Daily Scribe binds the news, a fresh write-in crossword, chess
-  puzzles, Kanji practice, and your Home Assistant briefing into one polished PDF and delivers
+hero_subheading: Daily Scribe binds the news, your own RSS feeds and Substacks, a
+  fresh write-in crossword, chess puzzles, Kanji practice, and your Home Assistant
+  briefing into one polished PDF and delivers
   it to your Kindle — or just your inbox — before you've poured your coffee.
   Write your answers back by hand and it marks them.
 hero_image: /uploads/hero.png
@@ -57,6 +58,20 @@ waitlist:
   placeholder: you@example.com
   success_message: You're on the list — watch your inbox for an invite.
 features:
+  - media_right: false
+    body: Add the feeds you already follow, from your local paper to a favourite
+      Substack or blog, and each morning's edition carries their new headlines
+      with a short summary. Only what's new since yesterday, no infinite scroll,
+      and every headline links back to the original. Paste a site's homepage and
+      Daily Scribe finds its feed for you. On a quiet day, nothing is sent.
+    image_alt: Illustration of a page with an RSS feed symbol
+    note: Up to ten RSS or Atom feeds, checked when you add them.
+    kicker: Your Feeds
+    title: Your feeds, as a quiet morning paper.
+    coming_soon: false
+    is_new: true
+    id: feeds
+    image: /uploads/feature-feeds.svg
   - media_right: true
     body: Every edition can include a page of kanji to write out longhand — the way
       the Scribe was built to be used. Mail the finished page back and Daily
@@ -91,6 +106,7 @@ features:
     kicker: Strategy
     title: A tactic before breakfast.
     coming_soon: false
+    is_new: true
     id: chess
     image: /uploads/feature-chess.svg
   - media_right: true
@@ -108,9 +124,8 @@ features:
   - media_right: true
     body: Daily Scribe pulls the day's stories from RTÉ News, BBC, and CBC and sets
       them like a real newspaper — headlines and bodies you choose by section,
-      nothing chasing your attention. Add your own feeds too, from your local
-      paper to the independent writers you follow on Substack, and each edition
-      carries their new headlines. Prefer fiction to current
+      nothing chasing your attention. Add [your own feeds](#feeds) too, from
+      your local paper to the writers you follow on Substack. Prefer fiction to current
       events? A classic novel will arrive one chapter at a time.
     image_alt: Illustration of a stack of newspaper clippings
     note: Serialized classic novels, one chapter per edition

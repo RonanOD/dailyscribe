@@ -22,6 +22,8 @@ export interface Feature {
   body: string;
   note: string;
   coming_soon: boolean;
+  /** Shows a "New" stamp next to the note. */
+  is_new?: boolean;
   media_right: boolean;
   image: string;
   image_alt: string;

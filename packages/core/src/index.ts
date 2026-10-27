@@ -6,6 +6,7 @@ export * from "./validation";
 export * from "./onboarding-nudges";
 export * from "./dispatch-attempts";
 export * from "./account";
+export * from "./announcements";
 export * from "./plugins/index";
 export * from "./plugins/nyt-crossword";
 export * from "./plugins/kanji";

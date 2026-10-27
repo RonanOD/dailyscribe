@@ -72,6 +72,7 @@ collections:
               - { label: Body, name: body, widget: markdown }
               - { label: "Note (small italic line under the body)", name: note, widget: string }
               - { label: "Coming soon", name: coming_soon, widget: boolean, default: false }
+              - { label: "New (shows a New stamp)", name: is_new, widget: boolean, default: false, required: false }
               - { label: "Image on the right", name: media_right, widget: boolean, default: false }
               - { label: Image, name: image, widget: image }
               - { label: "Image Alt Text", name: image_alt, widget: string }
