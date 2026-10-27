@@ -26,10 +26,24 @@ export interface ParsedFeed {
 
 // Attributes are kept because Atom puts its links in them (<link href="…"/>).
 // fast-xml-parser folds CDATA into the tag's text value by default, which is what we want.
+//
+// The default entity limits count every `&lt;`/`&amp;` and give up after 1,000,
+// which rejects any big feed carrying escaped post HTML (most full-content
+// Atom feeds, e.g. Simon Willison's). Those plain XML entities only ever
+// shrink the text, so their count is lifted; the limits that stop a
+// billion-laughs DOCTYPE (expanded length, entity count and size) stay at the
+// library defaults, and fetchPublicUrl caps the body at 5 MB anyway.
 const xml = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
-  processEntities: true,
+  processEntities: {
+    enabled: true,
+    maxTotalExpansions: Number.MAX_SAFE_INTEGER,
+    maxExpandedLength: 100_000,
+    maxEntityCount: 100,
+    maxEntitySize: 10_000,
+    maxExpansionDepth: 10,
+  },
   trimValues: true,
 });
 

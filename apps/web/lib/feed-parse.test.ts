@@ -71,6 +71,24 @@ describe("parseFeed", () => {
   });
 });
 
+describe("parseFeed entity handling", () => {
+  it("reads a big feed full of escaped HTML (thousands of &lt; entities)", () => {
+    const entry = (i: number) =>
+      `<entry><title>Post ${i}</title><link href="https://x.test/${i}"/>` +
+      `<content type="html">${"&lt;p&gt;Hello &amp;amp; welcome&lt;/p&gt;".repeat(20)}</content></entry>`;
+    const body = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><title>Big</title>${Array.from({ length: 30 }, (_, i) => entry(i)).join("")}</feed>`;
+    const feed = parseFeed(body);
+    expect(feed?.items).toHaveLength(30);
+    expect(feed?.items[0].contentHtml).toContain("<p>Hello");
+  });
+
+  it("still refuses a billion-laughs DOCTYPE", () => {
+    const body = `<?xml version="1.0"?><!DOCTYPE rss [<!ENTITY a "${"x".repeat(5000)}">]>` +
+      `<rss><channel><title>t</title><item><title>${"&a;".repeat(100)}</title></item></channel></rss>`;
+    expect(parseFeed(body)).toBeNull();
+  });
+});
+
 describe("discoverFeedUrls", () => {
   it("finds advertised RSS/Atom feeds and resolves relative hrefs", () => {
     const html = `<head>
