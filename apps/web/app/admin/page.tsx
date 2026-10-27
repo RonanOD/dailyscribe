@@ -139,11 +139,15 @@ export default async function AdminPage() {
   const usersWithServices = new Set(servicesOn.map((s) => s.userId)).size;
   const digestUsers = new Set(enabledSubs.filter((s) => s.service === "digest").map((s) => s.userId));
   const emailsPerDay = enabledSubs.filter((s) => s.service === "digest" || !digestUsers.has(s.userId)).length;
-  // "Active" = got a successful delivery in the last 7 days: people actually
-  // receiving editions, not just anyone with a service switched on (which
-  // would also count failing setups and digests with no member services).
+  // "Active" = got a successful delivery in the last 7 days AND still has a
+  // service on: people actually receiving editions, not just anyone with a
+  // service switched on (which would also count failing setups and digests
+  // with no member services), nor someone who stopped deliveries this week.
   const activeSince = Date.now() - SEVEN_DAYS_MS;
-  const activeUsers = deliveryStats.filter((d) => d.last && d.last.getTime() >= activeSince).length;
+  const userIdsWithServices = new Set(servicesOn.map((s) => s.userId));
+  const activeUsers = deliveryStats.filter(
+    (d) => d.last && d.last.getTime() >= activeSince && userIdsWithServices.has(d._id),
+  ).length;
 
   // Donut geometry: one filled wedge path per slice, in service-popularity order.
   const CX = 80;
@@ -177,7 +181,7 @@ export default async function AdminPage() {
           <span className="stat-value">
             {activeUsers}/{allUsers.length}
           </span>
-          <span className="stat-label" title="Users with a successful delivery in the last 7 days, out of all users">
+          <span className="stat-label" title="Users with a successful delivery in the last 7 days who still have a service on, out of all users">
             Active / total users
           </span>
         </div>
