@@ -15,9 +15,10 @@ import type { ServiceId } from "./types";
 export interface AnnouncementItem {
   /** The service this item is about, used to pick who sees it. */
   service: ServiceId;
-  /** "without" (default): only users who don't have `service` on, e.g. a new
-   *  section. "with": only users who do, e.g. a new DnD adventure. */
-  audience?: "with" | "without";
+  /** "without" (default): only users who don't have `service` on. "with":
+   *  only users who do, e.g. a new DnD adventure. "all": everyone, e.g. a new
+   *  section the intro promises, which some early adopters already have on. */
+  audience?: "with" | "without" | "all";
   title: string;
   body: string;
   /** One line on how to turn it on or use it. */
@@ -38,11 +39,12 @@ export const EDITION_ANNOUNCEMENTS: EditionAnnouncement[] = [
     id: "2026-10-feeds-chess",
     from: new Date("2026-10-27T00:00:00Z"),
     until: new Date("2026-11-17T00:00:00Z"),
-    heading: "New in Daily Scribe",
+    heading: "What's New in Daily Scribe",
     intro: "Two new sections you can add to your edition, both free like everything else.",
     items: [
       {
         service: "feeds",
+        audience: "all",
         title: "Your Feeds",
         body:
           "Add up to ten RSS or Atom feeds, such as your local paper, a favourite Substack or a blog, " +
@@ -52,6 +54,7 @@ export const EDITION_ANNOUNCEMENTS: EditionAnnouncement[] = [
       },
       {
         service: "chess",
+        audience: "all",
         title: "Chess Puzzles",
         body:
           "One to four puzzles a day from the free Lichess puzzle database, picked for your level, " +
@@ -87,9 +90,11 @@ export function announcementForUser(
   enabledServices: Iterable<string>,
 ): EditionAnnouncement | null {
   const enabled = new Set(enabledServices);
-  const items = announcement.items.filter((item) =>
-    (item.audience ?? "without") === "with" ? enabled.has(item.service) : !enabled.has(item.service),
-  );
+  const items = announcement.items.filter((item) => {
+    const audience = item.audience ?? "without";
+    if (audience === "all") return true;
+    return audience === "with" ? enabled.has(item.service) : !enabled.has(item.service);
+  });
   return items.length > 0 ? { ...announcement, items } : null;
 }
 

@@ -39,6 +39,12 @@ describe("announcementForUser", () => {
     expect(titles(announcementForUser(sample, ["dnd"]))).toEqual(["Feeds", "Chess", "Forge"]);
   });
 
+  it("shows `all` items to everyone, including users who have that service on", () => {
+    const withAll = { ...sample, items: sample.items.map((i) => (i.audience ? i : { ...i, audience: "all" as const })) };
+    expect(titles(announcementForUser(withAll, ["feeds", "chess"]))).toEqual(["Feeds", "Chess"]);
+    expect(titles(announcementForUser(withAll, ["feeds", "chess", "dnd"]))).toEqual(["Feeds", "Chess", "Forge"]);
+  });
+
   it("is null when nothing applies", () => {
     expect(announcementForUser(sample, ["feeds", "chess"])).toBeNull();
   });
@@ -51,6 +57,10 @@ describe("EDITION_ANNOUNCEMENTS", () => {
     for (const a of EDITION_ANNOUNCEMENTS) {
       expect(a.from.getTime()).toBeLessThan(a.until.getTime());
       expect(a.items.length).toBeGreaterThan(0);
+      // The intro speaks for the whole page, so a user with every service on
+      // must still see the sections it promises (the first run showed them
+      // only the D&D item under "Two new sections...").
+      expect(announcementForUser(a, ["feeds", "chess", "dnd"])?.items.length).toBeGreaterThan(1);
     }
   });
 });

@@ -92,7 +92,7 @@ const WIN_BACK_FOOTER =
  *  items are left out: subscription rows exist for services a user never
  *  switched on, so they can't tell us what someone actually used. */
 function winBackAnnouncement(announcement) {
-  const items = announcement.items.filter((i) => (i.audience ?? "without") === "without");
+  const items = announcement.items.filter((i) => (i.audience ?? "without") !== "with");
   return { ...announcement, intro: WIN_BACK_INTRO, items };
 }
 
