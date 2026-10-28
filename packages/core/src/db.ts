@@ -31,7 +31,21 @@ export function getMongoClientPromise(): Promise<MongoClient> {
     if (!uri) {
       throw new Error("MONGODB_URI is not set");
     }
-    globalForMongo._dailyscribeClient = new MongoClient(uri).connect();
+    // Fail fast when Atlas stalls: without these a stuck connection waits until
+    // Vercel kills the function at maxDuration, logging only "Task timed out"
+    // (a 5-minute run of 504s on /api/cron/dispatch, Oct 2026). With them the
+    // request errors with the real cause, well inside the 60s limit.
+    const client = new MongoClient(uri, {
+      serverSelectionTimeoutMS: 10_000,
+      connectTimeoutMS: 10_000,
+      socketTimeoutMS: 45_000,
+    });
+    globalForMongo._dailyscribeClient = client.connect().catch((err) => {
+      // Don't cache a failed connect, or a warm instance stays broken after
+      // Atlas recovers.
+      globalForMongo._dailyscribeClient = undefined;
+      throw err;
+    });
   }
   return globalForMongo._dailyscribeClient;
 }
