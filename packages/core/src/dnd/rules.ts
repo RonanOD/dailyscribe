@@ -68,6 +68,15 @@ export function normalizeClass(name: string | null | undefined): keyof typeof CL
   return key in CLASS_PROFILES ? (key as keyof typeof CLASS_PROFILES) : DEFAULT_CLASS;
 }
 
+/** True when a sheet read found nothing at all: no name, no class, no
+ *  scores. deriveCharacter would turn that into a default "Hero" with every
+ *  score at 10, so callers must never let it replace an existing hero (a
+ *  blank page mailed back after a win wiped a level-1 Thargor, Oct 2026). */
+export function isBlankCharacterSheet(sheet: DndCharacterSheetInput): boolean {
+  const hasScore = ABILITIES.some((a) => typeof sheet.scores?.[a] === "number");
+  return !sheet.name?.trim() && !sheet.class?.trim() && !hasScore;
+}
+
 /** Turn a rolled sheet (name, class, six ability scores) into a full level-1
  *  character block. Missing/garbled scores default to 10. */
 export function deriveCharacter(sheet: DndCharacterSheetInput): DndCharacter {

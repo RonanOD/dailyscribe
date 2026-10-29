@@ -1,6 +1,7 @@
 import {
   createDndCharacterSheetOcrClient,
   createDndMoveFieldOcrClient,
+  isBlankCharacterSheet,
   type DndCharacterSheetInput,
   type DndConfidence,
   type DndMoveFieldOcrResult,
@@ -144,8 +145,15 @@ export async function readDndReply(params: ReadDndReplyParams): Promise<DndReply
   if (params.expectedShape === "next") {
     const page = await findAndRasterizePage(params.pdfBytes, NEXT_PAGE_MARKER);
     // An older victory/defeat page (just a creation sheet) mailed back after
-    // this shipped: read it as a new hero in the default adventure.
-    if (!page) return { kind: "character", sheet: await readSheet() };
+    // this shipped: read it as a new hero in the default adventure, or, left
+    // blank after a win, as keeping the hero.
+    if (!page) {
+      const sheet = await readSheet();
+      if (params.canKeepHero && isBlankCharacterSheet(sheet)) {
+        return { kind: "keep", adventureSlot: null, diagnostics: { checkboxes: [] } };
+      }
+      return { kind: "character", sheet };
+    }
 
     const checkboxes = readCheckboxes(page, [...DND_NEXT_HERO_CHECKBOXES, ...DND_NEXT_ADVENTURE_SLOTS]);
     const marked = (id: string) => checkboxes.find((c) => c.id === id)?.marked ?? false;
@@ -155,7 +163,13 @@ export async function readDndReply(params: ReadDndReplyParams): Promise<DndReply
     if (params.canKeepHero && marked("keep_hero") && !marked("new_hero")) {
       return { kind: "keep", adventureSlot, diagnostics: { checkboxes } };
     }
-    return { kind: "character", sheet: await readSheet(), adventureSlot };
+    const sheet = await readSheet();
+    // Neither box ticked and no sheet filled in after a win: keep the hero
+    // rather than build a blank "Hero" in their place.
+    if (params.canKeepHero && !marked("new_hero") && isBlankCharacterSheet(sheet)) {
+      return { kind: "keep", adventureSlot, diagnostics: { checkboxes } };
+    }
+    return { kind: "character", sheet, adventureSlot };
   }
 
   const raster = await findAndRasterizePage(params.pdfBytes, MOVE_PAGE_MARKER);

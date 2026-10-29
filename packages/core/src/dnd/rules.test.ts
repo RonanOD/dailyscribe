@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { abilityMod, deriveCharacter, hpPerLevel, levelUp, normalizeClass, proficiencyBonus } from "./rules";
+import {
+  abilityMod,
+  deriveCharacter,
+  hpPerLevel,
+  isBlankCharacterSheet,
+  levelUp,
+  normalizeClass,
+  proficiencyBonus,
+} from "./rules";
 
 describe("abilityMod", () => {
   it("matches standard 5e ability modifier table", () => {
@@ -30,6 +38,17 @@ describe("normalizeClass", () => {
     expect(normalizeClass("wizard")).toBe("fighter");
     expect(normalizeClass(null)).toBe("fighter");
     expect(normalizeClass(undefined)).toBe("fighter");
+  });
+});
+
+describe("isBlankCharacterSheet", () => {
+  it("is true only when nothing at all was read", () => {
+    const nulls = { strength: null, dexterity: null, constitution: null, intelligence: null, wisdom: null, charisma: null };
+    expect(isBlankCharacterSheet({ name: null, class: null, scores: nulls, confidence: "high" })).toBe(true);
+    expect(isBlankCharacterSheet({ name: "  " })).toBe(true);
+    expect(isBlankCharacterSheet({ name: "Thargor" })).toBe(false);
+    expect(isBlankCharacterSheet({ class: "fighter" })).toBe(false);
+    expect(isBlankCharacterSheet({ scores: { ...nulls, strength: 12 } })).toBe(false);
   });
 });
 

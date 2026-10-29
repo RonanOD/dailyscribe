@@ -8,6 +8,7 @@ import {
   DND_CAMPAIGNS,
   extractPdfPages,
   getDndCampaign,
+  isBlankCharacterSheet,
   KANJI_CURRICULUM,
   type DndGameStatus,
   type DndSubmissionShape,
@@ -237,6 +238,12 @@ async function handleDndSubmission(input: {
       apiKey: geminiApiKey,
       model: process.env.DND_GEMINI_MODEL || undefined,
     });
+
+    // A blank sheet would build a default "Hero" (every score 10), replacing
+    // whoever was there. Leave the campaign alone; the same page goes out again.
+    if (read.kind === "character" && isBlankCharacterSheet(read.sheet)) {
+      throw new Error("Character sheet came back blank (no name, class or scores); campaign left unchanged.");
+    }
 
     const state = { character: campaign.character, gameState: campaign.gameState, turnLog: campaign.turnLog };
     // The adventure ticked on the next-adventure page, else the first one not yet won.
