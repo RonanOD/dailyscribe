@@ -1,10 +1,10 @@
 dateline: Morning Edition
-hero_heading: Your morning edition, written for your Kindle Scribe.
-hero_subheading: Daily Scribe binds the news, your own RSS feeds and Substacks, a
-  fresh write-in crossword, chess puzzles, Kanji practice, and your Home Assistant
-  briefing into one polished PDF and delivers
-  it to your Kindle — or just your inbox — before you've poured your coffee.
-  Write your answers back by hand and it marks them.
+hero_heading: Your morning edition, for your Kindle Scribe. Free
+hero_subheading: Daily Scribe binds the news, your own RSS feeds and Substacks,
+  a fresh write-in crossword, chess puzzles, Kanji practice, and your Home
+  Assistant briefing into one polished PDF and delivers it to your Kindle — or
+  just your inbox — before you've poured your coffee. Write your answers back by
+  hand and it marks them. All for free!
 hero_image: /uploads/hero.png
 hero_image_alt: Illustration of a tablet, stylus, and a steaming cup of coffee
 teasers:
@@ -16,7 +16,8 @@ teasers:
   - kicker: Play
     title: Crosswords, chess, and dungeons, all by hand.
     body: A fresh write-in crossword and chess puzzles at your level land with every
-      edition, alongside a solo Dungeons & Dragons campaign you play move by move.
+      edition, alongside a solo Dungeons & Dragons campaign you play move by
+      move.
     anchor: play
   - kicker: Read
     title: The news, bound like a newspaper.
@@ -44,9 +45,9 @@ how_it_works:
 sample_edition:
   kicker: See for yourself
   heading: A real edition, start to finish.
-  body: Browse an actual Daily Scribe digest — RTÉ, CBC and BBC headlines, a kanji
-    practice page, a solo D&D turn, and the day's write-in crossword with its answer
-    key — bound exactly as it lands on your Kindle.
+  body: Browse an actual Daily Scribe digest — RTÉ, CBC and BBC (or any news site)
+    headlines, a kanji practice page, a solo D&D turn, and the day's write-in
+    crossword with its answer key — bound exactly as it lands on your Kindle.
   button_label: Download a sample edition (PDF)
   file: /uploads/daily-scribe-sample-digest.pdf
 get_started:
@@ -63,11 +64,11 @@ features:
       and every headline links back to the original. Paste a site's homepage and
       Daily Scribe finds its feed for you. On a quiet day, nothing is sent.
     image_alt: Illustration of a page with an RSS feed symbol
+    is_new: true
     note: Up to ten RSS or Atom feeds, checked when you add them.
     kicker: Your Feeds
     title: Your feeds, as a quiet morning paper.
     coming_soon: false
-    is_new: true
     id: feeds
     image: /uploads/feature-feeds.svg
   - media_right: true
@@ -95,16 +96,16 @@ features:
     image: /uploads/feature-play.svg
   - media_right: true
     body: Up to four chess puzzles a day, picked for your level from the Lichess
-      puzzle database, from beginner tactics to expert combinations. Each one has
-      the board from your side, whose move it is, and the task. Draw or pencil in
-      your line, then turn past a spacer page for the solution, with a small
-      board after every move so you can learn the notation as you go.
+      puzzle database, from beginner tactics to expert combinations. Each one
+      has the board from your side, whose move it is, and the task. Draw or
+      pencil in your line, then turn past a spacer page for the solution, with a
+      small board after every move so you can learn the notation as you go.
     image_alt: Illustration of a chessboard with a rook
+    is_new: true
     note: Puzzles from the free Lichess puzzle database. No account needed.
     kicker: Strategy
     title: A tactic before breakfast.
     coming_soon: false
-    is_new: true
     id: chess
     image: /uploads/feature-chess.svg
   - media_right: true
@@ -123,8 +124,8 @@ features:
     body: Daily Scribe pulls the day's stories from RTÉ News, BBC, and CBC and sets
       them like a real newspaper — headlines and bodies you choose by section,
       nothing chasing your attention. Add [your own feeds](#feeds) too, from
-      your local paper to the writers you follow on Substack. Prefer fiction to current
-      events? A classic novel will arrive one chapter at a time.
+      your local paper to the writers you follow on Substack. Prefer fiction to
+      current events? A classic novel will arrive one chapter at a time.
     image_alt: Illustration of a stack of newspaper clippings
     note: Serialized classic novels, one chapter per edition
     kicker: Read
