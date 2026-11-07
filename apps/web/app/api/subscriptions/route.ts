@@ -86,11 +86,15 @@ export async function POST(req: Request) {
   const timezone = (body.timezone || "America/Toronto").trim();
   const kindleEmail = (body.kindleEmail ?? "").trim();
   if (!isEmailShaped(kindleEmail)) {
-    return NextResponse.json({ error: "A valid Kindle email is required" }, { status: 400 });
+    return NextResponse.json({ error: "A valid delivery email is required" }, { status: 400 });
   }
-  const kindleEmailWarning = isKindleAddress(kindleEmail)
-    ? undefined
-    : "That doesn't look like a Kindle address — it usually ends in @kindle.com.";
+  // Any inbox is a valid destination; only flag what looks like a mistyped
+  // Kindle address (e.g. @kindle.co, @kindel.com), which Amazon would drop.
+  const domain = kindleEmail.slice(kindleEmail.lastIndexOf("@") + 1).toLowerCase();
+  const kindleEmailWarning =
+    !isKindleAddress(kindleEmail) && /kind/.test(domain)
+      ? "That looks like a mistyped Kindle address: it usually ends in @kindle.com."
+      : undefined;
   const base = { deliveryTime, timezone, kindleEmail };
 
   // Service-specific config.

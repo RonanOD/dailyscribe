@@ -9,7 +9,7 @@ import type { ServiceCatalogEntry } from "@/lib/service-catalog";
 import { DeliveryFields } from "../dashboard/delivery-fields";
 import { KindleSetupGuide } from "./kindle-setup-guide";
 
-const STEPS = ["Kindle setup", "Pick services", "Schedule"] as const;
+const STEPS = ["Delivery", "Pick services", "Schedule"] as const;
 
 /** Onboarding's Kindle check: a real test send the user confirms on the device,
  *  since Amazon silently drops mail from unapproved senders. */
@@ -22,6 +22,9 @@ const DEFAULT_FEEDS: Record<string, string[]> = {
   bbc: BBC_FEEDS.map((f) => f.key),
   rte: RTE_FEEDS.map((f) => f.key),
 };
+
+/** Mirrors isEmailShaped in @dailyscribe/core (the API checks too). */
+const EMAIL_SHAPED = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function postJson(url: string, body: unknown): Promise<Record<string, unknown>> {
   const res = await fetch(url, {
@@ -51,7 +54,9 @@ export function OnboardingFlow({
 
   const [step, setStep] = useState(0);
 
-  // Step 1 — Kindle setup
+  // Step 1 — where editions go: a Kindle (guide + test send) or any inbox
+  const [destination, setDestination] = useState<"kindle" | "email">("kindle");
+  const [inboxEmail, setInboxEmail] = useState(email);
   const [kindleEmail, setKindleEmail] = useState("");
   const [testState, setTestState] = useState<TestState>("idle");
   /** The address the last test went to; editing the field invalidates the check. */
@@ -81,7 +86,10 @@ export function OnboardingFlow({
   );
 
   const test: TestState = kindleEmail.trim() === testedEmail ? testState : "idle";
-  const step1Ok = test === "confirmed" || test === "skipped";
+  // A plain inbox needs no sender approval, so there's nothing to test.
+  const step1Ok =
+    destination === "email" ? EMAIL_SHAPED.test(inboxEmail.trim()) : test === "confirmed" || test === "skipped";
+  const deliveryEmail = destination === "email" ? inboxEmail.trim() : kindleEmail.trim();
   const step2Ok = selected.size > 0 && (!needsHa || (haUrl.trim() !== "" && haToken.trim() !== ""));
 
   function toggleService(id: string) {
@@ -114,7 +122,7 @@ export function OnboardingFlow({
       const base = {
         deliveryTime,
         timezone: deliveryTz,
-        kindleEmail: kindleEmail.trim(),
+        kindleEmail: deliveryEmail,
       };
 
       if (needsHa) {
@@ -159,8 +167,51 @@ export function OnboardingFlow({
 
       {step === 0 && (
         <section className="section">
-          <h2>Get your Kindle ready</h2>
+          <h2>Where should your edition go?</h2>
           {email && <p className="hint">Signed in as {email}.</p>}
+          <p className="hint">
+            Daily Scribe is built for the Kindle Scribe, but every edition is just a PDF attached to an
+            email, so any inbox works too.
+          </p>
+          <div className="delivery-choice" role="radiogroup" aria-label="Where to deliver">
+            <label className="check">
+              <input
+                type="radio"
+                name="onboard-destination"
+                checked={destination === "kindle"}
+                onChange={() => setDestination("kindle")}
+              />
+              My Kindle
+            </label>
+            <label className="check">
+              <input
+                type="radio"
+                name="onboard-destination"
+                checked={destination === "email"}
+                onChange={() => setDestination("email")}
+              />
+              Just email it to me
+            </label>
+          </div>
+
+          {destination === "email" ? (
+            <div className="field">
+              <label htmlFor="onboard-inbox-email">Send my edition to</label>
+              <input
+                id="onboard-inbox-email"
+                type="email"
+                value={inboxEmail}
+                onChange={(e) => setInboxEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+              <p className="hint">
+                Your sign-in address, unless you change it. Another e-reader&apos;s send-to address
+                (PocketBook, for example) works here too. You can switch to a Kindle any time under
+                Delivery on your dashboard.
+              </p>
+            </div>
+          ) : (
+          <>
           <KindleSetupGuide />
           <div className="field">
             <label htmlFor="onboard-kindle-email">Your Send-to-Kindle email</label>
@@ -250,6 +301,8 @@ export function OnboardingFlow({
             )}
             {testError && <p className="message err">{testError}</p>}
           </div>
+          </>
+          )}
         </section>
       )}
 

@@ -525,7 +525,7 @@ export function DashboardForm({
   const saveAll = () =>
     run("save-all", async () => {
       if (!kindleEmail.includes("@")) {
-        throw new Error("A valid Send-to-Kindle email is required under Delivery setup.");
+        throw new Error("A valid delivery email is required under Delivery setup.");
       }
       if (feedsEnabled && customFeeds.length === 0) {
         throw new Error("Your Feeds is on but has no feeds. Add one, or switch it off.");
@@ -733,7 +733,7 @@ export function DashboardForm({
           <h2>Delivery setup</h2>
           <KindleSetupGuide />
           <div className="field">
-            <label htmlFor="global-kindle-email">Send-to-Kindle email</label>
+            <label htmlFor="global-kindle-email">Delivery email</label>
             <input
               id="global-kindle-email"
               type="email"
@@ -741,6 +741,7 @@ export function DashboardForm({
               onChange={(e) => setKindleEmail(e.target.value)}
               placeholder="you@kindle.com"
             />
+            <p className="hint">Your Send-to-Kindle address, or any inbox if you&apos;d rather read it elsewhere.</p>
           </div>
 
           <DeliveryFields

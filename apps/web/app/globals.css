@@ -739,6 +739,14 @@ a {
   color: var(--accent);
 }
 
+/* Onboarding: Kindle or plain inbox */
+.delivery-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 4px 0 14px;
+}
+
 /* Onboarding Kindle test send */
 .kindle-test {
   margin-top: 18px;
