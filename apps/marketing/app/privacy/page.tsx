@@ -47,8 +47,9 @@ export default function PrivacyPage() {
           practice), the PDF you mail back and the automated assessment of it.
         </li>
         <li>
-          <strong>Waitlist requests</strong> — if you ask for an invitation, your email address
-          and an optional referral tag, used only to send you an invite.
+          <strong>Referral tag</strong> — a short label for the link or site that brought you
+          to Daily Scribe (for example &ldquo;reddit.com&rdquo;), stored with your account so we
+          know which posts are worth writing.
         </li>
       </ul>
       <p>
@@ -86,8 +87,9 @@ export default function PrivacyPage() {
 
       <h2>Email</h2>
       <p>
-        Email from Daily Scribe is transactional only: sign-in links, your requested daily
-        editions, delivery problems, and — if you joined the waitlist — a single invitation.
+        Email from Daily Scribe is limited to sign-in links, your requested daily editions,
+        delivery problems, a reminder if setup stalls, and the occasional note about new
+        sections. There is no mailing list and nothing is sent on anyone else&rsquo;s behalf.
       </p>
 
       <h2>Retention and deletion</h2>

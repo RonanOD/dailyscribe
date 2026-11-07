@@ -12,8 +12,7 @@ export default async function HomePage() {
           </a>
         </h1>
         <p className="tagline">Your daily crossword, news, and more — delivered to your Kindle.</p>
-        <p className="muted">Something interesting is building here.</p>
-        <Link className="button" href="/dashboard">
+                <Link className="button" href="/dashboard">
           {session ? "Go to dashboard" : "Sign in"}
         </Link>
       </section>

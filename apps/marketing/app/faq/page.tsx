@@ -18,7 +18,7 @@ export default function FaqPage() {
 
       <h2>Is it really free?</h2>
       <p>
-        Yes &mdash; free while Daily Scribe is in beta. If paid tiers arrive later you&rsquo;ll
+        Yes. Daily Scribe is free, with no ads. If paid tiers ever arrive you&rsquo;ll
         get plenty of notice, and a usable free option will stay.
       </p>
 

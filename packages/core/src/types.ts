@@ -32,8 +32,10 @@ export interface AppUser {
   emailVerified?: Date | null;
   name?: string;
   image?: string;
-  /** Attribution slug carried over from the waitlist entry (approve-waitlist.mjs). */
+  /** Attribution slug: from the waitlist entry (approve-waitlist.mjs), or the ?ref= on /start for open sign-ups. */
   ref?: string;
+  /** When the account was created (set by auth.ts; missing on accounts made before Nov 2026). */
+  createdAt?: Date;
   /** Set when the user finishes the /onboarding flow; gates the first-run redirect. */
   onboardedAt?: Date;
   /** When each activation email went out (see onboarding-nudges.ts). Claimed

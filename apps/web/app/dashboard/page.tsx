@@ -5,6 +5,7 @@ import {
   collections,
   decryptSecret,
   getDndCampaign,
+  isKindleAddress,
   type DndCampaign,
   type BbcNewsConfig,
   type CbcNewsConfig,
@@ -19,7 +20,11 @@ import { DashboardForm } from "./dashboard-form";
 
 export const runtime = "nodejs";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -31,13 +36,20 @@ export default async function DashboardPage() {
               Daily Scribe
             </a>
           </h1>
-          <p className="muted">Sign in to configure your daily delivery.</p>
+          <p className="muted">Sign in or create your account to set up your daily edition.</p>
+          {(await searchParams).error === "kindle" && (
+            <p className="signin-error" role="alert">
+              That&apos;s a Kindle address, and a Kindle can&apos;t open sign-in links. Use your regular
+              email here; you&apos;ll add your Kindle&apos;s address during setup.
+            </p>
+          )}
 
           <form
             className="signin-email"
             action={async (formData: FormData) => {
               "use server";
               const email = String(formData.get("email") ?? "").trim();
+              if (isKindleAddress(email)) redirect("/dashboard?error=kindle");
               await signIn("resend", { email, redirectTo: "/dashboard" });
             }}
           >
@@ -78,9 +90,8 @@ export default async function DashboardPage() {
           </div>
 
           <p className="muted signin-note">
-            New here?{" "}
-            <a href="https://dailyscribe.ca/#get-started">Request an invitation</a> — access is
-            invite-only during the beta. Use the same method each time you sign in.
+            New here? Any of these creates your account, free. Use the same method each time you
+            sign in.
           </p>
         </section>
       </main>

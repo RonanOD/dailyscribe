@@ -18,7 +18,7 @@ export default function TermsPage() {
       <h2>What the service is</h2>
       <p>
         Daily Scribe fetches content you select and emails it to you as a PDF on a schedule you
-        control. It is currently in an early beta, offered free of charge, and is provided
+        control. It is offered free of charge and is provided
         &ldquo;as is&rdquo; with no warranty. Features may change and the service may be paused
         or discontinued with reasonable notice.
       </p>
@@ -57,7 +57,7 @@ export default function TermsPage() {
 
       <h2>Payment</h2>
       <p>
-        The service is free during the beta. If paid tiers are introduced, you will be told
+        The service is free. If paid tiers are introduced, you will be told
         before any charge applies and can decline.
       </p>
 

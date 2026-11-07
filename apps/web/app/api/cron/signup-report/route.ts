@@ -16,7 +16,7 @@ export const maxDuration = 30;
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Once-a-day operator report to `ADMIN_EMAIL`: new waitlist signups (so the
+ * Once-a-day operator report to `ADMIN_EMAIL`: new accounts (with their ?ref= source), new waitlist signups (so the
  * operator knows when to run `apps/web/scripts/approve-waitlist.mjs`) and any
  * scheduled deliveries that gave up in the same window (`dispatchAttempts`). Only
  * the first day of a failure run, and the day it got paused, are listed in full;
@@ -42,7 +42,8 @@ export async function GET(req: Request) {
 
   const { waitlist, users, subscriptions } = await collections();
   const since = new Date(Date.now() - WINDOW_MS);
-  const [fresh, pendingTotal, failures, leavers] = await Promise.all([
+  const [joined, fresh, pendingTotal, failures, leavers] = await Promise.all([
+    users.find({ createdAt: { $gte: since } }, { projection: { email: 1, ref: 1, createdAt: 1 } }).sort({ createdAt: 1 }).toArray(),
     waitlist
       .find({ status: "pending", createdAt: { $gte: since } })
       .sort({ createdAt: 1 })
@@ -69,12 +70,25 @@ export async function GET(req: Request) {
   const newFailures = classified.filter((c) => c.isNew);
   const repeats = classified.filter((c) => !c.isNew);
 
-  if (fresh.length === 0 && newFailures.length === 0 && leavers.length === 0) {
-    return NextResponse.json({ new: fresh.length, pending: pendingTotal, failed: 0, repeats: repeats.length, left: 0 });
+  if (joined.length === 0 && fresh.length === 0 && newFailures.length === 0 && leavers.length === 0) {
+    return NextResponse.json({ joined: 0, new: fresh.length, pending: pendingTotal, failed: 0, repeats: repeats.length, left: 0 });
   }
 
   const sections: string[] = [];
   const plural = fresh.length === 1 ? "" : "s";
+  if (joined.length > 0) {
+    const counts = new Map<string, number>();
+    for (const u of joined) counts.set(u.ref ?? "direct", (counts.get(u.ref ?? "direct") ?? 0) + 1);
+    sections.push(
+      [
+        `${joined.length} new account${joined.length === 1 ? "" : "s"} in the last 24h:`,
+        "",
+        ...joined.map((u) => `  ${u.email ?? "?"}${u.ref ? `  [${u.ref}]` : ""}`),
+        "",
+        `By source: ${[...counts].map(([ref, n]) => `${ref} ${n}`).join(", ")}`,
+      ].join("\n"),
+    );
+  }
   if (fresh.length > 0) {
     const rows = fresh.map((w) => {
       const date = w.createdAt.toISOString().slice(0, 10);
@@ -144,6 +158,7 @@ export async function GET(req: Request) {
   }
   const text = sections.join("\n\n");
   const subjectParts = [
+    joined.length > 0 ? `${joined.length} new account${joined.length === 1 ? "" : "s"}` : "",
     fresh.length > 0 ? `${fresh.length} new waitlist signup${plural}` : "",
     newFailures.length > 0 ? `${newFailures.length} failed deliver${newFailures.length === 1 ? "y" : "ies"}` : "",
     leavers.length > 0 ? `${leavers.length} left` : "",

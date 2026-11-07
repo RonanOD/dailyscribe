@@ -143,6 +143,10 @@ a {
   margin-top: 0;
   width: 100%;
 }
+.signin-error {
+  color: var(--accent);
+  font-size: 0.92rem;
+}
 .signin-note {
   margin-top: 18px;
   font-size: 0.85rem;

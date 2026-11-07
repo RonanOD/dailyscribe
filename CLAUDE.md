@@ -42,10 +42,13 @@ emailed to the owner's Kindle, on multi-tenant-ready foundations — is built an
 - **Database:** **MongoDB Atlas** — a dedicated DailyScribe project / free M0 cluster, fully
   isolated. Accessed only via `MONGODB_URI`; db name `dailyscribe`.
 - **Auth:** **Auth.js (NextAuth v5)** with the MongoDB adapter — **email magic-link (Resend),
-  Google OAuth, and GitHub OAuth**. Access is **invite-only**: the `signIn` gate rejects any
-  email not already in `users` unless `ALLOW_NEW_SIGNUPS="true"`. The marketing site's CTA is a
-  waitlist form (`POST /api/waitlist` → `waitlist` collection); `apps/web/scripts/approve-waitlist.mjs`
-  seeds approved emails into `users` in batches and emails invites. All three providers set
+  Google OAuth, and GitHub OAuth**. **Open sign-ups since Nov 2026** (out of beta, after the
+  Resend Pro upgrade lifted the 100/day cap): `ALLOW_NEW_SIGNUPS="true"` in production; unset,
+  the `signIn` gate falls back to invite-only (emails already in `users`). The marketing CTAs
+  link to `my.dailyscribe.ca/start?ref=…`, which keeps the ref (the page's `?ref=`, else the
+  referring host) in a cookie that `events.createUser` stamps on `users.ref` + `createdAt`;
+  the daily `signup-report` lists new accounts by source. The old waitlist
+  (`POST /api/waitlist`, `approve-waitlist.mjs`) still works but nothing links to it. All three providers set
   `allowDangerousEmailAccountLinking` (each verifies the address) so a seeded stub / second
   method attaches cleanly.
 - **Scheduling:** a **Cloudflare Worker cron trigger** (`workers/dispatch-cron`) hits

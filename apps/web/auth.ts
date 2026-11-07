@@ -1,9 +1,12 @@
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import { getDb, getMongoClientPromise } from "@dailyscribe/core";
+import { ObjectId } from "mongodb";
 import NextAuth from "next-auth";
+import { cookies } from "next/headers";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import Resend from "next-auth/providers/resend";
+import { REF_COOKIE } from "@/lib/signup-ref";
 
 const MAIL_FROM = process.env.MAIL_FROM_DEFAULT ?? "Daily Scribe <my@dailyscribe.ca>";
 
@@ -34,6 +37,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // verified sender; no SMTP / nodemailer dependency.
     Resend({ apiKey: process.env.RESEND_API_KEY, from: MAIL_FROM }),
   ],
+  events: {
+    // Stamp new accounts with when they joined and which campaign link brought
+    // them (the ?ref= tag /start saved), for the daily signup report.
+    async createUser({ user }) {
+      if (!user.id || !ObjectId.isValid(user.id)) return;
+      let ref: string | undefined;
+      try {
+        ref = (await cookies()).get(REF_COOKIE)?.value;
+      } catch {
+        // No request context (shouldn't happen); just skip attribution.
+      }
+      const db = await getDb();
+      await db
+        .collection("users")
+        .updateOne({ _id: new ObjectId(user.id), ref: { $exists: false } }, { $set: { createdAt: new Date(), ...(ref ? { ref } : {}) } });
+    },
+  },
   callbacks: {
     async signIn({ user }) {
       // Signups are gated: only emails already in the "users" collection may

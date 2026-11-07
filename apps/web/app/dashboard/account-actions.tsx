@@ -86,7 +86,7 @@ export function AccountActions({ anyEnabled }: { anyEnabled: boolean }) {
       <h2 className="account-actions__delete">Delete my account</h2>
       <p className="hint">
         Permanently deletes your account, settings, saved credentials, and history (including Kanji and DnD progress). This
-        can&apos;t be undone. To use Daily Scribe again you&apos;d need a new invite.
+        can&apos;t be undone. You can sign up again any time, starting fresh.
       </p>
       <div className="field">
         <label htmlFor="delete-confirm">Type &quot;delete&quot; to confirm</label>

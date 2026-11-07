@@ -53,15 +53,14 @@ collections:
               - { label: Body, name: body, widget: text }
               - { label: "Button Label", name: button_label, widget: string }
               - { label: "PDF File", name: file, widget: file }
-          - label: "Waitlist Signup Block"
-            name: waitlist
+          - label: "Get Started Block"
+            name: get_started
             widget: object
             fields:
               - { label: Heading, name: heading, widget: string }
               - { label: Body, name: body, widget: text }
               - { label: "Button Label", name: button_label, widget: string }
-              - { label: "Email Input Placeholder", name: placeholder, widget: string }
-              - { label: "Success Message", name: success_message, widget: string }
+              - { label: "Note (small line beside the button)", name: note, widget: string }
           - label: "Feature Deep-Dives"
             name: features
             widget: list

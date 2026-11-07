@@ -49,14 +49,12 @@ sample_edition:
     key — bound exactly as it lands on your Kindle.
   button_label: Download a sample edition (PDF)
   file: /uploads/daily-scribe-sample-digest.pdf
-waitlist:
-  heading: Request an invitation
-  body: Daily Scribe is in a small private beta while we get delivery right for
-    every Kindle. Leave your email and we'll send an invite — usually within a
-    day.
-  button_label: Join the waitlist
-  placeholder: you@example.com
-  success_message: You're on the list — watch your inbox for an invite.
+get_started:
+  heading: Start your edition
+  body: Sign up, pick your sections, and approve one sender address on your
+    Kindle. Your first edition can arrive tomorrow morning.
+  button_label: Start your edition
+  note: Free. Sign in with email, Google or GitHub.
 features:
   - media_right: false
     body: Add the feeds you already follow, from your local paper to a favourite

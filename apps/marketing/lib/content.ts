@@ -43,12 +43,11 @@ export interface SampleEdition {
   file: string;
 }
 
-export interface WaitlistBlock {
+export interface GetStartedBlock {
   heading: string;
   body: string;
   button_label: string;
-  placeholder: string;
-  success_message: string;
+  note: string;
 }
 
 export interface LandingContent {
@@ -60,7 +59,7 @@ export interface LandingContent {
   teasers: Teaser[];
   how_it_works: HowItWorksStep[];
   sample_edition: SampleEdition;
-  waitlist: WaitlistBlock;
+  get_started: GetStartedBlock;
   features: Feature[];
   open_source: {
     heading: string;

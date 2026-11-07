@@ -6,12 +6,12 @@ export function GuideCta({ slug }: { slug: string }) {
       <h2>Let Daily Scribe do this for you</h2>
       <p>
         Daily Scribe builds your edition every morning and emails it to your Kindle
-        Scribe, any e-reader, or a plain inbox. It&rsquo;s in a small private beta and
-        free while it lasts.
+        Scribe, any e-reader, or a plain inbox. It&rsquo;s free, and setup takes about five
+        minutes.
       </p>
       <p className="guide-cta-actions">
-        <a className="btn btn--primary" href={`/?ref=guide-${slug}#get-started`}>
-          Join the waitlist
+        <a className="btn btn--primary" href={`https://my.dailyscribe.ca/start?ref=guide-${slug}`}>
+          Start your edition
         </a>
         <a
           className="btn btn--text"

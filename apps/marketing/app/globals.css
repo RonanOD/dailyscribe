@@ -535,60 +535,22 @@ h3 {
   margin: 18px 0 0;
 }
 
-/* ---------- Waitlist form ---------- */
-.waitlist-form {
+/* ---------- Start CTA ---------- */
+.start-cta {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
   align-items: center;
   margin: 0 0 24px;
 }
-.final-cta .waitlist-form {
+.final-cta .start-cta {
   justify-content: center;
   margin-bottom: 0;
 }
-.waitlist-form input[type="email"] {
-  font-family: var(--font-body), Georgia, serif;
-  font-size: 1rem;
-  padding: 12px 14px;
-  min-width: 260px;
-  flex: 1 1 260px;
-  max-width: 360px;
-  background: var(--bg);
-  color: var(--text);
-  border: 1.5px solid var(--rule-strong);
-  border-radius: 2px;
-}
-.waitlist-form input[type="email"]:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-.waitlist-form--compact {
-  margin-bottom: 20px;
-}
-/* Honeypot — visually and to AT hidden, still submittable by bots. */
-.waitlist-hp {
-  position: absolute;
-  left: -9999px;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-.waitlist-done {
-  font-size: 1.02rem;
-  font-weight: 700;
-  color: var(--accent);
-  margin: 0 0 24px;
-}
-.final-cta .waitlist-done {
-  margin-bottom: 0;
-}
-.waitlist-error {
-  flex-basis: 100%;
-  margin: 4px 0 0;
-  font-size: 0.9rem;
-  color: var(--accent);
+.start-cta-note {
+  font-size: 0.92rem;
+  color: var(--text-soft);
+  margin: 0;
 }
 
 /* ---------- Footer ---------- */

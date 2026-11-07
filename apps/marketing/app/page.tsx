@@ -2,7 +2,8 @@ import ReactMarkdown from "react-markdown";
 import { getLandingContent } from "@/lib/content";
 import { BUY_ME_A_COFFEE_URL } from "@/lib/site";
 import { Masthead, SIGN_IN_URL } from "./_components/Masthead";
-import { WaitlistForm } from "./_components/WaitlistForm";
+import { StartCta } from "./_components/StartCta";
+import { RefLinks } from "./_components/RefLinks";
 import { SiteFooter } from "./_components/SiteFooter";
 
 function CoffeeButton() {
@@ -34,7 +35,7 @@ export default function HomePage() {
               <span className="dateline">{content.dateline}</span>
               <h2 className="hero-headline">{content.hero_heading}</h2>
               <p className="hero-dek">{content.hero_subheading}</p>
-              <WaitlistForm copy={content.waitlist} source="site-hero" compact />
+              <StartCta copy={content.get_started} source="site-hero" />
               <div className="hero-actions">
                 <a className="btn btn--text" href="#inside">
                   See what&rsquo;s inside &#8595;
@@ -238,16 +239,17 @@ export default function HomePage() {
 
       <section className="final-cta" id="get-started">
         <div className="container">
-          <h2>{content.waitlist.heading}</h2>
-          <p>{content.waitlist.body}</p>
-          <WaitlistForm copy={content.waitlist} source="site-footer" />
+          <h2>{content.get_started.heading}</h2>
+          <p>{content.get_started.body}</p>
+          <StartCta copy={content.get_started} source="site-footer" />
           <p className="final-cta-signin">
-            Already invited? <a href={SIGN_IN_URL}>Sign in</a>
+            Already reading? <a href={SIGN_IN_URL}>Sign in</a>
           </p>
         </div>
       </section>
 
       <SiteFooter />
+      <RefLinks />
     </div>
   );
 }

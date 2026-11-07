@@ -28,7 +28,7 @@ export function Masthead() {
           <a href="#live">Live</a>
           <a href="#open-source">Open Source</a>
           <a className="sectionnav-cta" href="#get-started">
-            Join the Waitlist
+            Start Your Edition
           </a>
         </div>
       </nav>
