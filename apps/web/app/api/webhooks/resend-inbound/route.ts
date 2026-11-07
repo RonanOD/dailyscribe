@@ -171,8 +171,11 @@ async function resolveSubmissionBytes(
  *  (a new campaign); after a run ends (won/dead) the "next adventure" page
  *  (keep or replace the hero, pick an adventure); otherwise an ordinary move. */
 function dndExpectedShape(status: DndGameStatus): DndSubmissionShape {
-  if (status === "active") return "move";
-  return status === "awaiting_character" ? "character" : "next";
+  // A new player's first page is the next-adventure page too (pick where to
+  // begin). A plain creation sheet sent before that still reads, as the
+  // "next" reader falls back to a whole-page sheet read when it finds no
+  // next-adventure page.
+  return status === "active" ? "move" : "next";
 }
 
 /**

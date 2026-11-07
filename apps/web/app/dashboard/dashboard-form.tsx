@@ -131,7 +131,8 @@ interface Props {
   ha?: { config: HaConfig; enabled: boolean } | null;
   kanji?: { config: KanjiConfig; enabled: boolean } | null;
   crossword?: { config: CrosswordConfig; enabled: boolean } | null;
-  dnd?: { config: DndConfig; enabled: boolean } | null;
+  /** `status`: a read-only line on where the player's game stands. */
+  dnd?: { config: DndConfig; enabled: boolean; status?: string } | null;
   chess?: { config: ChessConfig; enabled: boolean } | null;
   feeds?: { config: FeedsConfig; enabled: boolean } | null;
   /** Whether "send all enabled services as one PDF" is on. Membership is
@@ -1358,6 +1359,11 @@ export function DashboardForm({
             hand, mail the page back, and Daily Scribe reads it and continues the story on your
             next edition.
           </p>
+          {dnd?.status && (
+            <p className="hint">
+              <strong>Your game:</strong> {dnd.status}
+            </p>
+          )}
 
           <div className="actions">
             <label className="toggle">

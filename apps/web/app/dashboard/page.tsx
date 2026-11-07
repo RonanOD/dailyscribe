@@ -4,6 +4,8 @@ import { ObjectId } from "mongodb";
 import {
   collections,
   decryptSecret,
+  getDndCampaign,
+  type DndCampaign,
   type BbcNewsConfig,
   type CbcNewsConfig,
   type CustomFeedsConfig,
@@ -124,6 +126,8 @@ export default async function DashboardPage() {
     }
   }
 
+  const dndDoc = dndSub ? await (await collections()).dndCampaigns.findOne({ userId }) : null;
+
   const configured = {
     ha: Boolean(haDoc),
     haUrl,
@@ -194,7 +198,7 @@ export default async function DashboardPage() {
         ha={haSub ? { config: haSub.config, enabled: haSub.enabled } : null}
         kanji={kanjiSub ? { config: kanjiSub.config, enabled: kanjiSub.enabled } : null}
         crossword={crosswordSub ? { config: crosswordSub.config, enabled: crosswordSub.enabled } : null}
-        dnd={dndSub ? { config: dndSub.config, enabled: dndSub.enabled } : null}
+        dnd={dndSub ? { config: dndSub.config, enabled: dndSub.enabled, status: dndStatusLine(dndDoc) } : null}
         chess={chessSub ? { config: chessSub.config, enabled: chessSub.enabled } : null}
         feeds={feedsSub ? { config: feedsSub.config as CustomFeedsConfig, enabled: feedsSub.enabled } : null}
         digestEnabled={digestSub?.enabled ?? false}
@@ -261,4 +265,25 @@ export default async function DashboardPage() {
       </footer>
     </main>
   );
+}
+
+/** One read-only line for the dashboard's DnD tab: where the player's game stands. */
+function dndStatusLine(doc: DndCampaign | null): string | undefined {
+  if (!doc) return undefined;
+  const { character: ch, gameState: gs } = doc;
+  const adventure = getDndCampaign(gs.campaignId).campaignName.replace(" (Solo Edition)", "");
+  const hero = `${ch.name}, level ${ch.level} ${ch.class}`;
+  switch (gs.status) {
+    case "awaiting_character":
+      return "Waiting for your first page: fill in a hero, tick an adventure and mail it back.";
+    case "won":
+      return `${hero} cleared ${adventure}. Your next page lets you keep them and pick another adventure.`;
+    case "dead":
+      return `${ch.name} fell in ${adventure}. Your next page lets you make a new hero.`;
+    default: {
+      const room = getDndCampaign(gs.campaignId).nodes[gs.currentNode]?.title ?? gs.currentNode;
+      const last = doc.updatedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      return `${hero} · ${adventure} · ${room} · HP ${ch.currentHp}/${ch.maxHp} · last move ${last}`;
+    }
+  }
 }

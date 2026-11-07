@@ -19,7 +19,8 @@ import { readCheckboxes, type CheckboxRead } from "./mark-reader";
 import { cropFieldToPng, renderPageToRaster, type RasterPage } from "./rasterize";
 
 const MOVE_PAGE_MARKER = "Your Move"; // DndDocument's MovePage masthead text (lib/plugins/dnd.tsx).
-const NEXT_PAGE_MARKER = "Your Next Adventure"; // NextAdventurePage's masthead text.
+// NextAdventurePage's masthead text: after a win or death, and for a new player.
+const NEXT_PAGE_MARKERS = ["Your Next Adventure", "Your First Adventure"];
 
 /**
  * Finds and rasterizes the page with `marker` (e.g. the move-input page) from a possibly multi-page
@@ -35,7 +36,8 @@ const NEXT_PAGE_MARKER = "Your Next Adventure"; // NextAdventurePage's masthead 
  * pdfjs-serverless's simulated worker "loopback port"). See rasterize.ts's
  * `rasterizePage` doc comment for the full story.
  */
-async function findAndRasterizePage(pdfBytes: Uint8Array, marker: string): Promise<RasterPage | null> {
+async function findAndRasterizePage(pdfBytes: Uint8Array, marker: string | string[]): Promise<RasterPage | null> {
+  const markers = Array.isArray(marker) ? marker : [marker];
   // See the matching comment in rasterize.ts's rasterizePage — pdfjs-serverless
   // rejects a Node `Buffer` even though it's a Uint8Array subclass.
   const data = pdfBytes instanceof Buffer ? new Uint8Array(pdfBytes) : pdfBytes;
@@ -46,7 +48,7 @@ async function findAndRasterizePage(pdfBytes: Uint8Array, marker: string): Promi
       const page = await doc.getPage(i);
       const content = await page.getTextContent();
       const text = content.items.map((it) => ("str" in it ? it.str : "")).join(" ");
-      if (text.includes(marker)) return await renderPageToRaster(page);
+      if (markers.some((m) => text.includes(m))) return await renderPageToRaster(page);
     }
     return null;
   } finally {
@@ -128,7 +130,8 @@ export interface ReadDndReplyParams {
  * - "character" (the rare path — campaign start, at most a couple of times
  *   per user): one whole-page Gemini vision call, same as the old repo's
  *   process_vision.py — cost doesn't matter at this volume.
- * - "next" (after a win or a death): the keep-hero and adventure boxes are
+ * - "next" (after a win or a death, and a new player's first page): the
+ *   keep-hero and adventure boxes are
  *   read by pixel darkness like a move; only a new hero costs the
  *   whole-page vision call.
  */
@@ -143,7 +146,7 @@ export async function readDndReply(params: ReadDndReplyParams): Promise<DndReply
   }
 
   if (params.expectedShape === "next") {
-    const page = await findAndRasterizePage(params.pdfBytes, NEXT_PAGE_MARKER);
+    const page = await findAndRasterizePage(params.pdfBytes, NEXT_PAGE_MARKERS);
     // An older victory/defeat page (just a creation sheet) mailed back after
     // this shipped: read it as a new hero in the default adventure, or, left
     // blank after a win, as keeping the hero.

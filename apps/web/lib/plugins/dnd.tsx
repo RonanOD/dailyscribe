@@ -508,26 +508,6 @@ function MovePage({
   );
 }
 
-function CreationPage({ campaign, campaignDoc, date, digest }: { campaign: DndCampaignDefinition; campaignDoc: DndCampaign; date: Date; digest?: boolean }) {
-  return (
-    <Page size="A4" style={styles.page} wrap>
-      <Text style={styles.masthead}>{campaign.campaignName}</Text>
-      <Text style={styles.date}>{formatLongDate(date)}</Text>
-      {!digest && (
-        <Link src={BUY_ME_A_COFFEE_URL} style={styles.coffee}>
-          Enjoy this with your coffee? Consider buying the creator one, it helps cover the running costs.
-        </Link>
-      )}
-      <Text style={styles.body}>
-        A new hero stands at the threshold of {campaign.campaignName}. Fill in the sheet below to begin.
-      </Text>
-      <MailBackNote verb="Fill in your hero" />
-      <CharacterCreationSection />
-      <RefFooter inboundToken={campaignDoc.inboundToken} digest={digest} />
-    </Page>
-  );
-}
-
 // "Your Next Adventure" page: the summary sits between the masthead and the
 // first checkbox (DND_NEXT_HERO_CHECKBOXES, top 150), and the adventure
 // heading above the first slot (DND_NEXT_ADVENTURE_SLOTS, top 236).
@@ -535,7 +515,8 @@ const NEXT_SUMMARY_TOP = 78;
 const NEXT_ADVENTURE_HEADING_TOP = 210;
 
 /**
- * Sent after a win or a death. Like MovePage, every box is drawn at a fixed
+ * Sent after a win or a death, and (as "Your First Adventure") to a new
+ * player, so they pick where to begin on the same page. Like MovePage, every box is drawn at a fixed
  * position (lib/dnd/layout.ts) so the mail-back reader can tell "keep my
  * hero" and the adventure pick from pixel darkness alone. Only a win offers
  * keeping the hero; a fallen one has to be replaced.
@@ -544,13 +525,14 @@ function NextAdventurePage({
   campaign,
   campaignDoc,
   digest,
-  won,
+  mode,
 }: {
   campaign: DndCampaignDefinition;
   campaignDoc: DndCampaign;
   digest?: boolean;
-  won: boolean;
+  mode: "won" | "dead" | "new";
 }) {
+  const won = mode === "won";
   const { character, gameState } = campaignDoc;
   const done = completedCampaignIds(gameState);
   const [keepBox, newBox] = DND_NEXT_HERO_CHECKBOXES;
@@ -560,16 +542,20 @@ function NextAdventurePage({
   const creationTop = DND_NEXT_ADVENTURE_SLOTS[adventures.length - 1].top + 44;
   return (
     <Page size="A4" style={styles.page}>
-      <Text style={styles.masthead}>Your Next Adventure</Text>
+      <Text style={styles.masthead}>{mode === "new" ? "Your First Adventure" : "Your Next Adventure"}</Text>
       <View style={{ position: "absolute", top: NEXT_SUMMARY_TOP, left: 48, right: 48 }}>
         <Text style={styles.body}>
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>{won ? "Victory! " : "You have fallen. "}</Text>
-          {won
-            ? `${character.name} the ${character.class} cleared ${campaign.campaignName} in ${gameState.turnCount} turns.`
-            : `${character.name} the ${character.class} fell in ${campaign.campaignName} after ${gameState.turnCount} turns.`}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>
+            {mode === "new" ? "Welcome, adventurer! " : won ? "Victory! " : "You have fallen. "}
+          </Text>
+          {mode === "new"
+            ? "A solo Dungeons & Dragons campaign, one room a day, played with your pen."
+            : won
+              ? `${character.name} the ${character.class} cleared ${campaign.campaignName} in ${gameState.turnCount} turns.`
+              : `${character.name} the ${character.class} fell in ${campaign.campaignName} after ${gameState.turnCount} turns.`}
         </Text>
         <Text style={[styles.mailBack, { marginTop: 6 }]}>
-          {won ? "Tick your choices" : "Fill in a new hero and tick an adventure"}, then email this page to{" "}
+          {won ? "Tick your choices" : mode === "new" ? "Fill in your hero and tick an adventure" : "Fill in a new hero and tick an adventure"}, then email this page to{" "}
           <Text style={styles.mailBackAddr}>{MAIL_BACK_ADDRESS}</Text>.
         </Text>
       </View>
@@ -587,7 +573,9 @@ function NextAdventurePage({
         </>
       ) : (
         <Text style={{ position: "absolute", top: keepBox.top + 1.5, left: 56, fontSize: 9.5, width: 460 }}>
-          Every adventure needs a hero. Fill in the sheet below to make a new one.
+          {mode === "new"
+            ? `Every adventure needs a hero: fill in the sheet below. Leave the adventures blank and you begin in ${adventures[0].campaignName}.`
+            : "Every adventure needs a hero. Fill in the sheet below to make a new one."}
         </Text>
       )}
 
@@ -598,7 +586,7 @@ function NextAdventurePage({
         <AbsCheckbox
           key={c.id}
           field={DND_NEXT_ADVENTURE_SLOTS[i]}
-          label={`${c.campaignName}${done.includes(c.id) ? " (won)" : ""}: ${c.blurb}`}
+          label={`${c.campaignName}${done.includes(c.id) ? " (won)" : c.tag ? ` (${c.tag})` : ""}: ${c.blurb}`}
           labelWidth={440}
         />
       ))}
@@ -625,9 +613,9 @@ function DndDocument({
   const status = campaignDoc.gameState.status;
   return (
     <Document title={`${campaign.campaignName} — ${formatIsoDate(date)}`} author="Daily Scribe">
-      {status === "awaiting_character" && <CreationPage campaign={campaign} campaignDoc={campaignDoc} date={date} digest={digest} />}
-      {status === "won" && <NextAdventurePage campaign={campaign} campaignDoc={campaignDoc} digest={digest} won />}
-      {status === "dead" && <NextAdventurePage campaign={campaign} campaignDoc={campaignDoc} digest={digest} won={false} />}
+      {status === "awaiting_character" && <NextAdventurePage campaign={campaign} campaignDoc={campaignDoc} digest={digest} mode="new" />}
+      {status === "won" && <NextAdventurePage campaign={campaign} campaignDoc={campaignDoc} digest={digest} mode="won" />}
+      {status === "dead" && <NextAdventurePage campaign={campaign} campaignDoc={campaignDoc} digest={digest} mode="dead" />}
       {status === "active" && (
         <>
           <AdventurePage campaign={campaign} campaignDoc={campaignDoc} date={date} digest={digest} />

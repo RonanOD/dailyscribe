@@ -175,7 +175,9 @@ See `SETUP.md` for environment variables, Atlas/Vercel setup, and end-to-end ver
       is to The Sunless Citadel; `DND_CAMPAIGNS` in `packages/core/src/dnd/campaign.ts`), and a
       "Your Next Adventure" page after a win or a death: keep the hero (wins only: one level up,
       +hit-die average + CON max HP, healed to full, inventory kept) or make a new one, and tick an adventure, read by pixel darkness like the move
-      page so keeping a hero needs no Gemini call. Still to do: build the
+      page so keeping a hero needs no Gemini call. **Nov 2026:** new players get the same page as
+      "Your First Adventure" (fill in a hero, tick where to begin, the Sunken Vault if none), and
+      the dashboard's DnD tab shows a read-only line on where the game stands. Still to do: build the
       remaining deferred catalog services (classic novels, eating tracking). **Kindle check
       (Oct 2026, DAI-8):** onboarding's "I've approved the sender" checkbox became a real test
       send (`/api/onboarding/test-send`, a one-page welcome PDF) the user confirms arrived,

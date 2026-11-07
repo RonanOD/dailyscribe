@@ -48,6 +48,8 @@ export interface DndCampaignDefinition {
   campaignName: string;
   /** One line for the "choose your next adventure" page. */
   blurb: string;
+  /** A short note shown beside the name in the adventure list, e.g. how hard it is. */
+  tag?: string;
   schemaVersion: number;
   grid: { cols: number; rows: number };
   startNode: string;

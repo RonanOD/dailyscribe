@@ -20,7 +20,7 @@ import { rasterizePage } from "./rasterize";
  * drifts from `DND_MOVE_FIELD_LAYOUT` — exactly the desync this shared-layout
  * design is meant to prevent (see layout.ts's doc comment).
  */
-async function renderMovePagePdf(status: "active" | "won" = "active"): Promise<Uint8Array> {
+async function renderMovePagePdf(status: "active" | "won" | "awaiting_character" = "active"): Promise<Uint8Array> {
   const campaignDoc: DndCampaign = {
     userId: "test-user",
     inboundToken: "0123456789abcdef",
@@ -112,8 +112,8 @@ describe("readCheckboxes", () => {
 describe("readCheckboxes on the next-adventure page", () => {
   const fields = [...DND_NEXT_HERO_CHECKBOXES, ...DND_NEXT_ADVENTURE_SLOTS];
 
-  async function readNextWithMarks(marks: DndFieldBox[]) {
-    const pdfDoc = await PDFDocument.load(await renderMovePagePdf("won"));
+  async function readNextWithMarks(marks: DndFieldBox[], status: "won" | "awaiting_character" = "won") {
+    const pdfDoc = await PDFDocument.load(await renderMovePagePdf(status));
     const page = pdfDoc.getPage(0); // the won document is this one page
     for (const field of marks) {
       const x0 = field.left + 2;
@@ -137,5 +137,12 @@ describe("readCheckboxes on the next-adventure page", () => {
     for (const field of fields) {
       expect(byId.get(field.id), field.id).toBe(field.id === "keep_hero" || field.id === "adventure_1");
     }
+  });
+
+  it("reads a new player's first-adventure page: untouched, then the second adventure ticked", async () => {
+    const untouched = await readNextWithMarks([], "awaiting_character");
+    for (const field of fields) expect(untouched.get(field.id), field.id).toBe(false);
+    const byId = await readNextWithMarks([DND_NEXT_ADVENTURE_SLOTS[1]], "awaiting_character");
+    for (const field of fields) expect(byId.get(field.id), field.id).toBe(field.id === "adventure_1");
   });
 });
