@@ -594,6 +594,14 @@ function NextAdventurePage({
       <View style={{ position: "absolute", top: creationTop, left: 48, right: 48 }}>
         <CharacterCreationSection />
       </View>
+      {!digest && (
+        <Link
+          src={BUY_ME_A_COFFEE_URL}
+          style={[styles.coffee, { position: "absolute", bottom: 44, left: 48, right: 48, textAlign: "center", marginBottom: 0 }]}
+        >
+          Enjoy this with your coffee? Consider buying the creator one, it helps cover the running costs.
+        </Link>
+      )}
       <RefFooter inboundToken={campaignDoc.inboundToken} digest={digest} />
     </Page>
   );
