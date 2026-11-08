@@ -1,8 +1,21 @@
 import { collections } from "@dailyscribe/core";
 
-/** Resend's free-tier daily send cap (all email from the shared sender counts
- *  against this: invites, magic links, and daily editions alike). */
-export const RESEND_FREE_DAILY_LIMIT = 100;
+/** Resend Pro (transactional), upgraded 2026-11-07 when sign-ups opened.
+ *  resend.com/pricing, checked 2026-11-08: no daily cap; everything from the
+ *  shared sender (editions, magic links, nudges, announcements) counts toward
+ *  the monthly quota, and pay-as-you-go overage is billed per 1,000. */
+export const RESEND_PLAN = {
+  name: "Pro",
+  monthlyUsd: 20,
+  monthlyEmails: 50_000,
+  overageUsdPer1000: 0.9,
+};
+
+/** Resend cost for a month's volume: the flat fee plus any overage buckets. */
+export function resendMonthlyCost(emails: number): number {
+  const over = Math.max(0, emails - RESEND_PLAN.monthlyEmails);
+  return RESEND_PLAN.monthlyUsd + Math.ceil(over / 1000) * RESEND_PLAN.overageUsdPer1000;
+}
 
 /**
  * Rough per-call Gemini cost estimates — NOT metered truth. No token count is
@@ -126,6 +139,13 @@ export async function getDailyGeminiCostEstimate(days = 30): Promise<DailyGemini
 }
 
 /** Sums the Gemini estimate from the 1st of the current UTC month through today. */
+/** Emails delivered since the 1st of this (UTC) month. Resend bills on its own
+ *  cycle and counts sends, not deliveries, so treat this as a close estimate. */
+export async function getMonthToDateEmailCount(): Promise<number> {
+  const days = await getDailyEmailCounts(new Date().getUTCDate());
+  return days.reduce((sum, d) => sum + d.count, 0);
+}
+
 export async function getMonthToDateGeminiCost(): Promise<number> {
   const daysElapsed = new Date().getUTCDate(); // e.g. the 26th -> last 26 days incl. today
   const daily = await getDailyGeminiCostEstimate(daysElapsed);
