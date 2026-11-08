@@ -153,6 +153,7 @@ export async function findNudgeCandidates(kind: NudgeKind, now: Date): Promise<N
   for (const user of await users.find({ [`nudges.${kind}`]: { $exists: false } }).toArray()) {
     const email = user.email;
     if (!email || isKindleAddress(email)) continue; // a Kindle inbox can't show a plain-text email
+    if (user.emailOptOutAt) continue; // asked for no more emails like this
     const id = String(user._id);
     const signedIn = !!user.emailVerified || accountByUser.has(id) || sessionUsers.has(id);
 

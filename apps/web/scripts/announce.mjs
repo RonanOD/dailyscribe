@@ -6,7 +6,8 @@
  * sending and released if the send fails, so a re-run resumes where it stopped.
  *
  * Skipped: @kindle.com addresses (a Kindle can't show a plain email), users who
- * chose "Stop all deliveries" (accountFeedback kind "stop-all"), and --exclude.
+ * chose "Stop all deliveries" (accountFeedback kind "stop-all"), users who opted
+ * out of these emails (`users.emailOptOutAt`, see below), and --exclude.
  * --active-only also skips invitees who never used the service (no email
  * sign-in, no linked OAuth account, no subscriptions): they've already had
  * the invite and activation nudges, and spam complaints hurt the shared sender.
@@ -19,6 +20,12 @@
  *   npx tsx scripts/announce.mjs chess --dry-run [--active-only]   # who would get it
  *   npx tsx scripts/announce.mjs chess --test-to me@x.com          # one sample, no DB writes
  *   npx tsx scripts/announce.mjs chess --limit 40 [--active-only] [--exclude a@x.com,b@y.com]
+ *
+ * When someone replies "no more", record it once and every later announcement,
+ * win-back PDF and onboarding nudge skips them (editions keep arriving):
+ *
+ *   npx tsx scripts/announce.mjs --opt-out a@x.com[,b@y.com]
+ *   npx tsx scripts/announce.mjs --opt-in a@x.com      # undo
  *
  * --kindle-pdf <edition-announcement-id> is a win-back mode instead: it sends the
  * one-page "What's new" PDF (EDITION_ANNOUNCEMENTS in packages/core/src/
@@ -77,6 +84,27 @@ Ronan
 Daily Scribe
 
 P.S. Just hit reply if you have feedback, or if you'd rather not get emails like this.
+`,
+  },
+  launch: {
+    subject: "Daily Scribe is open to everyone now (and a small favour)",
+    text: `Hi,
+
+You were one of the first people to try Daily Scribe, back when you needed an invite. As of this week, anyone can sign up, and it stays free. Nothing changes for you: your edition keeps arriving as it does now.
+
+Two small favours, if you have a minute:
+
+1. Know someone with a Kindle Scribe or another e-reader who'd like a morning edition? Forward them this email, or send them this link:
+   https://dailyscribe.ca/?ref=friend
+
+2. Hit reply and tell me, in a sentence or two, what you like about it (or what you don't). I'm writing up the story of building Daily Scribe, and I'd love to quote a few readers. I won't use your name unless you say I can.
+
+Thank you for reading, and for every note you've sent along the way. Those notes are a big part of why I keep building this.
+
+Ronan
+Daily Scribe
+
+P.S. If you'd rather not get emails like this, just reply and say so.
 `,
   },
 };
@@ -146,7 +174,7 @@ async function kindlePdf(id, args, flag) {
   for (const u of await users.find({ [field]: { $exists: false } }).toArray()) {
     const userId = String(u._id);
     if (!delivered.has(userId) || enabled.has(userId)) continue; // not lapsed
-    if (stopped.has(userId)) {
+    if (stopped.has(userId) || u.emailOptOutAt) {
       skipped.stopped++;
       continue;
     }
@@ -191,9 +219,27 @@ async function kindlePdf(id, args, flag) {
   console.log(`Done: ${sent} sent.`);
 }
 
+/** Record (or undo) "no more emails like this" for each comma-separated address. */
+async function setOptOut(optOut, list) {
+  const emails = (list ?? "").split(",").map((e) => e.trim()).filter(Boolean);
+  if (emails.length === 0) throw new Error("Usage: announce.mjs --opt-out|--opt-in a@x.com[,b@y.com]");
+  const { users } = await collections();
+  for (const email of emails) {
+    // Case-insensitive: the address in a reply may not match the stored casing.
+    const escaped = email.replace(/[.*+?^$()|[\]{}\\]/g, "\\$&");
+    const match = { email: { $regex: "^" + escaped + "$", $options: "i" } };
+    const update = optOut ? { $set: { emailOptOutAt: new Date() } } : { $unset: { emailOptOutAt: "" } };
+    const { matchedCount } = await users.updateMany(match, update);
+    console.log(matchedCount ? `${optOut ? "Opted out" : "Opted back in"}: ${email}` : `No user with email ${email}`);
+  }
+}
+
 async function main() {
   loadEnvLocal();
   const args = process.argv.slice(2);
+  if (args[0] === "--opt-out" || args[0] === "--opt-in") {
+    return setOptOut(args[0] === "--opt-out", args[1]);
+  }
   if (args[0] === "--kindle-pdf") {
     const flag = (name) => {
       const i = args.indexOf(name);
@@ -230,13 +276,14 @@ async function main() {
   const field = `announcements.${key}`;
   const all = await users.find({ [field]: { $exists: false } }).toArray();
 
-  const skipped = { kindle: 0, stopped: 0, excluded: 0, invalid: 0, neverActive: 0 };
+  const skipped = { kindle: 0, stopped: 0, optedOut: 0, excluded: 0, invalid: 0, neverActive: 0 };
   const recipients = [];
   for (const u of all) {
     const email = (u.email ?? "").trim().toLowerCase();
     if (!isEmailShaped(email)) skipped.invalid++;
     else if (isKindleAddress(email)) skipped.kindle++;
     else if (stopped.has(String(u._id))) skipped.stopped++;
+    else if (u.emailOptOutAt) skipped.optedOut++;
     else if (exclude.has(email)) skipped.excluded++;
     else {
       const id = String(u._id);

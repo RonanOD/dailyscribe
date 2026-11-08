@@ -41,6 +41,10 @@ export interface AppUser {
   /** When each activation email went out (see onboarding-nudges.ts). Claimed
    *  before sending, so each kind reaches a user at most once. */
   nudges?: Partial<Record<NudgeKind, Date>>;
+  /** Set when the user asked not to get announcement or activation emails
+   *  (`announce.mjs --opt-out`). Editions, sign-in links and delivery problems
+   *  still go out. */
+  emailOptOutAt?: Date;
   /** Product announcements already sent, by key: emails from apps/web/scripts/announce.mjs,
    *  and "edition:<id>" for an in-edition "What's new" page (announcements.ts). */
   announcements?: Record<string, Date>;
