@@ -1,5 +1,6 @@
 import { deleteAccount } from "@dailyscribe/core";
 import { NextResponse } from "next/server";
+import { cleanLeaveReasons } from "@/lib/leave-reasons";
 import { requireUserId } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -13,10 +14,10 @@ export async function POST(req: Request) {
   const userId = await requireUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as { confirm?: unknown; reason?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { confirm?: unknown; reason?: unknown; reasons?: unknown };
   if (typeof body.confirm !== "string" || body.confirm.trim().toLowerCase() !== "delete") {
     return NextResponse.json({ error: 'Type "delete" to confirm.' }, { status: 400 });
   }
-  await deleteAccount(userId, body.reason, new Date());
+  await deleteAccount(userId, { reason: body.reason, reasons: cleanLeaveReasons(body.reasons) }, new Date());
   return NextResponse.json({ ok: true });
 }

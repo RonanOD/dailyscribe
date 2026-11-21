@@ -383,6 +383,9 @@ export interface AccountFeedback {
   userId?: string;
   /** Services that were switched on at the time. */
   services: string[];
+  /** One-tap reason ids (apps/web/lib/leave-reasons.ts); missing before Nov 2026. */
+  reasons?: string[];
+  /** Free-text "anything else?" answer. */
   reason?: string;
   /** Only on "delete": when the account was created. */
   joinedAt?: Date;

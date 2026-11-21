@@ -11,19 +11,29 @@ export function cleanFeedback(reason: unknown): string | undefined {
   return trimmed || undefined;
 }
 
-/** `{ reason }` when there is one, else `{}`: the driver stores an undefined field as null. */
-function reasonField(reason: unknown): { reason?: string } {
+/** What a leaving user told us: the one-tap reason ids (already checked
+ *  against the app's list) and an optional free-text answer. */
+export interface LeaveFeedback {
+  reasons?: string[];
+  reason?: unknown;
+}
+
+/** Only the fields that have a value: the driver stores an undefined field as null. */
+function feedbackFields({ reasons, reason }: LeaveFeedback): { reasons?: string[]; reason?: string } {
   const cleaned = cleanFeedback(reason);
-  return cleaned ? { reason: cleaned } : {};
+  return {
+    ...(reasons && reasons.length > 0 ? { reasons } : {}),
+    ...(cleaned ? { reason: cleaned } : {}),
+  };
 }
 
 /**
  * Switch off every service for a user in one go ("Stop all deliveries"). The
  * account and settings stay, so switching a service back on resumes it.
- * Records the optional reason for the admin report. Returns the services that
+ * Records the optional feedback for the admin report. Returns the services that
  * were on.
  */
-export async function stopAllDeliveries(userId: string, reason: unknown, now: Date): Promise<string[]> {
+export async function stopAllDeliveries(userId: string, feedback: LeaveFeedback, now: Date): Promise<string[]> {
   const { subscriptions, accountFeedback } = await collections();
   const services = (await subscriptions.find({ userId, enabled: true }, { projection: { service: 1 } }).toArray()).map(
     (s) => s.service,
@@ -32,16 +42,16 @@ export async function stopAllDeliveries(userId: string, reason: unknown, now: Da
     { userId, enabled: true },
     { $set: { enabled: false }, $unset: { disabledReason: "" } },
   );
-  await accountFeedback.insertOne({ kind: "stop-all", userId, services, ...reasonField(reason), createdAt: now });
+  await accountFeedback.insertOne({ kind: "stop-all", userId, services, ...feedbackFields(feedback), createdAt: now });
   return services;
 }
 
 /**
  * Permanently delete a user and everything keyed to them. The feedback row
- * written first keeps only the reason, the services they had and when they
+ * written first keeps only the feedback, the services they had and when they
  * joined: no user id or email, since they asked to be forgotten.
  */
-export async function deleteAccount(userId: string, reason: unknown, now: Date): Promise<void> {
+export async function deleteAccount(userId: string, feedback: LeaveFeedback, now: Date): Promise<void> {
   if (!ObjectId.isValid(userId)) throw new Error("Invalid user id");
   const _id = new ObjectId(userId);
   const db = await getDb();
@@ -54,7 +64,7 @@ export async function deleteAccount(userId: string, reason: unknown, now: Date):
   await c.accountFeedback.insertOne({
     kind: "delete",
     services: subs.filter((s) => s.enabled).map((s) => s.service),
-    ...reasonField(reason),
+    ...feedbackFields(feedback),
     joinedAt: _id.getTimestamp(),
     createdAt: now,
   });

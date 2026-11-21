@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LEAVE_REASONS, type LeaveReasonId } from "@/lib/leave-reasons";
 
 async function postJson(url: string, body: unknown): Promise<void> {
   const res = await fetch(url, {
@@ -17,13 +18,24 @@ async function postJson(url: string, body: unknown): Promise<void> {
 /**
  * "Stop all deliveries" and "Delete my account", tucked into a closed
  * <details> under the settings so they're findable but not in the way. Both
- * ask an optional "what didn't work?" question (DAI-34).
+ * ask an optional "what didn't work?" question (DAI-34): one-tap reasons, since
+ * nobody filled in the free-text box alone, plus an "anything else?" box.
  */
 export function AccountActions({ anyEnabled }: { anyEnabled: boolean }) {
   const [reason, setReason] = useState("");
+  const [reasons, setReasons] = useState<Set<LeaveReasonId>>(new Set());
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState<"stop" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function toggleReason(id: LeaveReasonId) {
+    setReasons((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   async function run(kind: "stop" | "delete", fn: () => Promise<void>) {
     setBusy(kind);
@@ -39,7 +51,7 @@ export function AccountActions({ anyEnabled }: { anyEnabled: boolean }) {
 
   const stopAll = () =>
     run("stop", async () => {
-      await postJson("/api/account/stop", { reason });
+      await postJson("/api/account/stop", { reason, reasons: [...reasons] });
       // Full reload, not router.refresh(): the settings form keeps its toggles in
       // client state, and a stale "on" there would switch everything back on at
       // the next Save.
@@ -48,7 +60,7 @@ export function AccountActions({ anyEnabled }: { anyEnabled: boolean }) {
 
   const deleteAccount = () =>
     run("delete", async () => {
-      await postJson("/api/account/delete", { confirm: confirmText, reason });
+      await postJson("/api/account/delete", { confirm: confirmText, reason, reasons: [...reasons] });
       window.location.href = "https://dailyscribe.ca/";
     });
 
@@ -56,15 +68,23 @@ export function AccountActions({ anyEnabled }: { anyEnabled: boolean }) {
     <details className="section account-actions">
       <summary>Stop deliveries or delete your account</summary>
 
+      <fieldset className="field leave-reasons">
+        <legend>What didn&apos;t work for you? (optional, tick any)</legend>
+        {LEAVE_REASONS.map((r) => (
+          <label key={r.id} className="check">
+            <input type="checkbox" checked={reasons.has(r.id)} onChange={() => toggleReason(r.id)} />
+            {r.label}
+          </label>
+        ))}
+      </fieldset>
       <div className="field">
-        <label htmlFor="leave-reason">What didn&apos;t work for you? (optional)</label>
+        <label htmlFor="leave-reason">Anything else? (optional)</label>
         <textarea
           id="leave-reason"
-          rows={3}
+          rows={2}
           maxLength={2000}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Too much to read, wrong time of day, Kindle trouble..."
         />
         <p className="hint">Only Ronan reads this. It helps decide what to fix next.</p>
       </div>

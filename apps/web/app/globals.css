@@ -787,6 +787,24 @@ a {
 .account-actions h2 {
   margin-top: 8px;
 }
+/* One-tap leaving reasons: a borderless fieldset, legend styled like a .field label. */
+.leave-reasons {
+  border: 0;
+  padding: 0;
+  margin-inline: 0;
+}
+.leave-reasons legend {
+  padding: 0;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+.leave-reasons label.check {
+  display: flex;
+  margin-bottom: 4px;
+  color: inherit;
+  font-size: 0.9rem;
+}
 .account-actions__delete {
   margin-top: 28px !important;
 }

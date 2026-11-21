@@ -9,6 +9,7 @@ import {
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { cronAuthError } from "@/lib/cron-auth";
+import { leaveReasonLabel } from "@/lib/leave-reasons";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -152,7 +153,11 @@ export async function GET(req: Request) {
           ? `deleted account (joined ${l.joinedAt?.toISOString().slice(0, 10) ?? "?"})`
           : `${(l.userId && emails.get(l.userId)) ?? "since-deleted user"} stopped all deliveries`;
       const had = l.services.length > 0 ? l.services.join(", ") : "nothing on";
-      return `  ${who}; had: ${had}\n      ${l.reason ? `"${l.reason}"` : "(no reason given)"}`;
+      const said = [
+        ...(l.reasons ?? []).map(leaveReasonLabel),
+        ...(l.reason ? [`"${l.reason}"`] : []),
+      ];
+      return `  ${who}; had: ${had}\n      ${said.length > 0 ? said.join("; ") : "(no reason given)"}`;
     });
     sections.push([`${leavers.length} user${leavers.length === 1 ? "" : "s"} left in the last 24h:`, "", ...rows].join("\n"));
   }
