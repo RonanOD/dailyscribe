@@ -9,6 +9,22 @@ const nextConfig = {
     // missing trailing slash here doesn't break Decap's relative config lookup.)
     return [{ source: "/admin", destination: "/admin/index.html" }];
   },
+  async headers() {
+    // Only our own pages may frame the site (SAMEORIGIN, not DENY, in case
+    // Decap CMS's preview pane frames it). Embedding others, e.g. the demo
+    // video, is unaffected. frame-ancestors only; no script policy.
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

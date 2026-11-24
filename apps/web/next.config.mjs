@@ -10,6 +10,22 @@ const nextConfig = {
   // Node at runtime instead of being bundled. Next's output file tracing
   // then picks up the actual .node file for the serverless function alongside it.
   serverExternalPackages: ["@napi-rs/canvas"],
+  async headers() {
+    // Nothing frames the dashboard, so refuse all framing (clickjacking on
+    // "Stop all deliveries" / "Delete my account"). The CSP below sets only
+    // frame-ancestors, not a script policy; a full CSP needs per-request nonces.
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
